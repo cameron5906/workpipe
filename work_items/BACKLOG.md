@@ -34,9 +34,8 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
-2. WI-019: Implement guard_js compilation (general guards) - P2-Medium
-3. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+1. WI-019: Implement guard_js compilation (general guards) - P2-Medium
+2. WI-022: Implement matrix axes syntax and parsing - P2-Medium
 
 ---
 
@@ -64,10 +63,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 427 tests passing
-**Work Items Completed:** 36
+**Test Count:** 450+ tests passing (35 in vscode-extension alone)
+**Work Items Completed:** 37
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 3 (WI-039, WI-019, WI-022)
+**Work Items In Backlog:** 2 (WI-019, WI-022)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -119,10 +118,7 @@ jobs:
 ## Ready for Development
 
 ### Phase 9: Tooling (Milestone E) - Remaining
-3. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
-   - Enhance existing diagnostics with code actions
-   - Add hover information
-   - Note: WI-045 covers required field validation (user feedback priority)
+(All core tooling work items complete. WI-039 delivered code actions and hover provider.)
 
 ### Future Enhancements (Phase 3+)
 5. **WI-046: Type System for Task/Job Data Flow** - COMPLETE (see Completed section)
@@ -209,6 +205,13 @@ jobs:
 ---
 
 ## Completed
+
+### Phase 9: Tooling - MOST RECENT
+- **WI-039: Enhanced VS Code Diagnostics** - Completed 2025-12-31
+  - Created `hover.ts` with HoverProvider for keywords and properties
+  - Created `code-actions.ts` with quick fixes for WP7001, WP7002, WP6001, WP6005
+  - 23 new tests (35 total in vscode-extension)
+  - Registered both providers in extension.ts
 
 ### Phase 7: Agent Tasks - RECENT
 - **WI-059: Error Codes for Invalid Schema Syntax (WP3xxx)** - Completed 2025-12-31
