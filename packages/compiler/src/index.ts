@@ -74,7 +74,7 @@ export function compile(source: string): CompileResult<string> {
   diagnostics.push(...validateOutputs(ast, registry));
   diagnostics.push(...validateSchemas(ast));
   diagnostics.push(...validateMatrixJobs(ast));
-  diagnostics.push(...validateExpressionTypes(ast));
+  diagnostics.push(...validateExpressionTypes(ast, registry));
 
   const hasDiagnosticErrors = diagnostics.some((d) => d.severity === "error");
   if (hasDiagnosticErrors) {

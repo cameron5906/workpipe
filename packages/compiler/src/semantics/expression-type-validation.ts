@@ -11,6 +11,7 @@ import {
   checkExpressionTypes,
   type TypeContext,
 } from "./expression-types.js";
+import type { TypeRegistry } from "./type-registry.js";
 
 interface JobOutputs {
   name: string;
@@ -26,7 +27,8 @@ function collectJobOutputs(job: AnyJobNode): JobOutputs {
 }
 
 function buildTypeContext(
-  jobOutputsMap: Map<string, JobOutputs>
+  jobOutputsMap: Map<string, JobOutputs>,
+  typeRegistry?: TypeRegistry
 ): TypeContext {
   const jobOutputs = new Map<string, Map<string, OutputDeclaration>>();
 
@@ -34,7 +36,7 @@ function buildTypeContext(
     jobOutputs.set(jobName, jobData.outputs);
   }
 
-  return { jobOutputs };
+  return { jobOutputs, typeRegistry };
 }
 
 function extractTextFromStep(step: StepNode): { text: string; span: Span }[] {
@@ -58,7 +60,7 @@ function validateExpressionsInJob(
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
-  if (job.condition) {
+  if ("condition" in job && job.condition) {
     diagnostics.push(...checkExpressionTypes(job.condition, context));
   }
 
@@ -77,7 +79,10 @@ function validateExpressionsInJob(
   return diagnostics;
 }
 
-export function validateExpressionTypes(ast: WorkflowNode): Diagnostic[] {
+export function validateExpressionTypes(
+  ast: WorkflowNode,
+  typeRegistry?: TypeRegistry
+): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
   const jobOutputsMap = new Map<string, JobOutputs>();
@@ -94,7 +99,7 @@ export function validateExpressionTypes(ast: WorkflowNode): Diagnostic[] {
     }
   }
 
-  const context = buildTypeContext(jobOutputsMap);
+  const context = buildTypeContext(jobOutputsMap, typeRegistry);
 
   for (const job of ast.jobs) {
     diagnostics.push(...validateExpressionsInJob(job, context));

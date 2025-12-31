@@ -4,12 +4,18 @@ import {
   inferExpressionType,
   checkComparisonTypes,
   checkNumericOperation,
+  checkPropertyAccess,
   isNumericType,
   areTypesCompatible,
   extractInterpolations,
+  createTypeRegistry,
   type TypeContext,
 } from "../semantics/index.js";
-import type { ExpressionNode, OutputDeclaration } from "../ast/types.js";
+import type {
+  ExpressionNode,
+  OutputDeclaration,
+  TypeDeclarationNode,
+} from "../ast/types.js";
 
 function createSpan(start: number = 0, end: number = 10) {
   return { start, end };
@@ -17,9 +23,10 @@ function createSpan(start: number = 0, end: number = 10) {
 
 function createOutputDecl(
   name: string,
-  type: "string" | "int" | "float" | "bool" | "json" | "path"
+  type: "string" | "int" | "float" | "bool" | "json" | "path",
+  typeReference?: string
 ): OutputDeclaration {
-  return { name, type, span: createSpan() };
+  return { name, type, span: createSpan(), ...(typeReference ? { typeReference } : {}) };
 }
 
 function createContext(
@@ -782,5 +789,535 @@ describe("compile integration with expression type checking", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toContain("bool");
     expect(errors[0].message).toContain("int");
+  });
+});
+
+describe("checkPropertyAccess (WP5003)", () => {
+  function createTypeDecl(
+    name: string,
+    fields: { name: string; type: string }[]
+  ): TypeDeclarationNode {
+    return {
+      kind: "type_declaration",
+      name,
+      fields: fields.map((f) => ({
+        kind: "type_field" as const,
+        name: f.name,
+        type: {
+          kind: "primitive_type" as const,
+          type: f.type as "string" | "int" | "float" | "bool",
+          span: createSpan(),
+        },
+        span: createSpan(),
+      })),
+      span: createSpan(),
+    };
+  }
+
+  function createContextWithRegistry(
+    jobs: Record<string, OutputDeclaration[]>,
+    types: TypeDeclarationNode[]
+  ): TypeContext {
+    const jobOutputs = new Map<string, Map<string, OutputDeclaration>>();
+
+    for (const [jobName, outputs] of Object.entries(jobs)) {
+      const outputMap = new Map<string, OutputDeclaration>();
+      for (const output of outputs) {
+        outputMap.set(output.name, output);
+      }
+      jobOutputs.set(jobName, outputMap);
+    }
+
+    const registry = createTypeRegistry();
+    for (const type of types) {
+      registry.register(type);
+    }
+
+    return { jobOutputs, typeRegistry: registry };
+  }
+
+  it("returns no errors for valid property access", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [
+          { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+        ],
+      },
+      [createTypeDecl("BuildInfo", [{ name: "version", type: "string" }])]
+    );
+
+    const path = ["needs", "build", "outputs", "info", "version"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("returns WP5003 for invalid property access", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [
+          { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+        ],
+      },
+      [createTypeDecl("BuildInfo", [{ name: "version", type: "string" }])]
+    );
+
+    const path = ["needs", "build", "outputs", "info", "foo"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].code).toBe("WP5003");
+    expect(diagnostics[0].message).toContain("foo");
+    expect(diagnostics[0].message).toContain("BuildInfo");
+    expect(diagnostics[0].hint).toContain("version");
+  });
+
+  it("returns no errors for access without property path", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [
+          { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+        ],
+      },
+      [createTypeDecl("BuildInfo", [{ name: "version", type: "string" }])]
+    );
+
+    const path = ["needs", "build", "outputs", "info"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("returns no errors for primitive output access", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [createOutputDecl("count", "int")],
+      },
+      []
+    );
+
+    const path = ["needs", "build", "outputs", "count", "something"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("returns no errors when type registry is not provided", () => {
+    const context = createContext({
+      build: [
+        { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+      ],
+    });
+
+    const path = ["needs", "build", "outputs", "info", "foo"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("returns no errors for non-needs path", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [
+          { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+        ],
+      },
+      [createTypeDecl("BuildInfo", [{ name: "version", type: "string" }])]
+    );
+
+    const path = ["env", "MY_VAR"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("shows available properties in hint", () => {
+    const context = createContextWithRegistry(
+      {
+        build: [
+          { name: "info", type: "json", typeReference: "BuildInfo", span: createSpan() },
+        ],
+      },
+      [
+        createTypeDecl("BuildInfo", [
+          { name: "version", type: "string" },
+          { name: "commit", type: "string" },
+          { name: "branch", type: "string" },
+        ]),
+      ]
+    );
+
+    const path = ["needs", "build", "outputs", "info", "nonexistent"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].hint).toContain("version");
+    expect(diagnostics[0].hint).toContain("commit");
+    expect(diagnostics[0].hint).toContain("branch");
+  });
+});
+
+describe("checkPropertyAccess with nested types", () => {
+  function createNestedTypeDecl(): TypeDeclarationNode {
+    return {
+      kind: "type_declaration",
+      name: "Result",
+      fields: [
+        {
+          kind: "type_field",
+          name: "meta",
+          type: {
+            kind: "object_type",
+            fields: [
+              {
+                kind: "type_field",
+                name: "author",
+                type: { kind: "primitive_type", type: "string", span: createSpan() },
+                span: createSpan(),
+              },
+              {
+                kind: "type_field",
+                name: "date",
+                type: { kind: "primitive_type", type: "string", span: createSpan() },
+                span: createSpan(),
+              },
+            ],
+            span: createSpan(),
+          },
+          span: createSpan(),
+        },
+        {
+          kind: "type_field",
+          name: "value",
+          type: { kind: "primitive_type", type: "string", span: createSpan() },
+          span: createSpan(),
+        },
+      ],
+      span: createSpan(),
+    };
+  }
+
+  function createContextWithNestedType(): TypeContext {
+    const jobOutputs = new Map<string, Map<string, OutputDeclaration>>();
+    const outputMap = new Map<string, OutputDeclaration>();
+    outputMap.set("result", {
+      name: "result",
+      type: "json",
+      typeReference: "Result",
+      span: createSpan(),
+    });
+    jobOutputs.set("process", outputMap);
+
+    const registry = createTypeRegistry();
+    registry.register(createNestedTypeDecl());
+
+    return { jobOutputs, typeRegistry: registry };
+  }
+
+  it("validates nested property access correctly", () => {
+    const context = createContextWithNestedType();
+
+    const path = ["needs", "process", "outputs", "result", "meta", "author"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("returns error for invalid nested property", () => {
+    const context = createContextWithNestedType();
+
+    const path = ["needs", "process", "outputs", "result", "meta", "invalid"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].code).toBe("WP5003");
+    expect(diagnostics[0].message).toContain("invalid");
+    expect(diagnostics[0].hint).toContain("author");
+    expect(diagnostics[0].hint).toContain("date");
+  });
+
+  it("returns error for invalid first-level nested property", () => {
+    const context = createContextWithNestedType();
+
+    const path = ["needs", "process", "outputs", "result", "invalid"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].code).toBe("WP5003");
+    expect(diagnostics[0].message).toContain("invalid");
+    expect(diagnostics[0].message).toContain("Result");
+    expect(diagnostics[0].hint).toContain("meta");
+    expect(diagnostics[0].hint).toContain("value");
+  });
+
+  it("validates access to first-level property", () => {
+    const context = createContextWithNestedType();
+
+    const path = ["needs", "process", "outputs", "result", "value"];
+    const diagnostics = checkPropertyAccess(path, createSpan(), context);
+
+    expect(diagnostics).toHaveLength(0);
+  });
+});
+
+describe("compile integration with property access validation (WP5003)", () => {
+  it("reports WP5003 for invalid property on typed output", () => {
+    const source = `
+      type BuildInfo {
+        version: string
+        commit: string
+      }
+
+      workflow ci {
+        on: push
+        job build {
+          runs_on: ubuntu-latest
+          outputs: {
+            info: BuildInfo
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [build]
+          steps: [run("echo $\{{ needs.build.outputs.info.foo }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].severity).toBe("error");
+    expect(errors[0].message).toContain("foo");
+    expect(errors[0].message).toContain("BuildInfo");
+    expect(errors[0].hint).toContain("version");
+    expect(errors[0].hint).toContain("commit");
+  });
+
+  it("allows valid property access on typed output", () => {
+    const source = `
+      type BuildInfo {
+        version: string
+        commit: string
+      }
+
+      workflow ci {
+        on: push
+        job build {
+          runs_on: ubuntu-latest
+          outputs: {
+            info: BuildInfo
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [build]
+          steps: [run("echo $\{{ needs.build.outputs.info.version }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(0);
+  });
+
+  it("validates nested property access", () => {
+    const source = `
+      type Result {
+        meta: {
+          author: string
+          date: string
+        }
+        value: string
+      }
+
+      workflow ci {
+        on: push
+        job process {
+          runs_on: ubuntu-latest
+          outputs: {
+            result: Result
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [process]
+          steps: [run("echo $\{{ needs.process.outputs.result.meta.author }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(0);
+  });
+
+  it("reports error for invalid nested property", () => {
+    const source = `
+      type Result {
+        meta: {
+          author: string
+          date: string
+        }
+        value: string
+      }
+
+      workflow ci {
+        on: push
+        job process {
+          runs_on: ubuntu-latest
+          outputs: {
+            result: Result
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [process]
+          steps: [run("echo $\{{ needs.process.outputs.result.meta.invalid }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("invalid");
+  });
+
+  it("does not validate property access on primitive outputs", () => {
+    const source = `
+      workflow ci {
+        on: push
+        job build {
+          runs_on: ubuntu-latest
+          outputs: {
+            count: int
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [build]
+          steps: [run("echo $\{{ needs.build.outputs.count.anything }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(0);
+  });
+
+  it("validates multiple property accesses in same step", () => {
+    const source = `
+      type BuildInfo {
+        version: string
+        commit: string
+      }
+
+      workflow ci {
+        on: push
+        job build {
+          runs_on: ubuntu-latest
+          outputs: {
+            info: BuildInfo
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [build]
+          steps: [run("echo $\{{ needs.build.outputs.info.version }} $\{{ needs.build.outputs.info.invalid }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("invalid");
+  });
+
+  it("handles type references to other types", () => {
+    const source = `
+      type Author {
+        name: string
+        email: string
+      }
+
+      type Result {
+        author: Author
+        value: string
+      }
+
+      workflow ci {
+        on: push
+        job process {
+          runs_on: ubuntu-latest
+          outputs: {
+            result: Result
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [process]
+          steps: [run("echo $\{{ needs.process.outputs.result.author.name }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(0);
+  });
+
+  it("reports error for invalid property on referenced type", () => {
+    const source = `
+      type Author {
+        name: string
+        email: string
+      }
+
+      type Result {
+        author: Author
+        value: string
+      }
+
+      workflow ci {
+        on: push
+        job process {
+          runs_on: ubuntu-latest
+          outputs: {
+            result: Result
+          }
+          steps: [run("echo hello")]
+        }
+        job deploy {
+          runs_on: ubuntu-latest
+          needs: [process]
+          steps: [run("echo $\{{ needs.process.outputs.result.author.invalid }}")]
+        }
+      }
+    `;
+
+    const result = compile(source);
+
+    const errors = result.diagnostics.filter((d) => d.code === "WP5003");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("invalid");
+    expect(errors[0].message).toContain("Author");
   });
 });

@@ -9,6 +9,7 @@ export {
   checkExpressionTypes,
   checkComparisonTypes,
   checkNumericOperation,
+  checkPropertyAccess,
   isNumericType,
   areTypesCompatible,
   type TypeContext,

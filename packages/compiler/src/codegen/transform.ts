@@ -221,6 +221,9 @@ export function serializeExpression(expr: ExpressionNode): string {
     case "boolean": {
       return expr.value ? "true" : "false";
     }
+    case "number": {
+      return String(expr.value);
+    }
   }
 }
 
