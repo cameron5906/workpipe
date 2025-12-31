@@ -10,12 +10,14 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 - **Milestone C**: Guards + advanced triggers
 - **Milestone D**: Matrices
 - **Milestone E**: Tooling (VS Code extension)
+- **Milestone A++**: User-Defined Type System (NEW - User Directive)
 
 **Implementation Phases** (from PROJECT.md):
 - Phase 0: Repo + contracts
 - Phase 1: Parser + AST + formatter
 - Phase 2: Minimal workflow codegen
 - Phase 3: Types + outputs
+- Phase 3+: User-Defined Types (NEW)
 - Phase 4: Artifacts
 - Phase 5: Guards
 - Phase 6: Matrices
@@ -27,13 +29,54 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+- **WI-066: AST Representation for Type Declarations** - P0-Critical
 
 ---
 
 ## Up Next (Priority Order)
 
-(None - all high-priority work complete)
+### USER DIRECTIVE: User-Defined Type System (P0-Critical)
+
+This is a user directive - takes priority over all other work.
+
+1. **WI-064: User-Defined Type System** - P0-Critical (Epic)
+   - Master work item for the type system feature
+   - Enables `type` declarations at workflow level
+   - Allows type references in job outputs and agent task schemas
+   - Compile-time property validation
+
+2. **WI-067: Type Registry and Resolver** - P0-Critical
+   - Create type registry to store declarations
+   - Implement type reference resolution
+   - Diagnostics: WP5001 (duplicate type), WP5002 (undefined type)
+   - **NEEDS ARCHITECT REVIEW**: Type compatibility model
+   - Depends on: WI-066
+
+3. **WI-068: Type References in Job Outputs** - P0-Critical
+   - Allow `outputs: { info: MyType }` syntax
+   - Resolve type references via registry
+   - Depends on: WI-067
+
+4. **WI-069: Type References in Agent Task Schemas** - P0-Critical
+   - Allow `output_schema = MyType` syntax
+   - Generate JSON Schema from type definition
+   - Depends on: WI-067, WI-056 (complete)
+
+5. **WI-070: Property Access Validation in Expressions** - P1-High
+   - Validate `${{ needs.job.outputs.typed.property }}` expressions
+   - Diagnostic: WP5003 (property not found on type)
+   - Depends on: WI-067, WI-068
+
+6. **WI-071: VS Code Diagnostics for Type Errors** - P1-High
+   - Surface WP5001, WP5002, WP5003 in VS Code
+   - Quick fixes for typos
+   - Depends on: WI-070
+
+7. **WI-072: User-Defined Types Documentation and Examples** - P1-High
+   - Update language reference
+   - Create examples/user-defined-types/
+   - Document new error codes
+   - Depends on: WI-068, WI-069, WI-070
 
 ---
 
@@ -43,6 +86,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 |-----------|--------|-------------|
 | **A** | COMPLETE | Vertical slice - end-to-end compilation |
 | **A+** | COMPLETE | Agent tasks + diagnostics + formatter |
+| **A++** | IN PROGRESS | User-Defined Type System (User Directive) |
 | **B** | COMPLETE | Strategy B cycles with full safety |
 | **C** | COMPLETE | Guards + advanced triggers |
 | **D** | COMPLETE | Matrices |
@@ -54,6 +98,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 1: Parser + AST + formatter | COMPLETE | Lezer grammar, AST, fmt command |
 | 2: Minimal workflow codegen | COMPLETE | YAML IR, build command |
 | 3: Types + outputs | COMPLETE | Diagnostics, job outputs, schema validation |
+| 3+: User-Defined Types | IN PROGRESS | Type declarations, registry, validation |
 | 4: Artifacts | COMPLETE | Cycle artifacts, matrix fingerprinting |
 | 5: Guards | COMPLETE | guard_js compilation, outputs, helper library |
 | 6: Matrices | COMPLETE | Matrix syntax, include/exclude, artifact fingerprinting, validation |
@@ -62,54 +107,67 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 48
-**Work Items In Progress:** 0
-**Work Items In Backlog:** 0 (all shipped)
+**Work Items Completed:** 49
+**Work Items In Progress:** 1 (WI-066)
+**Work Items In Backlog:** 8 (User-Defined Type System)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
 ---
 
-## MILESTONE B FULLY POLISHED: PRODUCTION-READY CYCLES
+## MILESTONE A++ OVERVIEW: USER-DEFINED TYPE SYSTEM
 
-**WorkPipe now compiles cycles to phased execution workflows with full safety features!**
+**User Directive**: WorkPipe MUST support user-defined types.
 
-```yaml
-# Generated from cycle block:
-name: cycle-example
-on:
-  workflow_dispatch:
-    inputs:
-      phase: { default: '0' }
-      run_id: { default: '' }
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.phase || 'bootstrap' }}
-  cancel-in-progress: false
-jobs:
-  refine_hydrate:    # Downloads previous state
-  refine_body_step1: # Executes iteration
-  refine_decide:     # Evaluates guard_js, outputs termination_reason
-  refine_dispatch:   # Triggers next iteration (respects max_iters)
+**Key Benefits:**
+- Define complex JSON shapes once, use across multiple jobs
+- Compiler generates JSON Schema FROM type definitions
+- Compile-time validation catches property access errors
+- VS Code shows diagnostics for type errors
+
+**Proposed Syntax:**
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  artifacts: [{
+    name: string
+    path: string
+  }]
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo  // Reference named type
+    }
+  }
+
+  agent_job review {
+    runs_on: ubuntu-latest
+    agent_task "reviewer" {
+      output_schema = BuildInfo  // Type becomes JSON Schema
+    }
+  }
+
+  job deploy {
+    needs: [build]
+    steps: [
+      // Compiler validates: info.version exists on BuildInfo
+      run("echo ${{ needs.build.outputs.info.version }}")
+    ]
+  }
+}
 ```
 
-**Capabilities delivered:**
-- Parse WorkPipe DSL with Lezer grammar (error recovery)
-- Build typed AST from CST (including agent and cycle constructs)
-- Transform AST to YAML IR (Claude Code Action steps)
-- Emit valid GitHub Actions YAML
-- CLI with build, check commands
-- Structured diagnostics with error codes and spans
-- Agent tasks with Claude Code Action integration
-- Cycle syntax: max_iters, key, until guard_js, body block
-- SCC detection with Tarjan's algorithm
-- **Full cycle codegen: hydrate, body, decide, dispatch jobs**
-- **Cross-run artifact download for state persistence**
-- **Guard_js evaluation for termination**
-- **workflow_dispatch for iteration triggering**
-- **WP6005 diagnostic for cycles without max_iters safety**
-- **termination_reason output (guard_satisfied | max_iterations | continue)**
-- **Concurrency groups prevent parallel cycle races**
-- 316 tests passing
+**New Diagnostics:**
+- WP5001: Duplicate type name
+- WP5002: Undefined type reference
+- WP5003: Property does not exist on type
 
 ---
 
@@ -238,6 +296,15 @@ The following issues were identified by the documentation steward during WI-062 
   - Tests cover common type mismatch cases
   - `docs/errors.md` updated with WP2012 and WP2013 documentation
 
+### Type System - MOST RECENT
+- **WI-065: Grammar and Parser for Type Declarations** - Completed 2025-12-31
+  - Extended Lezer grammar with `TypeDecl` production
+  - Type declarations parsed correctly to CST
+  - Reuses existing schema type productions (primitives, arrays, unions, objects)
+  - Type declarations allowed before or after workflow block
+  - Parser error recovery and source spans preserved
+  - Grammar tests for valid, malformed, and multiple type declarations
+
 ### Type System Documentation
 - **WI-061: Add Type Error Examples to Documentation** - Completed 2025-12-31
   - Created `docs/troubleshooting.md` with 8 type-related error examples
@@ -332,14 +399,14 @@ The following issues were identified by the documentation steward during WI-062 
   - 405 tests passing
 
 ### Examples & Documentation - RECENT
-- ✅ **WI-058: Add Inline Schema Example to agent-task** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-058: Add Inline Schema Example to agent-task** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Updated `examples/agent-task/agent-task.workpipe` with inline output_schema
   - Schema demonstrates object properties, arrays, string literal unions
   - Updated README with inline schema syntax documentation
   - Regenerated expected.yml
   - 394 tests passing
 
-- ✅ **WI-057: Real-World Enterprise Examples** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-057: Real-World Enterprise Examples** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Created `examples/enterprise-e2e-pipeline/` with workpipe, README, expected.yml
   - Created `examples/multi-environment-deploy/` with workpipe, README
   - Created `examples/microservices-build/` with workpipe, README, expected.yml
@@ -347,7 +414,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 394 tests passing
 
 ### Phase 7: Agent Tasks - RECENT
-- ✅ **WI-056: JSON Schema Type Definitions for Agent Tasks** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-056: JSON Schema Type Definitions for Agent Tasks** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Grammar: Inline schema syntax with objects, arrays, unions, string literals
   - AST: SchemaTypeNode hierarchy for structured schema representation
   - Codegen: Transform to JSON Schema (required props, additionalProperties: false)
@@ -356,25 +423,25 @@ The following issues were identified by the documentation steward during WI-062 
   - **NOTE: New DSL syntax - end-user review required per CLAUDE.md rules**
 
 ### Phase 9: Tooling - RECENT
-- ✅ **WI-055: VS Code Extension Troubleshooting Documentation** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-055: VS Code Extension Troubleshooting Documentation** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Created `docs/vscode-extension.md` with comprehensive troubleshooting guide
   - Updated `docs/README.md` with link to extension documentation
   - Identified likely root cause: compiler bundle not loading in extension context
   - Documented installation, verification, common issues, and known limitations
 
 ### Phase 3: Types + Outputs - JOB OUTPUTS COMPLETE
-- ✅ **WI-053: Add Example Files Demonstrating Job Outputs** - 2025-12-31 **[EXAMPLES COMPLETE]**
+- **WI-053: Add Example Files Demonstrating Job Outputs** - 2025-12-31 **[EXAMPLES COMPLETE]**
   - `examples/job-outputs/` with working example
   - Shows declare, set, consume pattern for typed outputs
   - README explains the example
 
-- ✅ **WI-052: Document How to Set Job Outputs** - 2025-12-31 **[DOCS COMPLETE]**
+- **WI-052: Document How to Set Job Outputs** - 2025-12-31 **[DOCS COMPLETE]**
   - Updated `docs/language-reference.md` Job Outputs section
   - Explains `$GITHUB_OUTPUT` syntax for setting outputs from shell scripts
   - Shows complete workflow: declare output, set output, consume output
   - Unblocked WI-046 completion
 
-- ✅ **WI-046: Type System for Task/Job Data Flow (Phase 1: Job Outputs)** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-046: Type System for Task/Job Data Flow (Phase 1: Job Outputs)** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Grammar, AST, validation (WP2010), codegen complete
   - 27 new tests (367 total passing)
   - ADR-0010: Job Outputs Design
@@ -383,46 +450,46 @@ The following issues were identified by the documentation steward during WI-062 
   - Addresses user feedback: "Why not add type declaration so we can have type safety?"
 
 ### Phase 9: Tooling - MILESTONE E IN PROGRESS
-- ✅ **WI-050: Surface Diagnostic Hints in VS Code Extension** - 2025-12-31 **[UX POLISH]**
+- **WI-050: Surface Diagnostic Hints in VS Code Extension** - 2025-12-31 **[UX POLISH]**
   - Modified `packages/vscode-extension/src/diagnostics.ts` to append hints to messages
   - Added tests in `packages/vscode-extension/src/__tests__/diagnostics.test.ts`
   - Enhanced VS Code mock for testing
   - All 12 tests passing
   - Completes WI-045 acceptance review items
 
-- ✅ **WI-051: Add Error Code Links to Language Reference** - 2025-12-31 **[DOCS ENHANCED]**
+- **WI-051: Add Error Code Links to Language Reference** - 2025-12-31 **[DOCS ENHANCED]**
   - Added error code links to `docs/language-reference.md`
   - WP7001 link for job `runs_on` required field
   - WP7002 link for agent_job `runs_on` required field
   - WP6001 link for cycle termination condition
   - WP6005 link for cycle `max_iters` recommendation
 
-- ✅ **WI-049: Create Error Code Documentation** - 2025-12-31 **[DOCS COMPLETE]**
+- **WI-049: Create Error Code Documentation** - 2025-12-31 **[DOCS COMPLETE]**
   - Created `docs/errors.md` with all 7 diagnostic codes documented
   - Codes: WP0001, WP0002, WP6001, WP6005, WP7001, WP7002, WP7004
   - Each code includes severity, description, example, and solution
   - Updated `docs/README.md` with link to error reference
   - Unblocks WI-051 (error code links in language reference)
 
-- ✅ **WI-048: Fix iterative-refinement Example Missing runs_on** - 2025-12-31 **[ACCEPTANCE FIX]**
+- **WI-048: Fix iterative-refinement Example Missing runs_on** - 2025-12-31 **[ACCEPTANCE FIX]**
   - Added `runs_on: ubuntu-latest` to `agent_job review_docs` in cycle body
   - Fixes WP7002 validation error in example file
   - Discovered during WI-045 end-user acceptance review
 
-- ✅ **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+- **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Added semantic validation for required fields (runs_on, prompt, command)
   - New diagnostic codes: WP7001, WP7002, WP7004
   - 14 new test cases (340 total tests passing)
   - Diagnostics surface in VS Code with red/yellow squiggles
 
-- ✅ **WI-047: Improve README and Onboarding Experience** - 2025-12-30 **[ONBOARDING COMPLETE]**
+- **WI-047: Improve README and Onboarding Experience** - 2025-12-30 **[ONBOARDING COMPLETE]**
   - Complete README.md overhaul with 5-minute quickstart
   - `docs/bootstrap.md` - Self-hosting workflow documentation
   - `docs/project-structure.md` - Contributor guide with package overview
   - `docs/quick-reference.md` - One-page cheat sheet for common patterns
   - Addresses user feedback on discoverability
 
-- ✅ **WI-041: Write documentation and example specs** - 2025-12-30 **[DOCS COMPLETE]**
+- **WI-041: Write documentation and example specs** - 2025-12-30 **[DOCS COMPLETE]**
   - Stream A: Core documentation (4 files in docs/)
     - `docs/README.md` - Documentation index
     - `docs/getting-started.md` - Installation, first workflow, project structure
@@ -436,7 +503,7 @@ The following issues were identified by the documentation steward during WI-062 
     - `examples/README.md` expanded with full example index
   - Stream C (Bootstrap docs, project README) deferred to WI-042
 
-- ✅ **WI-040: Create bootstrap workflow template** - 2025-12-30 **[SELF-HOSTING ENABLED]**
+- **WI-040: Create bootstrap workflow template** - 2025-12-30 **[SELF-HOSTING ENABLED]**
   - `templates/bootstrap.yml` - Standalone bootstrap template
   - `workpipe init --bootstrap` command
   - Bootstrap workflow triggers on `.workpipe` and `.wp` changes
@@ -445,7 +512,7 @@ The following issues were identified by the documentation steward during WI-062 
   - CLI now has 4 commands: build, check, fmt, init
   - 10 init command tests
 
-- ✅ **WI-038: Build VS Code extension with syntax highlighting** - 2025-12-30 **[MILESTONE E STARTED]**
+- **WI-038: Build VS Code extension with syntax highlighting** - 2025-12-30 **[MILESTONE E STARTED]**
   - ADR-0009: VS Code Extension Architecture
   - ARCHITECTURE.md updated with Editor Integration section
   - `packages/vscode-extension/` package created
@@ -456,20 +523,20 @@ The following issues were identified by the documentation steward during WI-062 
   - 9 extension tests
 
 ### Phase 8: Cycles (Strategy B) - MILESTONE B FULLY POLISHED
-- ✅ **WI-036: Enforce max_iterations and termination** - 2025-12-30
+- **WI-036: Enforce max_iterations and termination** - 2025-12-30
   - Created `packages/compiler/src/semantics/cycle-validation.ts`
   - WP6005 warning for cycles with `until` but no `max_iters`
   - `termination_reason` output in decide job
   - 10 new tests
 
-- ✅ **WI-037: Generate concurrency groups for cycle key** - 2025-12-30
+- **WI-037: Generate concurrency groups for cycle key** - 2025-12-30
   - Added `ConcurrencyIR` type to yaml-ir.ts
   - `generateConcurrency()` function in transform.ts
   - Concurrency block emission in emit.ts
   - Golden test updated with concurrency
   - 4 new tests
 
-- ✅ **WI-032-035: Cycle codegen - Phased execution jobs** - 2025-12-30
+- **WI-032-035: Cycle codegen - Phased execution jobs** - 2025-12-30
   - ADR-0008: Strategy B Cycle Lowering and Phased Execution Model
   - New IR types: WorkflowDispatchInputIR, DownloadArtifactStepIR, ScriptStepIR
   - Enhanced TriggerIR with workflowDispatch support
@@ -483,7 +550,7 @@ The following issues were identified by the documentation steward during WI-062 
   - Golden test for cycle-basic example
   - 7 new codegen tests (240 total tests passing)
 
-- ✅ **WI-031: Build SCC detection for cycle analysis** - 2025-12-30
+- **WI-031: Build SCC detection for cycle analysis** - 2025-12-30
   - Graph types: JobVertex, JobGraph, SCC, GraphAnalysis
   - `buildJobGraph()` from workflow AST
   - Tarjan's SCC algorithm (O(V+E))
@@ -491,7 +558,7 @@ The following issues were identified by the documentation steward during WI-062 
   - `analyzeGraph()` complete analysis
   - 25 analysis tests
 
-- ✅ **WI-030: Implement cycle syntax and AST** - 2025-12-30 **[MILESTONE B STARTED]**
+- **WI-030: Implement cycle syntax and AST** - 2025-12-30 **[MILESTONE B STARTED]**
   - ADR-0007: Cycle Syntax and Guard Block Design
   - Grammar: CycleDecl, CycleBody, MaxItersProperty, KeyProperty, UntilProperty
   - Grammar: GuardJs with triple-quoted strings, BodyBlock
@@ -502,7 +569,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 7 grammar tests, 6 AST tests
 
 ### Phase 3: Types + Outputs
-- ✅ **WI-044: Implement diagnostic system with span tracking** - 2025-12-30 **[PRODUCTION QUALITY]**
+- **WI-044: Implement diagnostic system with span tracking** - 2025-12-30 **[PRODUCTION QUALITY]**
   - ADR-0006: Diagnostic System Design and Error Reporting Strategy
   - Consolidates WI-006 (spans) and WI-015 (diagnostics framework)
   - Diagnostic types: Diagnostic, DiagnosticSeverity, CompileResult<T>
@@ -514,7 +581,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 45 new diagnostic tests (193 total tests passing)
 
 ### Phase 7: Agent Tasks
-- ✅ **WI-026: Implement agent_task syntax and AST** - 2025-12-30 **[CORE DIFFERENTIATOR]**
+- **WI-026: Implement agent_task syntax and AST** - 2025-12-30 **[CORE DIFFERENTIATOR]**
   - ADR-0005: Agent Task Design and Claude Code Integration
   - Extended Lezer grammar with agent_job, agent_task, tools, mcp, prompts
   - AST types: AgentJobNode, AgentTaskNode, ToolsConfig, McpConfig, PromptValue
@@ -525,7 +592,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 148 total tests passing
 
 ### Phase 3: Types + Outputs
-- ✅ **WI-043: Wire CLI check command to compiler** - 2025-12-30
+- **WI-043: Wire CLI check command to compiler** - 2025-12-30
   - Full check command implementation
   - Parses files and builds AST to validate
   - Error output in `file:line:column: message` format
@@ -534,7 +601,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 16 check command tests (104 total tests passing)
 
 ### Phase 2: Minimal Workflow Codegen
-- ✅ **WI-042: Wire CLI build command to compiler** - 2025-12-30 **[MILESTONE A FULLY COMPLETE]**
+- **WI-042: Wire CLI build command to compiler** - 2025-12-30 **[MILESTONE A FULLY COMPLETE]**
   - Full build command implementation
   - Reads source files, invokes `compile()`, writes YAML output
   - Workflow name extraction with filename fallback
@@ -543,7 +610,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 12 build command tests
   - WorkPipe now usable from command line
 
-- ✅ **WI-008: Implement YAML IR and emitter** - 2025-12-30
+- **WI-008: Implement YAML IR and emitter** - 2025-12-30
   - ADR-0004: YAML IR Design and Emission Strategy
   - ARCHITECTURE.md Code Generation section
   - YAML IR types (`packages/compiler/src/codegen/yaml-ir.ts`)
@@ -556,7 +623,7 @@ The following issues were identified by the documentation steward during WI-062 
   - Job order preserved, trigger forms correct
 
 ### Phase 1: Parser + AST + Formatter - PHASE COMPLETE
-- ✅ **WI-007: Implement WorkPipe formatter (fmt command)** - 2025-12-30 **[CLI SUITE COMPLETE]**
+- **WI-007: Implement WorkPipe formatter (fmt command)** - 2025-12-30 **[CLI SUITE COMPLETE]**
   - CST-based formatting (preserves comments)
   - Created `packages/compiler/src/format/printer.ts`
   - 2-space indentation (configurable)
@@ -566,7 +633,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 44 format tests + 18 CLI tests
   - 316 total tests passing
 
-- ✅ **WI-005: Implement CST to AST transformation** - 2025-12-30
+- **WI-005: Implement CST to AST transformation** - 2025-12-30
   - AST node types (`packages/compiler/src/ast/types.ts`)
   - AST builder with `buildAST()` (`packages/compiler/src/ast/builder.ts`)
   - Cursor iteration for CST traversal
@@ -576,7 +643,7 @@ The following issues were identified by the documentation steward during WI-062 
   - 21 AST unit tests
   - Both fixtures parse and build correctly
 
-- ✅ **WI-004: Create Lezer grammar for WorkPipe DSL** - 2025-12-30
+- **WI-004: Create Lezer grammar for WorkPipe DSL** - 2025-12-30
   - ADR-0003: Lezer Grammar Design and Expression Language
   - ARCHITECTURE.md Grammar Design section
   - Grammar file (`packages/lang/src/workpipe.grammar`)
@@ -587,7 +654,7 @@ The following issues were identified by the documentation steward during WI-062 
   - Error recovery working for incomplete input
 
 ### Phase 0: Repo + Contracts
-- ✅ **WI-003: Establish testing infrastructure and conventions** - 2025-12-30
+- **WI-003: Establish testing infrastructure and conventions** - 2025-12-30
   - Golden test framework (`packages/compiler/src/testing/golden.ts`)
   - `runGoldenTest()` and `listFixtures()` utilities
   - Example fixtures: `examples/minimal/` and `examples/simple-job/`
@@ -597,7 +664,7 @@ The following issues were identified by the documentation steward during WI-062 
   - ARCHITECTURE.md Testing Strategy section expanded
   - 19 tests passing
 
-- ✅ **WI-002: Define CLI interface and command contracts** - 2025-12-30
+- **WI-002: Define CLI interface and command contracts** - 2025-12-30
   - ADR-0002 documenting CLI contract and exit codes
   - ARCHITECTURE.md updated with CLI Contract section
   - Exit codes utility (`packages/cli/src/utils/exit-codes.ts`)
@@ -607,7 +674,7 @@ The following issues were identified by the documentation steward during WI-062 
   - Fmt command with --write, --check options
   - 15 unit tests passing
 
-- ✅ **WI-001: Initialize monorepo structure with package scaffolding** - 2025-12-30
+- **WI-001: Initialize monorepo structure with package scaffolding** - 2025-12-30
   - pnpm workspaces configured
   - All 4 packages scaffolded (@workpipe/lang, compiler, cli, action)
   - TypeScript project references working

@@ -5,6 +5,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#keywords" },
+    { "include": "#types" },
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#booleans" },
@@ -33,7 +34,7 @@
       "patterns": [
         {
           "name": "keyword.control.workflow.workpipe",
-          "match": "\\b(workflow|job|agent_job|cycle)\\b"
+          "match": "\\b(workflow|job|agent_job|cycle|type)\\b"
         },
         {
           "name": "keyword.control.flow.workpipe",
@@ -45,11 +46,11 @@
         },
         {
           "name": "keyword.other.property.workpipe",
-          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes)\\b"
+          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes|outputs|axes|max_parallel|fail_fast|include|exclude|matrix)\\b"
         },
         {
           "name": "keyword.other.step.workpipe",
-          "match": "\\b(run|uses|agent_task)\\b"
+          "match": "\\b(run|uses|agent_task|step)\\b"
         },
         {
           "name": "keyword.other.tools.workpipe",
@@ -58,6 +59,18 @@
         {
           "name": "keyword.other.reference.workpipe",
           "match": "\\b(file|template|from)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.workpipe",
+          "match": "\\b(string|int|float|bool|json|path|null)\\b"
+        },
+        {
+          "name": "entity.name.type.workpipe",
+          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
         }
       ]
     },

@@ -1,4 +1,16 @@
-@top Workflow { WorkflowDecl* }
+@top Workflow { TypeDecl* WorkflowDecl* }
+
+TypeDecl {
+  kw<"type"> TypeDeclName "{" TypeField* "}"
+}
+
+TypeDeclName {
+  identifier
+}
+
+TypeField {
+  Identifier ":" SchemaType
+}
 
 @skip { whitespace | LineComment | BlockComment }
 
@@ -189,11 +201,19 @@ OutputsBlock {
 }
 
 OutputDecl {
-  Identifier ":" TypeName
+  Identifier ":" OutputType
+}
+
+OutputType {
+  TypeName | TypeReference
 }
 
 TypeName {
   @specialize[@name=TypeName]<identifier, "string" | "int" | "float" | "bool" | "json" | "path">
+}
+
+TypeReference {
+  identifier
 }
 
 StepsProperty {
@@ -331,7 +351,11 @@ TemplateReference {
 }
 
 OutputSchemaProperty {
-  kw<"output_schema"> ":" (String | InlineSchema)
+  kw<"output_schema"> ":" (String | InlineSchema | SchemaTypeReference)
+}
+
+SchemaTypeReference {
+  identifier
 }
 
 InlineSchema { "{" SchemaField* "}" }

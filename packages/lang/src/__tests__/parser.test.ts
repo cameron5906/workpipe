@@ -1876,4 +1876,431 @@ describe("WorkPipe Parser", () => {
       expect(terms.FailFastProperty).toBeDefined();
     });
   });
+
+  describe("type declaration syntax", () => {
+    it("parses simple type declaration with one field", () => {
+      const source = `type Foo { x: string }
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let typeName = "";
+      let inTypeDecl = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") {
+          foundTypeDecl = true;
+          inTypeDecl = true;
+        }
+        if (inTypeDecl && node.name === "TypeDeclName" && !typeName) {
+          typeName = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(typeName).toBe("Foo");
+    });
+
+    it("parses type declaration with multiple fields", () => {
+      const source = `type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let typeFieldCount = 0;
+      const fieldNames: string[] = [];
+      let inTypeField = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeField") {
+          typeFieldCount++;
+          inTypeField = true;
+        }
+        if (inTypeField && node.name === "Identifier") {
+          fieldNames.push(source.slice(node.from, node.to));
+          inTypeField = false;
+        }
+      });
+
+      expect(typeFieldCount).toBe(3);
+      expect(fieldNames).toContain("version");
+      expect(fieldNames).toContain("commit");
+      expect(fieldNames).toContain("timestamp");
+    });
+
+    it("parses type declaration with nested object type", () => {
+      const source = `type Config {
+  metadata: { name: string version: int }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let foundObjectType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "ObjectType") foundObjectType = true;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(foundObjectType).toBe(true);
+    });
+
+    it("parses type declaration with array field", () => {
+      const source = `type Result {
+  items: [string]
+  scores: [int]
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let arrayTypeCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "ArrayType") arrayTypeCount++;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(arrayTypeCount).toBe(2);
+    });
+
+    it("parses type declaration with union field", () => {
+      const source = `type Response {
+  status: "success" | "error" | "pending"
+  value: string | null
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let unionTypeCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "UnionType") unionTypeCount++;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(unionTypeCount).toBe(2);
+    });
+
+    it("parses type declaration with array of objects", () => {
+      const source = `type ReviewResult {
+  comments: [{ filename: string lineNum: int message: string }]
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let foundArrayType = false;
+      let foundObjectType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "ArrayType") foundArrayType = true;
+        if (node.name === "ObjectType") foundObjectType = true;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(foundArrayType).toBe(true);
+      expect(foundObjectType).toBe(true);
+    });
+
+    it("parses multiple type declarations before workflow", () => {
+      const source = `type Point2D {
+  x: int
+  y: int
+}
+
+type Color {
+  r: int
+  g: int
+  b: int
+}
+
+type Shape {
+  position: { x: int y: int }
+  color: { r: int g: int b: int }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let typeDeclCount = 0;
+      const typeNames: string[] = [];
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") {
+          typeDeclCount++;
+        }
+        if (node.name === "TypeDeclName") {
+          typeNames.push(source.slice(node.from, node.to));
+        }
+      });
+
+      expect(typeDeclCount).toBe(3);
+      expect(typeNames).toContain("Point2D");
+      expect(typeNames).toContain("Color");
+      expect(typeNames).toContain("Shape");
+    });
+
+    it("parses type with all primitive types", () => {
+      const source = `type AllPrimitives {
+  text: string
+  count: int
+  ratio: float
+  active: bool
+  data: json
+  filePath: path
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const primitiveTypes: string[] = [];
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "SchemaPrimitiveType") {
+          primitiveTypes.push(source.slice(node.from, node.to));
+        }
+      });
+
+      expect(primitiveTypes).toContain("string");
+      expect(primitiveTypes).toContain("int");
+      expect(primitiveTypes).toContain("float");
+      expect(primitiveTypes).toContain("bool");
+      expect(primitiveTypes).toContain("json");
+      expect(primitiveTypes).toContain("path");
+    });
+
+    it("parses job output with type reference", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let foundOutputDecl = false;
+      let foundTypeReference = false;
+      let typeRefName = "";
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "OutputDecl") foundOutputDecl = true;
+        if (node.name === "TypeReference") {
+          foundTypeReference = true;
+          typeRefName = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(foundOutputDecl).toBe(true);
+      expect(foundTypeReference).toBe(true);
+      expect(typeRefName).toBe("BuildInfo");
+    });
+
+    it("parses agent task with type reference in output_schema", () => {
+      const source = `type AnalysisResult {
+  rating: int
+  summary: string
+}
+
+workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Analyze") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: AnalysisResult
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let foundOutputSchemaProperty = false;
+      let foundSchemaTypeReference = false;
+      let typeRefName = "";
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "OutputSchemaProperty") foundOutputSchemaProperty = true;
+        if (node.name === "SchemaTypeReference") {
+          foundSchemaTypeReference = true;
+          typeRefName = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(foundOutputSchemaProperty).toBe(true);
+      expect(foundSchemaTypeReference).toBe(true);
+      expect(typeRefName).toBe("AnalysisResult");
+    });
+
+    it("parses complex type with string literal enum", () => {
+      const source = `type ReviewComment {
+  filename: string
+  lineNum: int
+  severity: "error" | "warning" | "info"
+  message: string
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let foundUnionType = false;
+      let foundStringLiteralType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "UnionType") foundUnionType = true;
+        if (node.name === "StringLiteralType") foundStringLiteralType = true;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(foundUnionType).toBe(true);
+      expect(foundStringLiteralType).toBe(true);
+    });
+
+    it("parses empty type declaration", () => {
+      const source = `type Empty { }
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundTypeDecl = false;
+      let typeFieldCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") foundTypeDecl = true;
+        if (node.name === "TypeField") typeFieldCount++;
+      });
+
+      expect(foundTypeDecl).toBe(true);
+      expect(typeFieldCount).toBe(0);
+    });
+
+    it("parses types and workflows together", () => {
+      const source = `type Config {
+  name: string
+}
+
+workflow first {
+  on: push
+  job a {
+    outputs: { config: Config }
+    steps: []
+  }
+}
+
+workflow second {
+  on: pull_request
+  job b {
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let typeDeclCount = 0;
+      let workflowDeclCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") typeDeclCount++;
+        if (node.name === "WorkflowDecl") workflowDeclCount++;
+      });
+
+      expect(typeDeclCount).toBe(1);
+      expect(workflowDeclCount).toBe(2);
+    });
+
+    it("exports type declaration term constants", () => {
+      expect(terms.TypeDecl).toBeDefined();
+      expect(terms.TypeDeclName).toBeDefined();
+      expect(terms.TypeField).toBeDefined();
+      expect(terms.TypeReference).toBeDefined();
+      expect(terms.OutputType).toBeDefined();
+      expect(terms.SchemaTypeReference).toBeDefined();
+    });
+
+    it("parses workflow without any type declarations", () => {
+      const source = `workflow test {
+  on: push
+  job hello {
+    runs_on: ubuntu-latest
+    steps: [run("echo hello")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let typeDeclCount = 0;
+      let workflowDeclCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeDecl") typeDeclCount++;
+        if (node.name === "WorkflowDecl") workflowDeclCount++;
+      });
+
+      expect(typeDeclCount).toBe(0);
+      expect(workflowDeclCount).toBe(1);
+    });
+  });
 });

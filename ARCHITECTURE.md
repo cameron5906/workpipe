@@ -2,7 +2,7 @@
 
 This document describes the current architecture of WorkPipe, a domain-specific language (DSL) that compiles to GitHub Actions workflow YAML files. It reflects the "how it works today" view and links to ADRs for detailed rationale.
 
-**Last Updated**: 2025-12-30
+**Last Updated**: 2025-12-31
 **Status**: Milestone A implementation in progress
 
 ---
@@ -410,7 +410,7 @@ See [ADR-0008](adr/0008-strategy-b-cycle-lowering-and-phased-execution.md) for c
 
 ## Typed Parameter Passing
 
-WorkPipe enforces typed data flow between jobs:
+WorkPipe enforces typed data flow between jobs. See [ADR-0010](adr/0010-type-system-for-data-flow.md) for primitive types and [ADR-0011](adr/0011-user-defined-type-declarations.md) for user-defined types.
 
 ### Job Outputs (Small Values)
 - Scalars passed via `needs.<job>.outputs.<name>`
@@ -427,6 +427,51 @@ WorkPipe enforces typed data flow between jobs:
 - Claude Code structured output written to known file path
 - Schema validation via `--json-schema` flag
 - Output uploaded as artifact for downstream consumption
+
+### User-Defined Types (Planned)
+
+User-defined types enable complex JSON shapes to be declared once and reused across job outputs and agent task schemas. See [ADR-0011](adr/0011-user-defined-type-declarations.md) for detailed design.
+
+**Syntax**:
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  artifacts: [{
+    name: string
+    path: string
+  }]
+}
+
+workflow ci {
+  job build {
+    outputs: {
+      info: BuildInfo  // Reference by name
+    }
+  }
+
+  agent_job review {
+    agent_task "analyze" {
+      output_schema: BuildInfo  // Also usable in schemas
+    }
+  }
+}
+```
+
+**Key design decisions**:
+- **Placement**: Types declared at file level, before workflow blocks
+- **Typing model**: Structural typing (same shape = compatible)
+- **JSON Schema**: Compiler generates JSON Schema from type definitions
+- **Property validation**: Expressions like `needs.build.outputs.info.version` are validated against the type structure
+
+**Diagnostic codes**:
+| Code | Description |
+|------|-------------|
+| WP5001 | Undefined type reference |
+| WP5002 | Type name shadows built-in type |
+| WP5003 | Property does not exist on type |
+| WP5004 | Declared type is never used |
+| WP5005 | Duplicate type declaration |
 
 ---
 
@@ -817,6 +862,8 @@ The extension bundles `@workpipe/lang` and `@workpipe/compiler` using esbuild, p
 - [ADR-0007](adr/0007-cycle-syntax-and-guard-block-design.md): Cycle syntax and guard block design
 - [ADR-0008](adr/0008-strategy-b-cycle-lowering-and-phased-execution.md): Strategy B cycle lowering and phased execution
 - [ADR-0009](adr/0009-vscode-extension-architecture.md): VS Code extension architecture
+- [ADR-0010](adr/0010-type-system-for-data-flow.md): Type system for task/job data flow
+- [ADR-0011](adr/0011-user-defined-type-declarations.md): User-defined type declarations
 
 ---
 
@@ -833,3 +880,4 @@ The extension bundles `@workpipe/lang` and `@workpipe/compiler` using esbuild, p
 | 2025-12-30 | Expanded Strategy B Cycle Compilation section | ADR-0008 |
 | 2025-12-30 | Added Cycle Syntax section, updated reserved keywords | ADR-0007 |
 | 2025-12-30 | Added Editor Integration section for VS Code extension | ADR-0009 |
+| 2025-12-31 | Added User-Defined Types section to Typed Parameter Passing | ADR-0011 |
