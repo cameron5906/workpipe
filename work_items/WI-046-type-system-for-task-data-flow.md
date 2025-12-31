@@ -1,12 +1,12 @@
 # WI-046: Type System for Task/Job Data Flow
 
 **ID**: WI-046
-**Status**: Backlog
-**Priority**: P2-Medium
+**Status**: In Progress
+**Priority**: P1-High
 **Milestone**: C+ (Future Enhancement)
 **Phase**: 3+ (Types + Outputs - Extension)
 **Created**: 2025-12-30
-**Updated**: 2025-12-30
+**Updated**: 2025-12-31
 
 ## Description
 

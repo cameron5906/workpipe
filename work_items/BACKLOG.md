@@ -27,13 +27,17 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+- **WI-046: Type System for Task/Job Data Flow** - P1-High - Design Phase
+  - User feedback: "Why not add type declaration so we can have type safety for passing stuff back and forth between tasks/jobs?"
+  - Addresses Phase 3 (Types + Outputs) which is marked PARTIAL
 
 ---
 
 ## Up Next (Priority Order)
 
-(None)
+1. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
+2. WI-019: Implement guard_js compilation (general guards) - P2-Medium
+3. WI-022: Implement matrix axes syntax and parsing - P2-Medium
 
 ---
 
