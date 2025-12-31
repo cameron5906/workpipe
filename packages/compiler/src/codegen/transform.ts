@@ -225,6 +225,43 @@ function transformAgentTask(
   return steps;
 }
 
+const GUARD_HELPERS = `
+const guards = {
+  get event() { return context.event; },
+  get ref() { return context.ref; },
+  get inputs() { return context.inputs; },
+  get actor() { return context.event?.sender?.login || ''; },
+  hasLabel(name) {
+    const labels = context.event?.issue?.labels || context.event?.pull_request?.labels || [];
+    return labels.some(l => l.name === name);
+  },
+  hasAnyLabel(...names) {
+    return names.some(n => this.hasLabel(n));
+  },
+  hasAllLabels(...names) {
+    return names.every(n => this.hasLabel(n));
+  },
+  isBranch(name) {
+    return context.ref === 'refs/heads/' + name;
+  },
+  isDefaultBranch() {
+    return this.isBranch(context.event?.repository?.default_branch || 'main');
+  },
+  isPullRequest() {
+    return !!context.event?.pull_request;
+  },
+  isIssue() {
+    return !!context.event?.issue && !context.event?.pull_request;
+  },
+  isDraft() {
+    return context.event?.pull_request?.draft === true;
+  },
+  isAction(action) {
+    return context.event?.action === action;
+  }
+};
+`.trim();
+
 function transformGuardJsStep(step: GuardJsStepNode): StepIR[] {
   const guardCode = step.code;
 
@@ -235,6 +272,7 @@ const context = {
   ref: process.env.GITHUB_REF,
   inputs: JSON.parse(process.env.INPUTS || '{}')
 };
+${GUARD_HELPERS}
 const result = (function() { ${guardCode} })();
 console.log('Guard result:', result);
 fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + result + '\\n');

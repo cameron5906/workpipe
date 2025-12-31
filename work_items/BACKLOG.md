@@ -27,14 +27,13 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(None - all work items complete)
 
 ---
 
 ## Up Next (Priority Order)
 
-### Existing Backlog
-1. WI-021: Create guard helper library - P3-Low (Milestone C: Guards)
+(None - backlog empty)
 
 ---
 
@@ -45,27 +44,27 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | **A** | COMPLETE | Vertical slice - end-to-end compilation |
 | **A+** | COMPLETE | Agent tasks + diagnostics + formatter |
 | **B** | COMPLETE | Strategy B cycles with full safety |
-| **C** | IN PROGRESS | Guards + advanced triggers |
+| **C** | COMPLETE | Guards + advanced triggers |
 | **D** | COMPLETE | Matrices |
-| **E** | IN PROGRESS | Tooling (VS Code extension + bootstrap) |
+| **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
 | 0: Repo + contracts | COMPLETE | Monorepo, CLI contracts |
 | 1: Parser + AST + formatter | COMPLETE | Lezer grammar, AST, fmt command |
 | 2: Minimal workflow codegen | COMPLETE | YAML IR, build command |
-| 3: Types + outputs | PARTIAL | Diagnostics done; type system future |
-| 4: Artifacts | PARTIAL | Cycle artifacts done; general future |
-| 5: Guards | IN PROGRESS | guard_js compilation complete; outputs/helpers future |
+| 3: Types + outputs | COMPLETE | Diagnostics, job outputs, schema validation |
+| 4: Artifacts | COMPLETE | Cycle artifacts, matrix fingerprinting |
+| 5: Guards | COMPLETE | guard_js compilation, outputs, helper library |
 | 6: Matrices | COMPLETE | Matrix syntax, include/exclude, artifact fingerprinting, validation |
 | 7: Agent tasks | COMPLETE | Claude Code Action integration |
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
-| 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
+| 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 43
+**Work Items Completed:** 44
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-021)
+**Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -206,6 +205,14 @@ jobs:
 ## Completed
 
 ### Phase 5: Guards - MOST RECENT
+- **WI-021: Create guard helper library** - Completed 2025-12-31
+  - Implemented `guards` namespace in transform.ts with helper functions
+  - Label helpers: hasLabel, hasAnyLabel, hasAllLabels
+  - Context helpers: isBranch, isDefaultBranch, isPullRequest, isIssue, isDraft, isAction
+  - Getters: event, ref, inputs, actor
+  - Inline injection into guard_js scripts (self-contained, no external dependency)
+  - **FINAL WORK ITEM - BACKLOG EMPTY**
+
 - **WI-020: Generate guard job outputs with GITHUB_OUTPUT** - Completed 2025-12-31
   - Added `collectGuardJsOutputs()` helper function in transform.ts
   - Auto-generates job outputs for guard_js steps in format: `{stepId}_result`

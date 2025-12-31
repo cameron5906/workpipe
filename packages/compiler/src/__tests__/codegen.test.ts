@@ -1958,6 +1958,303 @@ describe("guard_js step transforms", () => {
   });
 });
 
+describe("guards namespace in guard_js", () => {
+  it("injects guards namespace into generated guard script", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.hasLabel('priority');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("const guards = {");
+      expect(result.value).toContain("hasLabel(name)");
+    }
+  });
+
+  it("guards.hasLabel helper appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.hasLabel('bug');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("guards.hasLabel('bug')");
+      expect(result.value).toContain("context.event?.issue?.labels || context.event?.pull_request?.labels");
+    }
+  });
+
+  it("guards.hasAnyLabel helper appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.hasAnyLabel('bug', 'feature');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("hasAnyLabel(...names)");
+      expect(result.value).toContain("guards.hasAnyLabel('bug', 'feature')");
+    }
+  });
+
+  it("guards.hasAllLabels helper appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.hasAllLabels('reviewed', 'approved');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("hasAllLabels(...names)");
+    }
+  });
+
+  it("guards.isBranch helper appears in output", () => {
+    const source = `workflow test {
+      on: push
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.isBranch('main');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isBranch(name)");
+      expect(result.value).toContain("refs/heads/");
+    }
+  });
+
+  it("guards.isDefaultBranch helper appears in output", () => {
+    const source = `workflow test {
+      on: push
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.isDefaultBranch();
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isDefaultBranch()");
+      expect(result.value).toContain("context.event?.repository?.default_branch");
+    }
+  });
+
+  it("guards.isPullRequest helper appears in output", () => {
+    const source = `workflow test {
+      on: pull_request
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.isPullRequest();
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isPullRequest()");
+      expect(result.value).toContain("context.event?.pull_request");
+    }
+  });
+
+  it("guards.isIssue helper appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.isIssue();
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isIssue()");
+    }
+  });
+
+  it("guards.isDraft helper appears in output", () => {
+    const source = `workflow test {
+      on: pull_request
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return !guards.isDraft();
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isDraft()");
+      expect(result.value).toContain("context.event?.pull_request?.draft");
+    }
+  });
+
+  it("guards.isAction helper appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.isAction('opened');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("isAction(action)");
+      expect(result.value).toContain("context.event?.action === action");
+    }
+  });
+
+  it("guards.actor getter appears in output", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.actor === 'dependabot[bot]';
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("get actor()");
+      expect(result.value).toContain("context.event?.sender?.login");
+    }
+  });
+
+  it("guards.event getter provides access to context.event", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.event.action === 'opened';
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("get event() { return context.event; }");
+    }
+  });
+
+  it("guards.ref getter provides access to context.ref", () => {
+    const source = `workflow test {
+      on: push
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.ref.startsWith('refs/heads/');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("get ref() { return context.ref; }");
+    }
+  });
+
+  it("guards.inputs getter provides access to context.inputs", () => {
+    const source = `workflow test {
+      on: workflow_dispatch
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.inputs.environment === 'production';
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("get inputs() { return context.inputs; }");
+    }
+  });
+
+  it("guards namespace can be combined with raw context access", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return guards.hasLabel('priority') && context.event.issue.title.includes('[urgent]');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("guards.hasLabel('priority')");
+      expect(result.value).toContain("context.event.issue.title");
+    }
+  });
+});
+
 describe("guard_js auto-generated outputs", () => {
   it("auto-generates output for job with guard_js step", () => {
     const guardStep: GuardJsStepNode = {
