@@ -34,10 +34,15 @@ export class DiagnosticsProvider implements vscode.Disposable {
       end.column - 1
     );
 
+    let message = diagnostic.message;
+    if (diagnostic.hint) {
+      message += `\n\nHint: ${diagnostic.hint}`;
+    }
+
     const severity = this.toSeverity(diagnostic.severity);
     const vscodeDiagnostic = new vscode.Diagnostic(
       range,
-      diagnostic.message,
+      message,
       severity
     );
 

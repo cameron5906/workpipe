@@ -1,7 +1,81 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { compile, SourceMap } from "@workpipe/compiler";
+import * as vscode from "vscode";
+import { DiagnosticsProvider } from "../diagnostics";
 
 describe("DiagnosticsProvider", () => {
+  describe("toDiagnostic hint handling", () => {
+    it("should append hint to message when diagnostic has a hint", () => {
+      const source = `
+workflow test {
+  job build {
+    steps: []
+  }
+}
+`;
+      const result = compile(source);
+      expect(result.success).toBe(false);
+
+      const diagnosticWithHint = result.diagnostics.find((d) => d.hint);
+      expect(diagnosticWithHint).toBeDefined();
+      expect(diagnosticWithHint!.hint).toBeTruthy();
+      expect(diagnosticWithHint!.message).toContain("missing required 'runs_on' field");
+      expect(diagnosticWithHint!.hint).toBe(
+        "Add 'runs_on: ubuntu-latest' or another runner to the job"
+      );
+    });
+
+    it("should include hint in VS Code diagnostic message", () => {
+      const source = `
+workflow test {
+  job build {
+    steps: []
+  }
+}
+`;
+      const provider = new DiagnosticsProvider();
+      const mockUri = vscode.Uri.parse("file:///test.workpipe");
+      const mockDocument = {
+        getText: () => source,
+        uri: mockUri,
+      } as unknown as vscode.TextDocument;
+
+      provider.updateDiagnostics(mockDocument);
+
+      const diagnostics = (provider as any).collection.get(mockUri);
+      expect(diagnostics).toBeDefined();
+      expect(diagnostics.length).toBeGreaterThan(0);
+
+      const diagWithHint = diagnostics.find((d: vscode.Diagnostic) =>
+        d.message.includes("Hint:")
+      );
+      expect(diagWithHint).toBeDefined();
+      expect(diagWithHint.message).toContain("\n\nHint:");
+      expect(diagWithHint.message).toContain(
+        "Add 'runs_on: ubuntu-latest' or another runner to the job"
+      );
+
+      provider.dispose();
+    });
+
+    it("should not modify message when diagnostic has no hint", () => {
+      const source = `
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [
+      run("npm install")
+    ]
+  }
+}
+`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+  });
+
   describe("integration with compiler", () => {
     it("should compile valid workpipe source without errors", () => {
       const source = `

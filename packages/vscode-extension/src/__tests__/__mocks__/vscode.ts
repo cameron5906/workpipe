@@ -1,11 +1,17 @@
 import { vi } from "vitest";
 
 export const languages = {
-  createDiagnosticCollection: vi.fn(() => ({
-    set: vi.fn(),
-    dispose: vi.fn(),
-    clear: vi.fn(),
-  })),
+  createDiagnosticCollection: vi.fn(() => {
+    const store = new Map<Uri, Diagnostic[]>();
+    return {
+      set: vi.fn((uri: Uri, diagnostics: Diagnostic[]) => {
+        store.set(uri, diagnostics);
+      }),
+      get: (uri: Uri) => store.get(uri),
+      dispose: vi.fn(),
+      clear: vi.fn(),
+    };
+  }),
 };
 
 export const workspace = {
@@ -49,6 +55,10 @@ export enum DiagnosticSeverity {
 export class Uri {
   static file(path: string): Uri {
     return new Uri(path);
+  }
+
+  static parse(value: string): Uri {
+    return new Uri(value);
   }
 
   constructor(public path: string) {}

@@ -1,7 +1,7 @@
 # WI-050: Surface Diagnostic Hints in VS Code Extension
 
 **ID**: WI-050
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P3-Low
 **Milestone**: E (Tooling)
 **Phase**: 9 (Tooling polish)
@@ -27,11 +27,11 @@ Users should see the hint, which provides immediate guidance on how to fix the i
 
 ## Acceptance Criteria
 
-- [ ] Investigate VS Code diagnostic API for displaying hints/related information
-- [ ] Update `DiagnosticsProvider` to include hints in diagnostic display
-- [ ] Verify hints appear in hover tooltip and Problems panel
-- [ ] Ensure hint formatting is readable and not cluttered
-- [ ] Test with multiple diagnostic types
+- [x] Investigate VS Code diagnostic API for displaying hints/related information
+- [x] Update `DiagnosticsProvider` to include hints in diagnostic display
+- [x] Verify hints appear in hover tooltip and Problems panel
+- [x] Ensure hint formatting is readable and not cluttered
+- [x] Test with multiple diagnostic types
 
 ## Technical Context
 
