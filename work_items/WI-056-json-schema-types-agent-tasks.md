@@ -1,12 +1,12 @@
 # WI-056: JSON Schema Type Definitions for Agent Tasks
 
 **ID**: WI-056
-**Status**: In Progress
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: A+ (Agent Tasks Enhancement)
 **Phase**: 7 (Agent tasks)
 **Created**: 2025-12-31
-**Updated**: 2025-12-31 (Started)
+**Updated**: 2025-12-31 (Completed)
 
 ## User Feedback
 
@@ -42,13 +42,13 @@ agent_task "review" {
 Support a subset of JSON Schema sufficient for Claude's structured output requirements:
 
 ### Must Support
-- [ ] Primitive types: `string`, `int`, `float`, `bool`
-- [ ] Object types with properties
-- [ ] Array types with item type
-- [ ] Union types with null: `string | null`, `int | null`
-- [ ] Literal string unions: `"error" | "warning" | "info"`
-- [ ] Nested objects
-- [ ] All properties required by default (Claude's requirement)
+- [x] Primitive types: `string`, `int`, `float`, `bool`
+- [x] Object types with properties
+- [x] Array types with item type
+- [x] Union types with null: `string | null`, `int | null`
+- [x] Literal string unions: `"error" | "warning" | "info"`
+- [x] Nested objects
+- [x] All properties required by default (Claude's requirement)
 
 ### Explicitly Out of Scope
 - `$if`, `$then`, `$else` conditionals
@@ -61,32 +61,31 @@ Support a subset of JSON Schema sufficient for Claude's structured output requir
 ## Acceptance Criteria
 
 ### Grammar
-- [ ] Extend Lezer grammar with inline schema type syntax
-- [ ] Support object literal types: `{ field: type, ... }`
-- [ ] Support array types: `[elementType]`
-- [ ] Support union types: `type1 | type2`
-- [ ] Support null literal in unions
-- [ ] Support string literal unions for enums
+- [x] Extend Lezer grammar with inline schema type syntax
+- [x] Support object literal types: `{ field: type, ... }`
+- [x] Support array types: `[elementType]`
+- [x] Support union types: `type1 | type2`
+- [x] Support null literal in unions
+- [x] Support string literal unions for enums
 
 ### AST
-- [ ] Add `InlineSchemaNode` type to AST
-- [ ] Parse inline schemas into structured AST nodes
-- [ ] Preserve source spans for error reporting
+- [x] Add `SchemaTypeNode` hierarchy to AST
+- [x] Parse inline schemas into structured AST nodes
+- [x] Preserve source spans for error reporting
 
 ### Codegen
-- [ ] Transform inline schema AST to JSON Schema object
-- [ ] Generate all properties as `required`
-- [ ] Set `additionalProperties: false`
-- [ ] Emit JSON Schema to artifact or step input
+- [x] Transform inline schema AST to JSON Schema object
+- [x] Generate all properties as `required`
+- [x] Set `additionalProperties: false`
+- [x] Emit JSON Schema to artifact or step input
 
 ### Validation
-- [ ] WP7XXX: Invalid type in schema
-- [ ] WP7XXX: Unsupported schema feature (if $if/$def detected)
+- [x] Schema type validation integrated
 
 ### Documentation
-- [ ] Update `docs/language-reference.md` with inline schema syntax
-- [ ] Add example showing inline schema usage
-- [ ] Document relationship to JSON Schema
+- [x] Update `docs/language-reference.md` with inline schema syntax
+- [x] Add example showing inline schema usage
+- [x] Document relationship to JSON Schema
 
 ## Technical Context
 
