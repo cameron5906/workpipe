@@ -17,6 +17,7 @@ workflow cycle_basic {
 
     body {
       agent_job analyze {
+        runs_on: ubuntu-latest
         steps: [
           agent_task("Analyze and improve code quality") {
             model: "claude-sonnet-4-20250514"

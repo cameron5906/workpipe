@@ -27,7 +27,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(None - awaiting next work item selection)
 
 ---
 
@@ -55,8 +55,8 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 326 tests passing
-**Work Items Completed:** 22
+**Test Count:** 340 tests passing
+**Work Items Completed:** 23
 **Work Items In Progress:** 0
 **Work Items In Backlog:** 3 (from user feedback) + existing
 **CLI Commands:** 4 (build, check, fmt, init)
@@ -109,15 +109,8 @@ jobs:
 
 ## Ready for Development
 
-### User Feedback (Priority)
-1. **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - P1-High
-   - User feedback: Expects errors/warnings for missing required fields
-   - Add semantic validation for required fields in all constructs
-   - Ensure diagnostics surface correctly in VS Code extension
-   - Extends WI-039 scope
-
 ### Phase 9: Tooling (Milestone E) - Remaining
-3. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
+1. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
    - Enhance existing diagnostics with code actions
    - Add hover information
    - Note: WI-045 covers required field validation (user feedback priority)
@@ -212,6 +205,12 @@ jobs:
 ## Completed
 
 ### Phase 9: Tooling - MILESTONE E IN PROGRESS
+- ✅ **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+  - Added semantic validation for required fields (runs_on, prompt, command)
+  - New diagnostic codes: WP7001, WP7002, WP7004
+  - 14 new test cases (340 total tests passing)
+  - Diagnostics surface in VS Code with red/yellow squiggles
+
 - ✅ **WI-047: Improve README and Onboarding Experience** - 2025-12-30 **[ONBOARDING COMPLETE]**
   - Complete README.md overhaul with 5-minute quickstart
   - `docs/bootstrap.md` - Self-hosting workflow documentation
