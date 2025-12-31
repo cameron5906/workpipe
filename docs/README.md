@@ -9,6 +9,7 @@ WorkPipe is a domain-specific language (DSL) that compiles to GitHub Actions wor
 | [Getting Started](getting-started.md) | Installation, first workflow, and project setup |
 | [CLI Reference](cli-reference.md) | Complete documentation of all CLI commands |
 | [Language Reference](language-reference.md) | Full syntax and semantics guide |
+| [Error Reference](errors.md) | Diagnostic codes and how to fix them |
 
 ## Quick Links
 

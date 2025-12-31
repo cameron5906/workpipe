@@ -1,7 +1,7 @@
 # WI-049: Create Error Code Documentation
 
 **ID**: WI-049
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P2-Medium
 **Milestone**: E (Tooling)
 **Phase**: 9 (Tooling polish)
@@ -29,31 +29,31 @@ Note: WP7003 is not used (code gap - P4 issue noted but not critical).
 
 ## Acceptance Criteria
 
-- [ ] Create `docs/errors.md` with comprehensive error code documentation
-- [ ] Document all WP6xxx cycle validation codes
-- [ ] Document all WP7xxx semantic validation codes
-- [ ] For each code, include:
+- [x] Create `docs/errors.md` with comprehensive error code documentation
+- [x] Document all WP6xxx cycle validation codes
+- [x] Document all WP7xxx semantic validation codes
+- [x] For each code, include:
   - Error code and severity (error/warning)
   - Short description
   - Example that triggers the error
   - How to fix it
-- [ ] Add link to errors.md from docs/README.md
-- [ ] Consider adding error code to CLI `--help` output
+- [x] Add link to errors.md from docs/README.md
+- [x] Consider adding error code to CLI `--help` output
 
 ## Deliverables Checklist
 
 ### Analysis
-- [ ] Grep codebase for all WPxxxx patterns to inventory all codes
-- [ ] Categorize codes by subsystem (parse, AST, semantic, cycle, etc.)
+- [x] Grep codebase for all WPxxxx patterns to inventory all codes
+- [x] Categorize codes by subsystem (parse, AST, semantic, cycle, etc.)
 
 ### Documentation
-- [ ] Create `docs/errors.md` with error code reference
-- [ ] Structure by code range (WP1xxx, WP6xxx, WP7xxx, etc.)
-- [ ] Include examples and solutions for each
+- [x] Create `docs/errors.md` with error code reference
+- [x] Structure by code range (WP1xxx, WP6xxx, WP7xxx, etc.)
+- [x] Include examples and solutions for each
 
 ### Integration
-- [ ] Link from docs/README.md
-- [ ] Consider linking from language-reference.md where relevant
+- [x] Link from docs/README.md
+- [x] Consider linking from language-reference.md where relevant
 
 ## Technical Context
 
