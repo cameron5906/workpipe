@@ -1,11 +1,12 @@
 # Add Type Error Examples to Documentation
 
 **ID**: WI-061
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P2-Medium
 **Milestone**: E (Tooling/Documentation)
 **Created**: 2025-12-31
 **Updated**: 2025-12-31
+**Completed**: 2025-12-31
 
 ## Description
 
@@ -18,12 +19,12 @@ This helps users self-serve when they encounter type-related diagnostics.
 
 ## Acceptance Criteria
 
-- [ ] At least 3 type-related error examples documented
-- [ ] Each example shows:
+- [x] At least 3 type-related error examples documented
+- [x] Each example shows:
   - WorkPipe code that triggers the error
   - The error message output
   - The corrected code/fix
-- [ ] Links to `docs/errors.md` for complete error reference
+- [x] Links to `docs/errors.md` for complete error reference
 
 ## Technical Context
 
@@ -41,8 +42,33 @@ Error documentation lives in `docs/errors.md`. This work item adds practical exa
 
 - None (documentation-only work item)
 
+## Deliverables
+
+Created `docs/troubleshooting.md` with the following sections:
+
+**Common Type Errors (6 examples):**
+- WP2010: Duplicate output name
+- WP2011: Reference to non-existent output
+- WP2012: Type mismatch in comparison
+- WP2013: Numeric operation on non-numeric type
+- WP3001: Unknown primitive type
+- WP3004: Duplicate property name in schema
+
+**Required Field Errors (2 examples):**
+- WP7001: Job missing runs_on
+- WP6001: Cycle missing termination condition
+
+**Also updated:**
+- `docs/README.md` - Added link to new troubleshooting guide
+
+Each example follows the requested format:
+1. Problem description
+2. Code that triggers the error
+3. Error message output
+4. Fixed code
+
 ## Notes
 
 - Originated from end-user acceptance review of custom type system
-- Could be added to `docs/language-reference.md` or a new `docs/troubleshooting.md`
-- Consider following the pattern established in errors.md
+- Created new `docs/troubleshooting.md` as a practical companion to `docs/errors.md`
+- Following the pattern established in errors.md with enhanced "how to fix" guidance

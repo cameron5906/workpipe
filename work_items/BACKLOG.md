@@ -27,17 +27,13 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No items currently in progress)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
-1. **WI-061: Add Type Error Examples to Documentation** - P2-Medium
-   - Common mistakes section with WP2010, WP2011, WP3001-3004 examples
-   - Each with code, error message, and fix
-
-2. **WI-062: Document `json` Type Usage Pattern** - P2-Medium
+1. **WI-062: Document `json` Type Usage Pattern** - P2-Medium
    - Example showing setting and consuming json typed outputs
    - Document caveats (size limits, expression access)
 
@@ -68,9 +64,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 46
+**Work Items Completed:** 47
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 2
+**Work Items In Backlog:** 1
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -226,6 +222,12 @@ jobs:
   - `docs/errors.md` updated with WP2012 and WP2013 documentation
 
 ### Type System Documentation
+- **WI-061: Add Type Error Examples to Documentation** - Completed 2025-12-31
+  - Created `docs/troubleshooting.md` with 8 type-related error examples
+  - Covers WP2010, WP2011, WP2012, WP2013, WP3001, WP3004, WP7001, WP6001
+  - Each example shows: problem code, error message, and fix
+  - Updated `docs/README.md` with link to troubleshooting guide
+
 - **WI-060: Document Type System Limitations Clearly** - Completed 2025-12-31
   - Added "Types are compile-time only" callout to language reference
   - Added "User-defined types not supported" section
