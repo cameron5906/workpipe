@@ -11,6 +11,7 @@ This directory contains example WorkPipe specifications and their generated GitH
 | [agent-task](./agent-task/) | AI-powered code review | Claude Code integration, tool restrictions |
 | [cycle-basic](./cycle-basic/) | Iterative refinement loop | Cycles, guard conditions, phased execution |
 | [ci-pipeline](./ci-pipeline/) | Standard CI workflow | Parallel jobs, dependency chains |
+| [job-outputs](./job-outputs/) | Typed job outputs | Output declarations, cross-job data passing |
 | [release-workflow](./release-workflow/) | Manual release process | `workflow_dispatch`, fan-in pattern |
 | [iterative-refinement](./iterative-refinement/) | AI doc improvement cycle | Cycles with agent tasks |
 | [matrix-build](./matrix-build/) | Multi-config builds | *Planned* - matrix axes, sharding |
