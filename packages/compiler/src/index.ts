@@ -1,9 +1,9 @@
 import { VERSION as LANG_VERSION, parse, hasErrors, getErrors } from "@workpipe/lang";
-import { buildAST } from "./ast/index.js";
-import type { WorkflowNode } from "./ast/index.js";
+import { buildAST, buildFileAST } from "./ast/index.js";
+import type { WorkflowNode, WorkPipeFileNode } from "./ast/index.js";
 import { transform, emit } from "./codegen/index.js";
 import { parseError, semanticError, type CompileResult, type Diagnostic } from "./diagnostic/index.js";
-import { validateCycleTermination, validateRequiredFields, validateOutputs, validateSchemas, validateMatrixJobs, validateExpressionTypes } from "./semantics/index.js";
+import { validateCycleTermination, validateRequiredFields, validateOutputs, validateSchemas, validateMatrixJobs, validateExpressionTypes, buildTypeRegistry, validateTypeReferences } from "./semantics/index.js";
 
 export const VERSION = "0.0.1";
 export { LANG_VERSION };
@@ -47,6 +47,19 @@ export function compile(source: string): CompileResult<string> {
     }
     return { success: false, diagnostics };
   }
+
+  const fileAST = buildFileAST(tree, source);
+  if (!fileAST) {
+    diagnostics.push(
+      parseError("WP0002", "Failed to build AST from parse tree", { start: 0, end: source.length })
+    );
+    return { success: false, diagnostics };
+  }
+
+  const { registry, diagnostics: typeRegistryDiagnostics } = buildTypeRegistry(fileAST);
+  diagnostics.push(...typeRegistryDiagnostics);
+
+  diagnostics.push(...validateTypeReferences(fileAST, registry));
 
   const ast = buildAST(tree, source);
   if (!ast) {

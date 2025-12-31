@@ -15,3 +15,9 @@ export {
   type InferredType,
 } from "./expression-types.js";
 export { extractInterpolations, type ParsedInterpolation } from "./expression-parser.js";
+export {
+  createTypeRegistry,
+  buildTypeRegistry,
+  validateTypeReferences,
+  type TypeRegistry,
+} from "./type-registry.js";

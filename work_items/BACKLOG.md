@@ -29,7 +29,8 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-067: Type Registry and Resolver** - P0-Critical
+- **WI-068: Type References in Job Outputs** - P0-Critical
+- **WI-069: Type References in Agent Task Schemas** - P0-Critical
 
 ---
 
@@ -44,16 +45,6 @@ This is a user directive - takes priority over all other work.
    - Enables `type` declarations at workflow level
    - Allows type references in job outputs and agent task schemas
    - Compile-time property validation
-
-2. **WI-068: Type References in Job Outputs** - P0-Critical
-   - Allow `outputs: { info: MyType }` syntax
-   - Resolve type references via registry
-   - Depends on: WI-067
-
-3. **WI-069: Type References in Agent Task Schemas** - P0-Critical
-   - Allow `output_schema = MyType` syntax
-   - Generate JSON Schema from type definition
-   - Depends on: WI-067, WI-056 (complete)
 
 4. **WI-070: Property Access Validation in Expressions** - P1-High
    - Validate `${{ needs.job.outputs.typed.property }}` expressions
@@ -99,10 +90,10 @@ This is a user directive - takes priority over all other work.
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 607 tests (71 lang + 536 compiler)
-**Work Items Completed:** 50
-**Work Items In Progress:** 1 (WI-067)
-**Work Items In Backlog:** 6 (User-Defined Type System)
+**Test Count:** 643 tests (71 lang + 572 compiler)
+**Work Items Completed:** 51 (WI-067)
+**Work Items In Progress:** 2 (WI-068, WI-069 - Parallelized)
+**Work Items In Backlog:** 4 (User-Defined Type System)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -274,6 +265,14 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Type System - MOST RECENT
+- **WI-067: Type Registry and Resolver** - Completed 2025-12-31
+  - TypeRegistry class implementation
+  - TypeResolver for reference validation
+  - WP5001 (duplicate type) and WP5002 (undefined type) diagnostics
+  - Levenshtein distance suggestions for typos
+  - Integration with compile pipeline
+  - 643 tests passing (36 new tests for registry/resolver)
+
 - **WI-066: AST Representation for Type Declarations** - Completed 2025-12-31
   - Added `TypeDeclarationNode` and `TypeReferenceNode` AST node types
   - Updated `WorkflowNode` to include `types: TypeDeclarationNode[]` array
