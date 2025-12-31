@@ -1,12 +1,12 @@
 # WI-047: Improve README and Onboarding Experience
 
 **ID**: WI-047
-**Status**: In Progress
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: E (Tooling)
 **Phase**: 9 (Tooling polish)
 **Created**: 2025-12-30
-**Updated**: 2025-12-30 (Chunk 1 complete)
+**Updated**: 2025-12-30 (All chunks complete)
 
 ## Description
 
@@ -25,8 +25,8 @@ This work item addresses the deferred Stream C from WI-041 (Documentation) and e
 - [x] README.md shows a complete example from DSL to generated YAML
 - [x] README.md links to deeper documentation without requiring it for basic usage
 - [x] New users can compile their first workflow within 5 minutes of reading
-- [ ] README.md includes troubleshooting for common setup issues
-- [ ] Project structure is clear for contributors vs users
+- [x] README.md includes troubleshooting for common setup issues
+- [x] Project structure is clear for contributors vs users
 
 ## Deliverables Checklist
 
@@ -46,19 +46,19 @@ This work item addresses the deferred Stream C from WI-041 (Documentation) and e
 - [x] Add license information
 
 ### Bootstrap Documentation
-- [ ] Create `docs/bootstrap.md` explaining self-hosting workflows
-- [ ] Document `workpipe init --bootstrap` command usage
-- [ ] Explain the compile-on-push workflow pattern
+- [x] Create `docs/bootstrap.md` explaining self-hosting workflows
+- [x] Document `workpipe init --bootstrap` command usage
+- [x] Explain the compile-on-push workflow pattern
 
 ### Project Structure Guide
-- [ ] Create `docs/project-structure.md` for contributors
-- [ ] Document packages and their purposes
-- [ ] Document development workflow (build, test, lint)
-- [ ] Document how to run examples
+- [x] Create `docs/project-structure.md` for contributors
+- [x] Document packages and their purposes
+- [x] Document development workflow (build, test, lint)
+- [x] Document how to run examples
 
 ### Quick Reference Card
-- [ ] Add cheat sheet or quick reference in README or separate doc
-- [ ] Cover most common patterns in one page
+- [x] Add cheat sheet or quick reference in README or separate doc
+- [x] Cover most common patterns in one page
 
 ## Technical Context
 

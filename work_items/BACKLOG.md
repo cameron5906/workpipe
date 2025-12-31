@@ -27,10 +27,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-047: Improve README and Onboarding Experience** - P1-High
-  - Complete "zero to workflow" experience in README
-  - Bootstrap docs, project structure guide
-  - Assigned to: Software Engineer
+(None)
 
 ---
 
@@ -59,7 +56,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
 **Test Count:** 326 tests passing
-**Work Items Completed:** 21
+**Work Items Completed:** 22
 **Work Items In Progress:** 0
 **Work Items In Backlog:** 3 (from user feedback) + existing
 **CLI Commands:** 4 (build, check, fmt, init)
@@ -215,6 +212,13 @@ jobs:
 ## Completed
 
 ### Phase 9: Tooling - MILESTONE E IN PROGRESS
+- ✅ **WI-047: Improve README and Onboarding Experience** - 2025-12-30 **[ONBOARDING COMPLETE]**
+  - Complete README.md overhaul with 5-minute quickstart
+  - `docs/bootstrap.md` - Self-hosting workflow documentation
+  - `docs/project-structure.md` - Contributor guide with package overview
+  - `docs/quick-reference.md` - One-page cheat sheet for common patterns
+  - Addresses user feedback on discoverability
+
 - ✅ **WI-041: Write documentation and example specs** - 2025-12-30 **[DOCS COMPLETE]**
   - Stream A: Core documentation (4 files in docs/)
     - `docs/README.md` - Documentation index
