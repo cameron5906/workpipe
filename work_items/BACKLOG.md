@@ -27,13 +27,19 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None - all work items complete)
+(No items currently in progress)
 
 ---
 
 ## Up Next (Priority Order)
 
-(None - backlog empty)
+1. **WI-061: Add Type Error Examples to Documentation** - P2-Medium
+   - Common mistakes section with WP2010, WP2011, WP3001-3004 examples
+   - Each with code, error message, and fix
+
+2. **WI-062: Document `json` Type Usage Pattern** - P2-Medium
+   - Example showing setting and consuming json typed outputs
+   - Document caveats (size limits, expression access)
 
 ---
 
@@ -62,9 +68,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 44
+**Work Items Completed:** 46
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 0
+**Work Items In Backlog:** 2
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -200,18 +206,40 @@ jobs:
 - WI-040: Create bootstrap workflow template - P2-Medium
 - WI-041: Write documentation and example specs - P3-Low
 
+### Type System Work (USER ESCALATED - Active Backlog)
+- WI-060: Document Type System Limitations Clearly - **COMPLETED** 2025-12-31
+- WI-063: Implement Expression Type Checking - **COMPLETED** 2025-12-31
+- WI-061: Add Type Error Examples to Documentation - P2-Medium
+- WI-062: Document `json` Type Usage Pattern - P2-Medium
+
 ---
 
 ## Completed
 
-### Phase 5: Guards - MOST RECENT
+### Type System - MOST RECENT
+- **WI-063: Implement Expression Type Checking** - Completed 2025-12-31
+  - WP2012 warning for type mismatch in comparisons
+  - WP2013 info diagnostic for numeric operations on non-numeric types
+  - Expression parsing to identify output references within `${{ ... }}`
+  - Type lookup and inference for literals/operators
+  - Tests cover common type mismatch cases
+  - `docs/errors.md` updated with WP2012 and WP2013 documentation
+
+### Type System Documentation
+- **WI-060: Document Type System Limitations Clearly** - Completed 2025-12-31
+  - Added "Types are compile-time only" callout to language reference
+  - Added "User-defined types not supported" section
+  - Documented job output types vs agent schema types comparison
+  - Clarified `path` type description
+  - Added links to ADR-0010 for design rationale
+
+### Phase 5: Guards
 - **WI-021: Create guard helper library** - Completed 2025-12-31
   - Implemented `guards` namespace in transform.ts with helper functions
   - Label helpers: hasLabel, hasAnyLabel, hasAllLabels
   - Context helpers: isBranch, isDefaultBranch, isPullRequest, isIssue, isDraft, isAction
   - Getters: event, ref, inputs, actor
   - Inline injection into guard_js scripts (self-contained, no external dependency)
-  - **FINAL WORK ITEM - BACKLOG EMPTY**
 
 - **WI-020: Generate guard job outputs with GITHUB_OUTPUT** - Completed 2025-12-31
   - Added `collectGuardJsOutputs()` helper function in transform.ts
