@@ -60,6 +60,7 @@ export interface ClaudeCodeStepIR {
     readonly disallowed_tools?: string;
     readonly max_turns?: number;
     readonly model?: string;
+    readonly output_schema?: object;
   };
 }
 

@@ -409,6 +409,19 @@ describe("WorkPipe Parser", () => {
       expect(terms.OutputArtifactProperty).toBeDefined();
       expect(terms.ConsumesProperty).toBeDefined();
     });
+
+    it("exports inline schema term constants", () => {
+      expect(terms.InlineSchema).toBeDefined();
+      expect(terms.SchemaField).toBeDefined();
+      expect(terms.SchemaType).toBeDefined();
+      expect(terms.NonUnionSchemaType).toBeDefined();
+      expect(terms.SchemaPrimitiveType).toBeDefined();
+      expect(terms.ArrayType).toBeDefined();
+      expect(terms.ObjectType).toBeDefined();
+      expect(terms.UnionType).toBeDefined();
+      expect(terms.NullType).toBeDefined();
+      expect(terms.StringLiteralType).toBeDefined();
+    });
   });
 
   describe("agent job syntax", () => {
@@ -740,7 +753,7 @@ describe("WorkPipe Parser", () => {
       expect(foundTemplateReference).toBe(true);
     });
 
-    it("parses agent_task with output_schema", () => {
+    it("parses agent_task with output_schema string path", () => {
       const source = `workflow test {
   on: push
   agent_job analyze {
@@ -762,6 +775,239 @@ describe("WorkPipe Parser", () => {
       });
 
       expect(foundOutputSchema).toBe(true);
+    });
+
+    it("parses agent_task with simple inline schema", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { rating: int }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundOutputSchema = false;
+      let foundInlineSchema = false;
+      let foundSchemaField = false;
+      let foundSchemaPrimitiveType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "OutputSchemaProperty") foundOutputSchema = true;
+        if (node.name === "InlineSchema") foundInlineSchema = true;
+        if (node.name === "SchemaField") foundSchemaField = true;
+        if (node.name === "SchemaPrimitiveType") foundSchemaPrimitiveType = true;
+      });
+
+      expect(foundOutputSchema).toBe(true);
+      expect(foundInlineSchema).toBe(true);
+      expect(foundSchemaField).toBe(true);
+      expect(foundSchemaPrimitiveType).toBe(true);
+    });
+
+    it("parses inline schema with array type", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { tags: [string] }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundArrayType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ArrayType") foundArrayType = true;
+      });
+
+      expect(foundArrayType).toBe(true);
+    });
+
+    it("parses inline schema with union type including null", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { value: string | null }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundUnionType = false;
+      let foundNullType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "UnionType") foundUnionType = true;
+        if (node.name === "NullType") foundNullType = true;
+      });
+
+      expect(foundUnionType).toBe(true);
+      expect(foundNullType).toBe(true);
+    });
+
+    it("parses inline schema with string literal enum", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { severity: "error" | "warning" }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundUnionType = false;
+      let foundStringLiteralType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "UnionType") foundUnionType = true;
+        if (node.name === "StringLiteralType") foundStringLiteralType = true;
+      });
+
+      expect(foundUnionType).toBe(true);
+      expect(foundStringLiteralType).toBe(true);
+    });
+
+    it("parses inline schema with nested object type", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { metadata: { name: string version: int } }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundObjectType = false;
+      let schemaFieldCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ObjectType") foundObjectType = true;
+        if (node.name === "SchemaField") schemaFieldCount++;
+      });
+
+      expect(foundObjectType).toBe(true);
+      expect(schemaFieldCount).toBe(3);
+    });
+
+    it("parses inline schema with array of objects", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: { items: [{ name: string value: int }] }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundArrayType = false;
+      let foundObjectType = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ArrayType") foundArrayType = true;
+        if (node.name === "ObjectType") foundObjectType = true;
+      });
+
+      expect(foundArrayType).toBe(true);
+      expect(foundObjectType).toBe(true);
+    });
+
+    it("parses complex inline schema with multiple fields and types", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: {
+          rating: int
+          summary: string
+          tags: [string]
+          severity: "error" | "warning" | null
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const nodeTypes = new Set<string>();
+      tree.cursor().iterate((node) => {
+        nodeTypes.add(node.name);
+      });
+
+      expect(nodeTypes.has("InlineSchema")).toBe(true);
+      expect(nodeTypes.has("SchemaField")).toBe(true);
+      expect(nodeTypes.has("SchemaPrimitiveType")).toBe(true);
+      expect(nodeTypes.has("ArrayType")).toBe(true);
+      expect(nodeTypes.has("UnionType")).toBe(true);
+      expect(nodeTypes.has("StringLiteralType")).toBe(true);
+      expect(nodeTypes.has("NullType")).toBe(true);
+    });
+
+    it("parses all primitive schema types", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    steps: [
+      agent_task("Task") {
+        model: "claude-sonnet-4-20250514"
+        output_schema: {
+          text: string
+          count: int
+          ratio: float
+          active: bool
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const primitiveTypes: string[] = [];
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "SchemaPrimitiveType") {
+          primitiveTypes.push(source.slice(node.from, node.to));
+        }
+      });
+
+      expect(primitiveTypes).toContain("string");
+      expect(primitiveTypes).toContain("int");
+      expect(primitiveTypes).toContain("float");
+      expect(primitiveTypes).toContain("bool");
     });
 
     it("parses agent_task with output_artifact", () => {

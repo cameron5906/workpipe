@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "@workpipe/lang";
 import { buildAST } from "../ast/index.js";
-import { transform, transformCycle, emit, serializeExpression } from "../codegen/index.js";
+import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema } from "../codegen/index.js";
 import { compile } from "../index.js";
-import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode } from "../ast/types.js";
+import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode } from "../ast/types.js";
 import type { WorkflowNode } from "../ast/types.js";
 
 describe("serializeExpression", () => {
@@ -1195,5 +1195,446 @@ describe("cycle transforms", () => {
     expect(yaml).toContain("actions/download-artifact@v4");
     expect(yaml).toContain("actions/upload-artifact@v4");
     expect(yaml).toContain("gh workflow run");
+  });
+});
+
+describe("inlineSchemaToJsonSchema", () => {
+  it("transforms primitive string field to JSON Schema", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "name",
+          type: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+          span: { start: 0, end: 12 },
+        },
+      ],
+      span: { start: 0, end: 20 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+      },
+      required: ["name"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms all primitive types correctly", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "text",
+          type: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+          span: { start: 0, end: 12 },
+        },
+        {
+          name: "count",
+          type: { kind: "primitive", type: "int", span: { start: 0, end: 3 } },
+          span: { start: 0, end: 10 },
+        },
+        {
+          name: "price",
+          type: { kind: "primitive", type: "float", span: { start: 0, end: 5 } },
+          span: { start: 0, end: 12 },
+        },
+        {
+          name: "active",
+          type: { kind: "primitive", type: "bool", span: { start: 0, end: 4 } },
+          span: { start: 0, end: 12 },
+        },
+      ],
+      span: { start: 0, end: 100 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        count: { type: "integer" },
+        price: { type: "number" },
+        active: { type: "boolean" },
+      },
+      required: ["text", "count", "price", "active"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms array types", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "tags",
+          type: {
+            kind: "array",
+            elementType: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+            span: { start: 0, end: 10 },
+          },
+          span: { start: 0, end: 16 },
+        },
+      ],
+      span: { start: 0, end: 30 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        tags: { type: "array", items: { type: "string" } },
+      },
+      required: ["tags"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms union with null (nullable type)", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "description",
+          type: {
+            kind: "union",
+            types: [
+              { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+              { kind: "null", span: { start: 0, end: 4 } },
+            ],
+            span: { start: 0, end: 15 },
+          },
+          span: { start: 0, end: 25 },
+        },
+      ],
+      span: { start: 0, end: 40 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        description: {
+          oneOf: [{ type: "string" }, { type: "null" }],
+        },
+      },
+      required: ["description"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms string literal enums", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "status",
+          type: {
+            kind: "union",
+            types: [
+              { kind: "stringLiteral", value: "pending", span: { start: 0, end: 9 } },
+              { kind: "stringLiteral", value: "active", span: { start: 0, end: 8 } },
+              { kind: "stringLiteral", value: "done", span: { start: 0, end: 6 } },
+            ],
+            span: { start: 0, end: 30 },
+          },
+          span: { start: 0, end: 40 },
+        },
+      ],
+      span: { start: 0, end: 60 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        status: { enum: ["pending", "active", "done"] },
+      },
+      required: ["status"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms nested object types", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "user",
+          type: {
+            kind: "object",
+            fields: [
+              {
+                name: "id",
+                type: { kind: "primitive", type: "int", span: { start: 0, end: 3 } },
+                span: { start: 0, end: 8 },
+              },
+              {
+                name: "name",
+                type: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+                span: { start: 0, end: 12 },
+              },
+            ],
+            span: { start: 0, end: 30 },
+          },
+          span: { start: 0, end: 40 },
+        },
+      ],
+      span: { start: 0, end: 60 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        user: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" },
+          },
+          required: ["id", "name"],
+          additionalProperties: false,
+        },
+      },
+      required: ["user"],
+      additionalProperties: false,
+    });
+  });
+
+  it("transforms array of objects", () => {
+    const schema: SchemaObjectNode = {
+      kind: "object",
+      fields: [
+        {
+          name: "items",
+          type: {
+            kind: "array",
+            elementType: {
+              kind: "object",
+              fields: [
+                {
+                  name: "label",
+                  type: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+                  span: { start: 0, end: 14 },
+                },
+                {
+                  name: "value",
+                  type: { kind: "primitive", type: "int", span: { start: 0, end: 3 } },
+                  span: { start: 0, end: 12 },
+                },
+              ],
+              span: { start: 0, end: 35 },
+            },
+            span: { start: 0, end: 40 },
+          },
+          span: { start: 0, end: 50 },
+        },
+      ],
+      span: { start: 0, end: 70 },
+    };
+
+    const result = inlineSchemaToJsonSchema(schema);
+    expect(result).toEqual({
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              value: { type: "integer" },
+            },
+            required: ["label", "value"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["items"],
+      additionalProperties: false,
+    });
+  });
+});
+
+describe("agent task with inline schema", () => {
+  it("transforms AgentTaskNode with inline outputSchema to JSON Schema", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Analyze the data",
+      outputSchema: {
+        kind: "object",
+        fields: [
+          {
+            name: "result",
+            type: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+            span: { start: 0, end: 15 },
+          },
+          {
+            name: "score",
+            type: { kind: "primitive", type: "float", span: { start: 0, end: 5 } },
+            span: { start: 0, end: 13 },
+          },
+        ],
+        span: { start: 0, end: 40 },
+      },
+      consumes: [],
+      span: { start: 0, end: 100 },
+    };
+
+    const agentJob: AgentJobNode = {
+      kind: "agent_job",
+      name: "analyzer",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      outputs: [],
+      steps: [agentTask],
+      consumes: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [agentJob],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const job = ir.jobs.get("analyzer")!;
+
+    expect(job.steps[0]).toMatchObject({
+      kind: "claude_code",
+      with: {
+        prompt: "Analyze the data",
+        output_schema: {
+          type: "object",
+          properties: {
+            result: { type: "string" },
+            score: { type: "number" },
+          },
+          required: ["result", "score"],
+          additionalProperties: false,
+        },
+      },
+    });
+  });
+
+  it("emits output_schema correctly in YAML", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Process request",
+      outputSchema: {
+        kind: "object",
+        fields: [
+          {
+            name: "status",
+            type: {
+              kind: "union",
+              types: [
+                { kind: "stringLiteral", value: "success", span: { start: 0, end: 9 } },
+                { kind: "stringLiteral", value: "error", span: { start: 0, end: 7 } },
+              ],
+              span: { start: 0, end: 20 },
+            },
+            span: { start: 0, end: 30 },
+          },
+          {
+            name: "data",
+            type: {
+              kind: "array",
+              elementType: { kind: "primitive", type: "string", span: { start: 0, end: 6 } },
+              span: { start: 0, end: 10 },
+            },
+            span: { start: 0, end: 18 },
+          },
+        ],
+        span: { start: 0, end: 60 },
+      },
+      consumes: [],
+      span: { start: 0, end: 150 },
+    };
+
+    const agentJob: AgentJobNode = {
+      kind: "agent_job",
+      name: "processor",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      outputs: [],
+      steps: [agentTask],
+      consumes: [],
+      span: { start: 0, end: 250 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "schema-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [agentJob],
+      cycles: [],
+      span: { start: 0, end: 350 },
+    };
+
+    const ir = transform(workflow);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("output_schema:");
+    expect(yaml).toContain("type: object");
+    expect(yaml).toContain("properties:");
+    expect(yaml).toContain("status:");
+    expect(yaml).toContain("enum:");
+    expect(yaml).toContain("- success");
+    expect(yaml).toContain("- error");
+    expect(yaml).toContain("data:");
+    expect(yaml).toContain("type: array");
+    expect(yaml).toContain("items:");
+    expect(yaml).toContain("required:");
+    expect(yaml).toContain("additionalProperties: false");
+  });
+
+  it("handles string schema path reference", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Use external schema",
+      outputSchema: "./schemas/my-schema.json",
+      consumes: [],
+      span: { start: 0, end: 80 },
+    };
+
+    const agentJob: AgentJobNode = {
+      kind: "agent_job",
+      name: "external-schema-job",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      outputs: [],
+      steps: [agentTask],
+      consumes: [],
+      span: { start: 0, end: 160 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "ref-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [agentJob],
+      cycles: [],
+      span: { start: 0, end: 240 },
+    };
+
+    const ir = transform(workflow);
+    const job = ir.jobs.get("external-schema-job")!;
+
+    expect(job.steps[0]).toMatchObject({
+      kind: "claude_code",
+      with: {
+        prompt: "Use external schema",
+        output_schema: { $ref: "./schemas/my-schema.json" },
+      },
+    });
   });
 });

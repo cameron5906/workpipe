@@ -14,6 +14,12 @@ import type {
   PropertyAccessNode,
   StringLiteralNode,
   CycleNode,
+  SchemaObjectNode,
+  SchemaPrimitiveNode,
+  SchemaArrayNode,
+  SchemaUnionNode,
+  SchemaNullNode,
+  SchemaStringLiteralNode,
 } from "../ast/index.js";
 
 function loadExample(name: string): string {
@@ -950,6 +956,260 @@ describe("AST Builder", () => {
       const job = ast!.jobs[0] as JobNode;
       expect(job.outputs[0].span.start).toBeGreaterThan(0);
       expect(job.outputs[0].span.end).toBeGreaterThan(job.outputs[0].span.start);
+    });
+  });
+
+  describe("inline schema parsing", () => {
+    it("parses agent_task with inline schema containing primitive fields", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          name: string
+          count: int
+          score: float
+          active: bool
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      expect(step.outputSchema).toBeDefined();
+      expect(typeof step.outputSchema).toBe("object");
+
+      const schema = step.outputSchema as SchemaObjectNode;
+      expect(schema.kind).toBe("object");
+      expect(schema.fields).toHaveLength(4);
+
+      expect(schema.fields[0].name).toBe("name");
+      expect((schema.fields[0].type as SchemaPrimitiveNode).kind).toBe("primitive");
+      expect((schema.fields[0].type as SchemaPrimitiveNode).type).toBe("string");
+
+      expect(schema.fields[1].name).toBe("count");
+      expect((schema.fields[1].type as SchemaPrimitiveNode).type).toBe("int");
+
+      expect(schema.fields[2].name).toBe("score");
+      expect((schema.fields[2].type as SchemaPrimitiveNode).type).toBe("float");
+
+      expect(schema.fields[3].name).toBe("active");
+      expect((schema.fields[3].type as SchemaPrimitiveNode).type).toBe("bool");
+    });
+
+    it("parses agent_task with inline schema containing array type", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          items: [string]
+          numbers: [int]
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.fields).toHaveLength(2);
+
+      const itemsField = schema.fields[0];
+      expect(itemsField.name).toBe("items");
+      expect((itemsField.type as SchemaArrayNode).kind).toBe("array");
+      expect(((itemsField.type as SchemaArrayNode).elementType as SchemaPrimitiveNode).type).toBe("string");
+
+      const numbersField = schema.fields[1];
+      expect(numbersField.name).toBe("numbers");
+      expect((numbersField.type as SchemaArrayNode).kind).toBe("array");
+      expect(((numbersField.type as SchemaArrayNode).elementType as SchemaPrimitiveNode).type).toBe("int");
+    });
+
+    it("parses agent_task with inline schema containing union type", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          value: string | int
+          optional: string | null
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.fields).toHaveLength(2);
+
+      const valueField = schema.fields[0];
+      expect(valueField.name).toBe("value");
+      expect((valueField.type as SchemaUnionNode).kind).toBe("union");
+      expect((valueField.type as SchemaUnionNode).types).toHaveLength(2);
+      expect(((valueField.type as SchemaUnionNode).types[0] as SchemaPrimitiveNode).type).toBe("string");
+      expect(((valueField.type as SchemaUnionNode).types[1] as SchemaPrimitiveNode).type).toBe("int");
+
+      const optionalField = schema.fields[1];
+      expect(optionalField.name).toBe("optional");
+      expect((optionalField.type as SchemaUnionNode).kind).toBe("union");
+      expect(((optionalField.type as SchemaUnionNode).types[1] as SchemaNullNode).kind).toBe("null");
+    });
+
+    it("parses agent_task with inline schema containing string literal type", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          status: "success" | "error"
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.fields).toHaveLength(1);
+
+      const statusField = schema.fields[0];
+      expect(statusField.name).toBe("status");
+      expect((statusField.type as SchemaUnionNode).kind).toBe("union");
+      expect(((statusField.type as SchemaUnionNode).types[0] as SchemaStringLiteralNode).kind).toBe("stringLiteral");
+      expect(((statusField.type as SchemaUnionNode).types[0] as SchemaStringLiteralNode).value).toBe("success");
+      expect(((statusField.type as SchemaUnionNode).types[1] as SchemaStringLiteralNode).value).toBe("error");
+    });
+
+    it("parses agent_task with inline schema containing nested object", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          user: {
+            name: string
+            age: int
+          }
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.fields).toHaveLength(1);
+
+      const userField = schema.fields[0];
+      expect(userField.name).toBe("user");
+      expect((userField.type as SchemaObjectNode).kind).toBe("object");
+
+      const nestedSchema = userField.type as SchemaObjectNode;
+      expect(nestedSchema.fields).toHaveLength(2);
+      expect(nestedSchema.fields[0].name).toBe("name");
+      expect(nestedSchema.fields[1].name).toBe("age");
+    });
+
+    it("parses agent_task with inline schema containing array of objects", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          items: [{
+            id: int
+            label: string
+          }]
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.fields).toHaveLength(1);
+
+      const itemsField = schema.fields[0];
+      expect(itemsField.name).toBe("items");
+      expect((itemsField.type as SchemaArrayNode).kind).toBe("array");
+
+      const elementType = (itemsField.type as SchemaArrayNode).elementType as SchemaObjectNode;
+      expect(elementType.kind).toBe("object");
+      expect(elementType.fields).toHaveLength(2);
+      expect(elementType.fields[0].name).toBe("id");
+      expect(elementType.fields[1].name).toBe("label");
+    });
+
+    it("still parses agent_task with string output_schema", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: "AnalysisResult"
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      expect(step.outputSchema).toBe("AnalysisResult");
+      expect(typeof step.outputSchema).toBe("string");
+    });
+
+    it("preserves inline schema spans", () => {
+      const source = `workflow test {
+  on: push
+  job analyze {
+    steps: [
+      agent_task("Analyze") {
+        output_schema: {
+          name: string
+        }
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const schema = step.outputSchema as SchemaObjectNode;
+
+      expect(schema.span.start).toBeGreaterThan(0);
+      expect(schema.span.end).toBeGreaterThan(schema.span.start);
+
+      expect(schema.fields[0].span.start).toBeGreaterThan(0);
+      expect(schema.fields[0].span.end).toBeGreaterThan(schema.fields[0].span.start);
     });
   });
 });

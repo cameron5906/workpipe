@@ -27,40 +27,30 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-053: Add Example Files Demonstrating Job Outputs** - P2-High
-  - Create `examples/job-outputs/` with full working example
-  - Shows declare, set, consume pattern
-  - Ready to start (WI-052 documentation complete)
+- **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High **[USER FEEDBACK]**
+  - Define output schemas inline with type syntax instead of file references
+  - Support primitives, objects, arrays, nullable unions, string enums
+  - Significant feature request from user
 
 ---
 
 ## Up Next (Priority Order)
 
-### User Feedback Items (New - 2025-12-31)
-1. **WI-055: VS Code Extension Troubleshooting Documentation** - P1-High **[USER FEEDBACK]**
-   - User reports extension only shows highlighting, not diagnostics
-   - Verify extension functionality, create troubleshooting docs
-   - Impacts adoption - high priority
-
-2. **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High **[USER FEEDBACK]**
-   - Define output schemas inline with type syntax instead of file references
-   - Support primitives, objects, arrays, nullable unions, string enums
-   - Significant feature request from user
-
-3. **WI-057: Real-World Enterprise Examples** - P2-Medium **[USER FEEDBACK]**
+### User Feedback Items
+1. **WI-057: Real-World Enterprise Examples** - P2-Medium **[USER FEEDBACK]**
    - User wants examples for complex enterprise scenarios
    - Multi-stage pipelines with env provisioning/teardown
    - Test suite orchestration, deployment patterns
 
 ### Existing Backlog
-4. **WI-054: Validate Output References (WP2011)** - P2-High
+2. **WI-054: Validate Output References (WP2011)** - P2-High
    - Detect references to non-existent outputs
    - Cross-job semantic validation
    - WI-046 now complete, ready for implementation
 
-5. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
-6. WI-019: Implement guard_js compilation (general guards) - P2-Medium
-7. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+4. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
+5. WI-019: Implement guard_js compilation (general guards) - P2-Medium
+6. WI-022: Implement matrix axes syntax and parsing - P2-Medium
 
 ---
 
@@ -89,9 +79,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
 **Test Count:** 367 tests passing
-**Work Items Completed:** 29
-**Work Items In Progress:** 1 (WI-053)
-**Work Items In Backlog:** 7 (WI-054, WI-055, WI-056, WI-057, WI-039, WI-019, WI-022)
+**Work Items Completed:** 31
+**Work Items In Progress:** 1 (WI-056)
+**Work Items In Backlog:** 5 (WI-054, WI-057, WI-039, WI-019, WI-022)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -144,25 +134,19 @@ jobs:
 
 ### User Feedback Items (NEW - Triaged 2025-12-31)
 
-1. **WI-055: VS Code Extension Troubleshooting Documentation** - P1-High
-   - User reports extension only provides highlighting, diagnostics not working
-   - Verify extension functionality in production environment
-   - Create `docs/vscode-extension.md` troubleshooting guide
-   - Impacts user adoption - prioritized high
-
-2. **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High
+1. **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High
    - User wants inline type definitions instead of file references for output schemas
    - Support: primitives, objects, arrays, `type | null` unions, string enum unions
    - All properties required by default (Claude spec requirement)
    - Explicitly excludes: $if/$def/$ref, complex conditionals
 
-3. **WI-057: Real-World Enterprise Examples** - P2-Medium
+2. **WI-057: Real-World Enterprise Examples** - P2-Medium
    - User feedback: examples don't show complex enterprise patterns
    - New examples: E2E pipeline with env provisioning/teardown, multi-env deploy, microservices
    - Shows `if: always()` for cleanup, test aggregation, approval gates
 
 ### Phase 9: Tooling (Milestone E) - Remaining
-4. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
+3. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
    - Enhance existing diagnostics with code actions
    - Add hover information
    - Note: WI-045 covers required field validation (user feedback priority)
@@ -253,7 +237,19 @@ jobs:
 
 ## Completed
 
+### Phase 9: Tooling - RECENT
+- ✅ **WI-055: VS Code Extension Troubleshooting Documentation** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+  - Created `docs/vscode-extension.md` with comprehensive troubleshooting guide
+  - Updated `docs/README.md` with link to extension documentation
+  - Identified likely root cause: compiler bundle not loading in extension context
+  - Documented installation, verification, common issues, and known limitations
+
 ### Phase 3: Types + Outputs - JOB OUTPUTS COMPLETE
+- ✅ **WI-053: Add Example Files Demonstrating Job Outputs** - 2025-12-31 **[EXAMPLES COMPLETE]**
+  - `examples/job-outputs/` with working example
+  - Shows declare, set, consume pattern for typed outputs
+  - README explains the example
+
 - ✅ **WI-052: Document How to Set Job Outputs** - 2025-12-31 **[DOCS COMPLETE]**
   - Updated `docs/language-reference.md` Job Outputs section
   - Explains `$GITHUB_OUTPUT` syntax for setting outputs from shell scripts

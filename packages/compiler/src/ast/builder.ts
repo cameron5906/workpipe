@@ -74,6 +74,16 @@ const {
   GuardJs,
   TripleQuotedString,
   BodyBlock,
+  InlineSchema,
+  SchemaField,
+  SchemaType,
+  UnionType,
+  NonUnionSchemaType,
+  ArrayType,
+  ObjectType,
+  SchemaPrimitiveType,
+  NullType,
+  StringLiteralType,
 } = terms;
 
 import type {
@@ -101,6 +111,14 @@ import type {
   GuardJsNode,
   OutputDeclaration,
   OutputType,
+  SchemaTypeNode,
+  SchemaPrimitiveNode,
+  SchemaArrayNode,
+  SchemaObjectNode,
+  SchemaFieldNode,
+  SchemaUnionNode,
+  SchemaStringLiteralNode,
+  SchemaNullNode,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -438,6 +456,182 @@ function buildConsumes(cursor: TreeCursor, source: string): ConsumeNode[] {
   return consumes;
 }
 
+function buildSchemaType(cursor: TreeCursor, source: string): SchemaTypeNode | null {
+  const nodeType = cursor.type.id;
+  const nodeSpan = span(cursor);
+
+  if (nodeType === SchemaType || nodeType === NonUnionSchemaType) {
+    if (cursor.firstChild()) {
+      const result = buildSchemaType(cursor, source);
+      cursor.parent();
+      return result;
+    }
+    return null;
+  }
+
+  if (nodeType === UnionType) {
+    const types: SchemaTypeNode[] = [];
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === NonUnionSchemaType) {
+          const t = buildSchemaType(cursor, source);
+          if (t) types.push(t);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    if (types.length === 0) return null;
+    const unionNode: SchemaUnionNode = {
+      kind: "union",
+      types,
+      span: nodeSpan,
+    };
+    return unionNode;
+  }
+
+  if (nodeType === ArrayType) {
+    if (cursor.firstChild()) {
+      let elementType: SchemaTypeNode | null = null;
+      do {
+        if (cursor.type.id === SchemaType || cursor.type.id === NonUnionSchemaType ||
+            cursor.type.id === UnionType || cursor.type.id === ArrayType ||
+            cursor.type.id === ObjectType || cursor.type.id === SchemaPrimitiveType ||
+            cursor.type.id === NullType || cursor.type.id === StringLiteralType) {
+          elementType = buildSchemaType(cursor, source);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+      if (elementType) {
+        const arrayNode: SchemaArrayNode = {
+          kind: "array",
+          elementType,
+          span: nodeSpan,
+        };
+        return arrayNode;
+      }
+    }
+    return null;
+  }
+
+  if (nodeType === ObjectType) {
+    const fields: SchemaFieldNode[] = [];
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === SchemaField) {
+          const field = buildSchemaField(cursor, source);
+          if (field) fields.push(field);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    const objectNode: SchemaObjectNode = {
+      kind: "object",
+      fields,
+      span: nodeSpan,
+    };
+    return objectNode;
+  }
+
+  if (nodeType === SchemaPrimitiveType) {
+    const typeText = getText(cursor, source);
+    if (typeText === "string" || typeText === "int" || typeText === "float" || typeText === "bool") {
+      const primitiveNode: SchemaPrimitiveNode = {
+        kind: "primitive",
+        type: typeText,
+        span: nodeSpan,
+      };
+      return primitiveNode;
+    }
+    return null;
+  }
+
+  if (nodeType === NullType || cursor.name === "NullType") {
+    const nullNode: SchemaNullNode = {
+      kind: "null",
+      span: nodeSpan,
+    };
+    return nullNode;
+  }
+
+  if (nodeType === StringLiteralType) {
+    if (cursor.firstChild()) {
+      let value = "";
+      do {
+        if (cursor.type.id === StringTerm) {
+          value = unquoteString(getText(cursor, source));
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+      const stringLiteralNode: SchemaStringLiteralNode = {
+        kind: "stringLiteral",
+        value,
+        span: nodeSpan,
+      };
+      return stringLiteralNode;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function buildSchemaField(cursor: TreeCursor, source: string): SchemaFieldNode | null {
+  if (cursor.type.id !== SchemaField) return null;
+
+  const fieldSpan = span(cursor);
+  let name = "";
+  let type: SchemaTypeNode | null = null;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === Identifier) {
+      name = getText(cursor, source);
+    } else if (cursor.type.id === SchemaType || cursor.type.id === NonUnionSchemaType ||
+               cursor.type.id === UnionType || cursor.type.id === ArrayType ||
+               cursor.type.id === ObjectType || cursor.type.id === SchemaPrimitiveType ||
+               cursor.type.id === NullType || cursor.type.id === StringLiteralType) {
+      type = buildSchemaType(cursor, source);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name || !type) return null;
+
+  return {
+    name,
+    type,
+    span: fieldSpan,
+  };
+}
+
+function buildInlineSchema(cursor: TreeCursor, source: string): SchemaObjectNode | null {
+  if (cursor.type.id !== InlineSchema) return null;
+
+  const schemaSpan = span(cursor);
+  const fields: SchemaFieldNode[] = [];
+
+  if (!cursor.firstChild()) {
+    return { kind: "object", fields: [], span: schemaSpan };
+  }
+
+  do {
+    if (cursor.type.id === SchemaField) {
+      const field = buildSchemaField(cursor, source);
+      if (field) fields.push(field);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "object",
+    fields,
+    span: schemaSpan,
+  };
+}
+
 function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
   const outputs: OutputDeclaration[] = [];
 
@@ -495,7 +689,7 @@ function buildAgentTask(cursor: TreeCursor, source: string): AgentTaskNode | nul
   let mcpConfig: McpConfig | undefined;
   let systemPrompt: PromptValue | undefined;
   let promptValue: PromptValue | undefined;
-  let outputSchema: string | undefined;
+  let outputSchema: string | SchemaObjectNode | undefined;
   let outputArtifact: string | undefined;
   const consumes: ConsumeNode[] = [];
 
@@ -544,6 +738,8 @@ function buildAgentTask(cursor: TreeCursor, source: string): AgentTaskNode | nul
                   do {
                     if (cursor.type.id === StringTerm) {
                       outputSchema = unquoteString(getText(cursor, source));
+                    } else if (cursor.type.id === InlineSchema) {
+                      outputSchema = buildInlineSchema(cursor, source) ?? undefined;
                     }
                   } while (cursor.nextSibling());
                   cursor.parent();

@@ -8,6 +8,8 @@ import type {
   ExpressionNode,
   PromptValue,
   CycleNode,
+  SchemaTypeNode,
+  SchemaObjectNode,
 } from "../ast/types.js";
 import type {
   WorkflowIR,
@@ -21,6 +23,85 @@ import type {
   WorkflowDispatchInputIR,
   ConcurrencyIR,
 } from "./yaml-ir.js";
+
+export type JsonSchema =
+  | { type: "string" }
+  | { type: "integer" }
+  | { type: "number" }
+  | { type: "boolean" }
+  | { type: "null" }
+  | { type: "array"; items: JsonSchema }
+  | {
+      type: "object";
+      properties: Record<string, JsonSchema>;
+      required: string[];
+      additionalProperties: false;
+    }
+  | { oneOf: JsonSchema[] }
+  | { enum: string[] };
+
+function schemaTypeToJsonSchema(schemaType: SchemaTypeNode): JsonSchema {
+  switch (schemaType.kind) {
+    case "primitive":
+      switch (schemaType.type) {
+        case "string":
+          return { type: "string" };
+        case "int":
+          return { type: "integer" };
+        case "float":
+          return { type: "number" };
+        case "bool":
+          return { type: "boolean" };
+      }
+      break;
+    case "null":
+      return { type: "null" };
+    case "array":
+      return {
+        type: "array",
+        items: schemaTypeToJsonSchema(schemaType.elementType),
+      };
+    case "object":
+      return inlineSchemaToJsonSchema(schemaType);
+    case "stringLiteral":
+      return { enum: [schemaType.value] };
+    case "union": {
+      const allStringLiterals = schemaType.types.every(
+        (t) => t.kind === "stringLiteral"
+      );
+      if (allStringLiterals) {
+        const enumValues = schemaType.types.map((t) => {
+          if (t.kind === "stringLiteral") {
+            return t.value;
+          }
+          throw new Error("Expected string literal in union");
+        });
+        return { enum: enumValues };
+      }
+      return {
+        oneOf: schemaType.types.map((t) => schemaTypeToJsonSchema(t)),
+      };
+    }
+  }
+  throw new Error(`Unknown schema type: ${(schemaType as SchemaTypeNode).kind}`);
+}
+
+export function inlineSchemaToJsonSchema(schema: SchemaObjectNode): JsonSchema {
+  const properties: Record<string, JsonSchema> = {};
+  const required: string[] = [];
+
+  for (const field of schema.fields) {
+    properties[field.name] = schemaTypeToJsonSchema(field.type);
+    required.push(field.name);
+  }
+
+  return {
+    type: "object",
+    properties,
+    required,
+    additionalProperties: false,
+  };
+}
 
 export function serializeExpression(expr: ExpressionNode): string {
   switch (expr.kind) {
@@ -70,6 +151,7 @@ function transformAgentTask(
     disallowed_tools?: string;
     max_turns?: number;
     model?: string;
+    output_schema?: object;
   } = {
     prompt,
   };
@@ -88,6 +170,14 @@ function transformAgentTask(
 
   if (task.model) {
     withConfig.model = task.model;
+  }
+
+  if (task.outputSchema) {
+    if (typeof task.outputSchema === "string") {
+      withConfig.output_schema = { $ref: task.outputSchema };
+    } else {
+      withConfig.output_schema = inlineSchemaToJsonSchema(task.outputSchema);
+    }
   }
 
   const claudeStep: ClaudeCodeStepIR = {

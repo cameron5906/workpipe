@@ -261,8 +261,39 @@ TemplateReference {
 }
 
 OutputSchemaProperty {
-  kw<"output_schema"> ":" String
+  kw<"output_schema"> ":" (String | InlineSchema)
 }
+
+InlineSchema { "{" SchemaField* "}" }
+
+SchemaField { Identifier ":" SchemaType }
+
+SchemaType {
+  UnionType |
+  NonUnionSchemaType
+}
+
+NonUnionSchemaType {
+  ArrayType |
+  ObjectType |
+  SchemaPrimitiveType |
+  NullType |
+  StringLiteralType
+}
+
+SchemaPrimitiveType { identifier | TypeName }
+
+ArrayType { "[" SchemaType "]" }
+
+ObjectType { "{" SchemaField* "}" }
+
+UnionType { NonUnionSchemaType ("|" NonUnionSchemaType)+ }
+
+NullType {
+  @specialize[@name=NullType]<identifier, "null">
+}
+
+StringLiteralType { String }
 
 OutputArtifactProperty {
   kw<"output_artifact"> ":" String
@@ -352,6 +383,7 @@ Number {
   "="
   "=="
   "!="
+  "|"
 
   @precedence { "==", "!=", "=", "-", ".", tripleString, number, identifier }
 }

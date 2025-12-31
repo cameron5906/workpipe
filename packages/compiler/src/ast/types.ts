@@ -109,7 +109,7 @@ export interface AgentTaskNode {
   readonly mcp?: McpConfig;
   readonly systemPrompt?: PromptValue;
   readonly prompt?: PromptValue;
-  readonly outputSchema?: string;
+  readonly outputSchema?: string | SchemaObjectNode;
   readonly outputArtifact?: string;
   readonly consumes: readonly ConsumeNode[];
   readonly span: Span;
@@ -165,5 +165,55 @@ export interface CycleBodyNode {
 export interface GuardJsNode {
   readonly kind: "guard_js";
   readonly code: string;
+  readonly span: Span;
+}
+
+// Schema type can be a primitive, array, object, union, or string literal
+export type SchemaTypeNode =
+  | SchemaPrimitiveNode
+  | SchemaArrayNode
+  | SchemaObjectNode
+  | SchemaUnionNode
+  | SchemaStringLiteralNode
+  | SchemaNullNode;
+
+export interface SchemaPrimitiveNode {
+  readonly kind: "primitive";
+  readonly type: "string" | "int" | "float" | "bool";
+  readonly span: Span;
+}
+
+export interface SchemaArrayNode {
+  readonly kind: "array";
+  readonly elementType: SchemaTypeNode;
+  readonly span: Span;
+}
+
+export interface SchemaObjectNode {
+  readonly kind: "object";
+  readonly fields: readonly SchemaFieldNode[];
+  readonly span: Span;
+}
+
+export interface SchemaFieldNode {
+  readonly name: string;
+  readonly type: SchemaTypeNode;
+  readonly span: Span;
+}
+
+export interface SchemaUnionNode {
+  readonly kind: "union";
+  readonly types: readonly SchemaTypeNode[];
+  readonly span: Span;
+}
+
+export interface SchemaStringLiteralNode {
+  readonly kind: "stringLiteral";
+  readonly value: string;
+  readonly span: Span;
+}
+
+export interface SchemaNullNode {
+  readonly kind: "null";
   readonly span: Span;
 }

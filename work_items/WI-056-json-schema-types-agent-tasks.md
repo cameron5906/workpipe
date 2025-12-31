@@ -1,12 +1,12 @@
 # WI-056: JSON Schema Type Definitions for Agent Tasks
 
 **ID**: WI-056
-**Status**: Backlog
+**Status**: In Progress
 **Priority**: P1-High
 **Milestone**: A+ (Agent Tasks Enhancement)
 **Phase**: 7 (Agent tasks)
 **Created**: 2025-12-31
-**Updated**: 2025-12-31
+**Updated**: 2025-12-31 (Started)
 
 ## User Feedback
 

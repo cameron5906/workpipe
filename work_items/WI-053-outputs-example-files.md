@@ -1,12 +1,12 @@
 # WI-053: Add Example Files Demonstrating Job Outputs Feature
 
 **ID**: WI-053
-**Status**: In Progress
+**Status**: Completed
 **Priority**: P2-High
 **Milestone**: E (Documentation)
 **Phase**: 3+ (Types + Outputs)
 **Created**: 2025-12-31
-**Updated**: 2025-12-31 (Started)
+**Updated**: 2025-12-31 (Completed)
 
 ## Description
 
@@ -16,21 +16,21 @@ This work item creates dedicated example(s) showing the outputs feature in actio
 
 ## Acceptance Criteria
 
-- [ ] New example directory: `examples/job-outputs/`
-- [ ] WorkPipe file demonstrating outputs declaration and consumption
-- [ ] Expected YAML showing generated outputs block
-- [ ] README explaining the example
-- [ ] Example shows:
+- [x] New example directory: `examples/job-outputs/`
+- [x] WorkPipe file demonstrating outputs declaration and consumption
+- [x] Expected YAML showing generated outputs block
+- [x] README explaining the example
+- [x] Example shows:
   - Declaring typed outputs on a job
   - Setting outputs from a step using `$GITHUB_OUTPUT`
   - Consuming outputs in a dependent job via `needs.*.outputs.*`
 
 ## Deliverables Checklist
 
-- [ ] `examples/job-outputs/job-outputs.workpipe` - Source file
-- [ ] `examples/job-outputs/expected.yml` - Generated YAML
-- [ ] `examples/job-outputs/README.md` - Explanation
-- [ ] Update `examples/README.md` to include new example in index
+- [x] `examples/job-outputs/job-outputs.workpipe` - Source file
+- [x] `examples/job-outputs/expected.yml` - Generated YAML
+- [x] `examples/job-outputs/README.md` - Explanation
+- [x] Update `examples/README.md` to include new example in index
 
 ## Technical Context
 

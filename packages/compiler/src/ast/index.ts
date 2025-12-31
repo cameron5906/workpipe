@@ -23,6 +23,14 @@ export type {
   CycleNode,
   CycleBodyNode,
   GuardJsNode,
+  SchemaTypeNode,
+  SchemaPrimitiveNode,
+  SchemaArrayNode,
+  SchemaObjectNode,
+  SchemaFieldNode,
+  SchemaUnionNode,
+  SchemaStringLiteralNode,
+  SchemaNullNode,
 } from "./types.js";
 
 export { buildAST } from "./builder.js";
