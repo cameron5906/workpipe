@@ -133,6 +133,7 @@ Your workflow is now live on GitHub Actions.
 - **Job dependencies** - `needs: [build, test]` just works
 - **Matrix builds** - Expressive multi-dimensional matrices
 - **Conditional execution** - `when:` expressions for job/step control
+- **User-defined types** - Reusable type definitions with compile-time validation
 - **Agent jobs** - First-class support for AI-powered CI tasks
 - **Cycles** - Iterative workflows that span multiple runs
 - **Validation** - Catch errors before pushing with `workpipe check`

@@ -565,7 +565,8 @@ key          matrix       max_iters    mcp          model
 needs        on           output_artifact           output_schema
 outputs      prompt       raw_yaml     run          runs_on
 step         steps        system_prompt tools       triggers
-true         until        uses         when         workflow
+true         type         until        uses         when
+workflow
 ```
 
 ---
@@ -593,31 +594,169 @@ WorkPipe's type system is designed with these core principles:
 
 For the complete design rationale, see [ADR-0010: Type System for Data Flow](../adr/0010-type-system-for-data-flow.md).
 
-### User-Defined Types Not Supported
+### User-Defined Types
 
-WorkPipe does **not** support custom type definitions. You cannot write:
+WorkPipe supports user-defined types that let you define complex data shapes once and reuse them across your workflow. Types are defined at file level before the `workflow` block.
+
+#### Defining Types
+
+Use the `type` keyword to define a named type:
 
 ```workpipe
-// NOT SUPPORTED - this syntax does not exist
+type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+type ReviewResult {
+  approved: bool
+  rating: int
+  comments: [{
+    file: string
+    line: int
+    severity: "error" | "warning" | "info"
+    message: string
+  }]
+  summary: string | null
+}
+
+workflow ci {
+  on: push
+  // ... jobs can now use BuildInfo and ReviewResult
+}
+```
+
+#### Type Syntax
+
+Types support all schema type features:
+
+| Feature | Example | Description |
+|---------|---------|-------------|
+| Primitives | `field: string` | Basic types: `string`, `int`, `float`, `bool` |
+| Objects | `field: { nested: string }` | Nested structures |
+| Arrays | `items: [string]` | List of items |
+| Object arrays | `items: [{ name: string }]` | List of objects |
+| Unions | `value: string \| null` | Optional/alternative values |
+| String literals | `status: "pass" \| "fail"` | Constrained string values |
+| Type references | `config: OtherType` | Reference another defined type |
+
+#### Using Types in Job Outputs
+
+Reference a type by name in job outputs:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo  // Uses the type defined above
+    }
+    steps: [
+      run("echo \"info={\\\"version\\\":\\\"1.0.0\\\",\\\"commit\\\":\\\"abc\\\",\\\"timestamp\\\":12345}\" >> $GITHUB_OUTPUT")
+    ]
+  }
+}
+```
+
+**Note**: Like the `json` type, user-defined types are serialized as JSON strings at runtime. Use `fromJSON()` in expressions to access properties.
+
+#### Using Types in Agent Task Schemas
+
+Reference a type by name (as a quoted string) for agent task output schemas:
+
+```workpipe
+type ReviewResult {
+  approved: bool
+  summary: string
+  issues: [{ filepath: string lineNum: int message: string }]
+}
+
+workflow review {
+  on: pull_request
+
+  agent_job code_review {
+    runs_on: ubuntu-latest
+    steps: [
+      uses("actions/checkout@v4"),
+      agent_task("Review the code changes") {
+        output_schema: "ReviewResult"  // Compiler generates JSON Schema from type
+      }
+    ]
+  }
+}
+```
+
+The compiler resolves the type name and converts the type definition to JSON Schema automatically.
+
+**Note**: Type references in `output_schema` use quoted strings (e.g., `"ReviewResult"`) to distinguish them from file paths.
+
+#### Property Access Validation
+
+The compiler validates property access on typed outputs at compile time:
+
+```workpipe
 type BuildInfo {
   version: string
   commit: string
 }
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: { info: BuildInfo }
+    steps: [run("...")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      // OK: version exists on BuildInfo
+      run("echo ${{ fromJSON(needs.build.outputs.info).version }}"),
+
+      // ERROR WP5003: 'timestamp' does not exist on BuildInfo
+      run("echo ${{ fromJSON(needs.build.outputs.info).timestamp }}")
+    ]
+  }
+}
 ```
 
-**Why this limitation exists:**
+See [WP5003](errors.md#wp5003) for details on property validation errors.
 
-1. **Simplicity**: WorkPipe targets GitHub Actions workflows where job outputs are typically simple scalar values (version strings, counts, flags). Named type definitions add language complexity without proportional benefit.
+#### Type-Related Diagnostics
 
-2. **GitHub Actions runtime**: Since all values become strings at runtime, elaborate type hierarchies would be compile-time fiction that cannot be enforced.
+| Code | Severity | Description |
+|------|----------|-------------|
+| [WP5001](errors.md#wp5001) | Error | Duplicate type name |
+| [WP5002](errors.md#wp5002) | Error | Unknown type reference |
+| [WP5003](errors.md#wp5003) | Error | Property does not exist on type |
 
-3. **Sufficient alternatives**: For complex structured data, use the `json` type and optionally validate against a JSON Schema file.
+#### When to Use User-Defined Types
 
-**What to use instead:**
+| Use types when... | Use primitives/json when... |
+|-------------------|---------------------------|
+| Same structure used in multiple places | Structure used only once |
+| You want property access validation | Simple scalar values |
+| Agent tasks need structured output | Quick prototyping |
+| Type serves as documentation | Runtime validation not needed |
 
-- For simple values: Use primitive types (`string`, `int`, `bool`, etc.)
-- For structured data: Use `json` type for job outputs
-- For agent task outputs: Use `output_schema` with inline schema syntax or a JSON Schema file reference
+#### Limitations
+
+- Types are **compile-time only**: No runtime type checking occurs
+- Types are **file-scoped**: No cross-file imports
+- **No generics**: Each type is a concrete definition
+- **Structural typing**: Types with the same shape are compatible
 
 ### Primitive Types
 

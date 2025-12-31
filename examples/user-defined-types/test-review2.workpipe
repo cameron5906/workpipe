@@ -1,0 +1,18 @@
+type ReviewResult {
+  approved: bool
+  rating: int
+  comments: [{
+    filepath: string
+    line: int
+    severity: string
+    message: string
+  }]
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [run("echo hello")]
+  }
+}

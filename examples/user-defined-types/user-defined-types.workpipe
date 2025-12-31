@@ -1,0 +1,78 @@
+// User-Defined Types Example
+// This workflow demonstrates reusable type definitions for structured data
+
+// Define a type for build metadata
+type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+  success: bool
+}
+
+// Define a type for code review results (used with agent tasks)
+type ReviewResult {
+  approved: bool
+  rating: int
+  comments: [{
+    filepath: string
+    line: int
+    severity: string
+    message: string
+  }]
+}
+
+// Define a type that references another type
+type DeployResult {
+  environment: string
+  success: bool
+  build: BuildInfo
+}
+
+workflow typed_pipeline {
+  on: push
+
+  // Build job outputs structured data using BuildInfo type
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [
+      uses("actions/checkout@v4"),
+      run("VERSION=$(cat package.json | jq -r .version)"),
+      run("COMMIT=${{ github.sha }}"),
+      run("TIMESTAMP=$(date +%s)"),
+      run("echo \"info={\\\"version\\\":\\\"$VERSION\\\",\\\"commit\\\":\\\"$COMMIT\\\",\\\"timestamp\\\":$TIMESTAMP,\\\"success\\\":true}\" >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  // Agent job uses ReviewResult type for structured AI output
+  agent_job review {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      uses("actions/checkout@v4"),
+      agent_task("Review the code changes and provide structured feedback") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: {
+          allowed: ["Read", "Glob", "Grep"]
+        }
+        output_schema: "ReviewResult"
+        output_artifact: "review_result"
+      }
+    ]
+  }
+
+  // Deploy job consumes typed output from build
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build, review]
+    steps: [
+      // Access typed properties - compiler validates these exist on BuildInfo
+      run("echo Deploying version: ${{ fromJSON(needs.build.outputs.info).version }}"),
+      run("echo Commit: ${{ fromJSON(needs.build.outputs.info).commit }}"),
+      run("echo Build timestamp: ${{ fromJSON(needs.build.outputs.info).timestamp }}")
+    ]
+  }
+}

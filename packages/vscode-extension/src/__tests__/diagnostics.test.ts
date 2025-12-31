@@ -165,4 +165,204 @@ workflow test {
       expect(pos.column).toBe(6);
     });
   });
+
+  describe("type validation diagnostics", () => {
+    it("should detect WP5001 duplicate type name", () => {
+      const source = `
+type BuildInfo {
+  version: string
+}
+
+type BuildInfo {
+  commit: string
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}
+`;
+      const result = compile(source);
+      expect(result.success).toBe(false);
+
+      const duplicateTypeError = result.diagnostics.find(
+        (d) => d.code === "WP5001"
+      );
+      expect(duplicateTypeError).toBeDefined();
+      expect(duplicateTypeError!.severity).toBe("error");
+      expect(duplicateTypeError!.message).toContain("BuildInfo");
+      expect(duplicateTypeError!.message).toContain("already defined");
+    });
+
+    it("should detect WP5002 unknown type reference", () => {
+      const source = `
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: NonExistentType
+    }
+    steps: []
+  }
+}
+`;
+      const result = compile(source);
+      expect(result.success).toBe(false);
+
+      const unknownTypeError = result.diagnostics.find(
+        (d) => d.code === "WP5002"
+      );
+      expect(unknownTypeError).toBeDefined();
+      expect(unknownTypeError!.severity).toBe("error");
+      expect(unknownTypeError!.message).toContain("NonExistentType");
+    });
+
+    it("should detect WP5003 property does not exist on type", () => {
+      const exprStart = "$" + "{{";
+      const exprEnd = "}" + "}";
+      const source = `
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${exprStart} needs.build.outputs.info.nonexistent ${exprEnd}")
+    ]
+  }
+}
+`;
+      const result = compile(source);
+
+      const propertyError = result.diagnostics.find(
+        (d) => d.code === "WP5003"
+      );
+      expect(propertyError).toBeDefined();
+      expect(propertyError!.severity).toBe("error");
+      expect(propertyError!.message).toContain("nonexistent");
+      expect(propertyError!.message).toContain("BuildInfo");
+    });
+
+    it("should include hint with available properties for WP5003", () => {
+      const exprStart = "$" + "{{";
+      const exprEnd = "}" + "}";
+      const source = `
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${exprStart} needs.build.outputs.info.invalid ${exprEnd}")
+    ]
+  }
+}
+`;
+      const result = compile(source);
+
+      const propertyError = result.diagnostics.find(
+        (d) => d.code === "WP5003"
+      );
+      expect(propertyError).toBeDefined();
+      expect(propertyError!.hint).toBeDefined();
+      expect(propertyError!.hint).toContain("version");
+    });
+
+    it("should surface type diagnostics in VS Code DiagnosticsProvider", () => {
+      const source = `
+type BuildInfo {
+  version: string
+}
+
+type BuildInfo {
+  commit: string
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}
+`;
+      const provider = new DiagnosticsProvider();
+      const mockUri = vscode.Uri.parse("file:///test-types.workpipe");
+      const mockDocument = {
+        getText: () => source,
+        uri: mockUri,
+      } as unknown as vscode.TextDocument;
+
+      provider.updateDiagnostics(mockDocument);
+
+      const diagnostics = (provider as any).collection.get(mockUri);
+      expect(diagnostics).toBeDefined();
+      expect(diagnostics.length).toBeGreaterThan(0);
+
+      const typeError = diagnostics.find(
+        (d: vscode.Diagnostic) => d.code === "WP5001"
+      );
+      expect(typeError).toBeDefined();
+      expect(typeError.severity).toBe(vscode.DiagnosticSeverity.Error);
+      expect(typeError.source).toBe("workpipe");
+
+      provider.dispose();
+    });
+
+    it("should correctly map type error positions via SourceMap", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+type BuildInfo {
+  commit: string
+}`;
+      const result = compile(source);
+      const sourceMap = new SourceMap(source);
+
+      const duplicateTypeError = result.diagnostics.find(
+        (d) => d.code === "WP5001"
+      );
+      expect(duplicateTypeError).toBeDefined();
+
+      const start = sourceMap.positionAt(duplicateTypeError!.span.start);
+      const end = sourceMap.positionAt(duplicateTypeError!.span.end);
+
+      expect(start.line).toBeGreaterThanOrEqual(1);
+      expect(start.column).toBeGreaterThanOrEqual(1);
+      expect(end.line).toBeGreaterThanOrEqual(start.line);
+    });
+  });
 });

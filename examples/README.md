@@ -12,6 +12,8 @@ This directory contains example WorkPipe specifications and their generated GitH
 | [cycle-basic](./cycle-basic/) | Iterative refinement loop | Cycles, guard conditions, phased execution |
 | [ci-pipeline](./ci-pipeline/) | Standard CI workflow | Parallel jobs, dependency chains |
 | [job-outputs](./job-outputs/) | Typed job outputs | Output declarations, cross-job data passing |
+| [json-outputs](./json-outputs/) | JSON structured data | `json` type, `fromJSON()` expressions |
+| [user-defined-types](./user-defined-types/) | Reusable type definitions | User types, type references, property validation |
 | [release-workflow](./release-workflow/) | Manual release process | `workflow_dispatch`, fan-in pattern |
 | [iterative-refinement](./iterative-refinement/) | AI doc improvement cycle | Cycles with agent tasks |
 | [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) | Enterprise testing pipeline | Parallel tests, `if: always()`, teardown |
@@ -43,12 +45,14 @@ Each example directory contains:
 1. **Start here**: [minimal](./minimal/) - understand basic syntax
 2. **Add complexity**: [simple-job](./simple-job/) - learn job dependencies
 3. **CI patterns**: [ci-pipeline](./ci-pipeline/) - parallel stages and conditionals
-4. **Release patterns**: [release-workflow](./release-workflow/) - manual triggers and fan-in
-5. **AI integration**: [agent-task](./agent-task/) - Claude Code for automation
-6. **Advanced**: [cycle-basic](./cycle-basic/) and [iterative-refinement](./iterative-refinement/) - iterative workflows
-7. **Enterprise**: [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) - complex testing pipelines with cleanup
-8. **Deployment**: [multi-environment-deploy](./multi-environment-deploy/) - build-once deploy-many pattern
-9. **Microservices**: [microservices-build](./microservices-build/) - parallel service builds with fan-out/fan-in
+4. **Data passing**: [job-outputs](./job-outputs/) and [json-outputs](./json-outputs/) - typed outputs between jobs
+5. **Type system**: [user-defined-types](./user-defined-types/) - reusable types with compile-time validation
+6. **Release patterns**: [release-workflow](./release-workflow/) - manual triggers and fan-in
+7. **AI integration**: [agent-task](./agent-task/) - Claude Code for automation
+8. **Advanced**: [cycle-basic](./cycle-basic/) and [iterative-refinement](./iterative-refinement/) - iterative workflows
+9. **Enterprise**: [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) - complex testing pipelines with cleanup
+10. **Deployment**: [multi-environment-deploy](./multi-environment-deploy/) - build-once deploy-many pattern
+11. **Microservices**: [microservices-build](./microservices-build/) - parallel service builds with fan-out/fan-in
 
 ## Contributing Examples
 

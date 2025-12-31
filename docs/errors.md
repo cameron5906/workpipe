@@ -10,6 +10,7 @@ WorkPipe uses diagnostic codes in the format `WPxxxx` to identify specific issue
 | WP2xxx | Output validation |
 | WP3xxx | Schema validation |
 | WP4xxx | Matrix validation |
+| WP5xxx | Type validation |
 | WP6xxx | Cycle validation |
 | WP7xxx | Semantic validation (required fields) |
 
@@ -513,6 +514,149 @@ workflow ci {
 In this example: 3 x 4 x 4 x 3 = 144 jobs. Adding one more 2-value axis would push it to 288 jobs.
 
 **Solution:** Consider reducing matrix dimensions now to leave room for future expansion. See the solutions for WP4001 above.
+
+---
+
+## WP5xxx - Type Validation
+
+### WP5001: Duplicate Type Name
+
+**Severity:** Error
+
+**Description:** A user-defined type with the same name has already been declared in this file. Type names must be unique within a workflow file.
+
+**Example:**
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+type BuildInfo {  // Error: duplicate type name
+  status: string
+}
+```
+
+**Solution:** Rename one of the types to have a unique name:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+type BuildStatus {  // Renamed to avoid collision
+  status: string
+}
+```
+
+If you intended to extend the original type, consider combining the properties into a single type definition.
+
+---
+
+### WP5002: Unknown Type Reference
+
+**Severity:** Error
+
+**Description:** A job output references a type that has not been defined. This occurs when you use a type name in an output declaration but no matching `type` block exists.
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo  // Error: BuildInfo is not defined
+    }
+    steps: [run("echo hello")]
+  }
+}
+```
+
+**Solution:** Define the type before using it, or fix the type name if it's a typo:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo  // Now valid - type is defined above
+    }
+    steps: [run("echo hello")]
+  }
+}
+```
+
+The error message will suggest similar type names if any are available. For example, if you typed `BuildInof` but defined `BuildInfo`, the hint will suggest the correct spelling.
+
+---
+
+### WP5003: Property Does Not Exist on Type
+
+**Severity:** Error
+
+**Description:** An expression accesses a property that does not exist on the referenced type. This occurs when using `${{ needs.<job>.outputs.<output>.<property> }}` syntax where the property is not part of the type definition.
+
+**Example:**
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo version=1.0 >> $GITHUB_OUTPUT")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${{ needs.build.outputs.info.status }}")  // Error: 'status' doesn't exist on BuildInfo
+    ]
+  }
+}
+```
+
+**Solution:** Use a property that exists on the type, or add the missing property to the type definition:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  status: string  // Option 1: Add the missing property
+}
+
+// Or use an existing property:
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]
+  steps: [
+    run("echo ${{ needs.build.outputs.info.version }}")  // Option 2: Use existing property
+  ]
+}
+```
+
+The error message will list available properties on the type to help you choose the correct one.
 
 ---
 
