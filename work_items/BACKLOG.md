@@ -31,6 +31,24 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ---
 
+## Up Next (Priority Order)
+
+1. **WI-049: Create Error Code Documentation** - P2-Medium
+   - Create `docs/errors.md` with all WPxxxx diagnostic codes
+   - Document WP6xxx (cycle validation) and WP7xxx (semantic validation)
+   - Include examples and solutions for each code
+
+3. **WI-050: Surface Diagnostic Hints in VS Code Extension** - P3-Low
+   - Compiler `hint` field not displayed in VS Code
+   - Only message and code shown currently
+   - Improve developer experience
+
+4. **WI-051: Add Error Code Links to Language Reference** - P3-Low
+   - Link error codes from language-reference.md required field docs
+   - Depends on WI-049 (needs errors.md to link to)
+
+---
+
 ## PROJECT STATUS SUMMARY
 
 | Milestone | Status | Description |
@@ -56,9 +74,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
 **Test Count:** 340 tests passing
-**Work Items Completed:** 23
+**Work Items Completed:** 24
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 3 (from user feedback) + existing
+**Work Items In Backlog:** 3 (WI-049 through WI-051 from acceptance review)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -205,6 +223,11 @@ jobs:
 ## Completed
 
 ### Phase 9: Tooling - MILESTONE E IN PROGRESS
+- ✅ **WI-048: Fix iterative-refinement Example Missing runs_on** - 2025-12-31 **[ACCEPTANCE FIX]**
+  - Added `runs_on: ubuntu-latest` to `agent_job review_docs` in cycle body
+  - Fixes WP7002 validation error in example file
+  - Discovered during WI-045 end-user acceptance review
+
 - ✅ **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
   - Added semantic validation for required fields (runs_on, prompt, command)
   - New diagnostic codes: WP7001, WP7002, WP7004
