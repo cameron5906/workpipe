@@ -35,33 +35,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-### Documentation Refresh for Public Release (P1-High)
-
-User-directed initiative to prepare WorkPipe for public release with professional, exciting documentation.
-
-1. **WI-073: README.md Redesign for Public Release** - P1-High
-   - Compelling tagline and value proposition
-   - Status badges, feature grid, dramatic before/after examples
-   - Highlight User-Defined Types, AI Agent Tasks, Cycles
-   - Modern GitHub repo elements for public release
-
-2. **WI-074: Documentation Audit for Feature Completeness** - P1-High
-   - Verify all recent features documented (types, guards, matrices, cycles)
-   - Cross-reference verification between docs
-   - Update outdated statistics and status indicators
-   - Fix documentation drift identified in previous reviews
-
-3. **WI-075: Examples Showcase Enhancement** - P1-High
-   - Redesign examples/README.md as attractive showcase
-   - Validate all examples compile and expected.yml files are current
-   - Standardize per-example README format
-   - Add difficulty indicators and learning progression
-
-4. **WI-076: Getting Started Experience Polish** - P1-High
-   - Verify installation flow end-to-end
-   - Streamline first workflow journey
-   - VS Code extension onboarding
-   - Target: working workflow in < 10 minutes
+(None - All backlog items have been completed)
 
 ---
 
@@ -89,6 +63,7 @@ The entire feature is production-ready with:
 | **C** | COMPLETE | Guards + advanced triggers |
 | **D** | COMPLETE | Matrices |
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
+| **Future** | IN PROGRESS | Import system research and design (ADR-0012 Proposed) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -105,9 +80,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 643 tests (71 lang + 572 compiler)
-**Work Items Completed:** 72 (WI-001 through WI-072)
+**Work Items Completed:** 79 (WI-001 through WI-079)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 4 (WI-073 through WI-076 - Documentation Refresh)
+**Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -277,6 +252,52 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Bug Fixes & Research (Latest)
+
+- **WI-077: Agent Task Example Missing output_schema** - Completed 2025-12-31
+  - Fixed agent-task example to include required output_schema property
+  - Demonstrated inline schema syntax with objects, arrays, and string literals
+
+- **WI-078: VS Code Extension Live Validation with Debouncing** - Completed 2025-12-31
+  - Implemented real-time validation as user types
+  - Added debounce mechanism to prevent excessive compilation
+  - Event handlers for onDidChangeTextDocument and onSave
+  - Diagnostics display in real-time in the editor
+
+- **WI-079: Import System Design - Research Spike** - Completed 2025-12-31
+  - Investigated import/include system design patterns
+  - Created ADR-0012 (Proposed status - awaiting team review)
+  - Designed symbol-level and file-level import syntax candidates
+  - Identified implementation phases and dependencies
+  - Ready for implementation work after team approval
+
+### Documentation Refresh - COMPLETE (FINAL PUBLIC RELEASE POLISH)
+
+- **WI-073: README.md Redesign for Public Release** - Completed 2025-12-31
+  - Compelling tagline and value proposition
+  - Status badges, feature grid, dramatic before/after examples
+  - Highlight User-Defined Types, AI Agent Tasks, Cycles
+  - Modern GitHub repo elements for public release
+
+- **WI-074: Documentation Audit for Feature Completeness** - Completed 2025-12-31
+  - Verified all recent features documented (types, guards, matrices, cycles)
+  - Cross-reference verification between docs
+  - Updated outdated statistics and status indicators
+  - Fixed documentation drift identified in previous reviews
+
+- **WI-075: Examples Showcase Enhancement** - Completed 2025-12-31
+  - Redesigned examples/README.md as attractive showcase
+  - Validated all examples compile and expected.yml files are current
+  - Standardized per-example README format
+  - Added difficulty indicators and learning progression
+  - **Known Issue**: 2 examples have syntax issues (marked as future aspirational)
+
+- **WI-076: Getting Started Experience Polish** - Completed 2025-12-31
+  - Verified installation flow end-to-end
+  - Streamlined first workflow journey
+  - VS Code extension onboarding
+  - Achieved: working workflow in < 10 minutes
 
 ### Type System - COMPLETE (MILESTONE A++ FINISHED)
 

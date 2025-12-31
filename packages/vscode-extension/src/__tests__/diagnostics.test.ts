@@ -40,7 +40,7 @@ workflow test {
         uri: mockUri,
       } as unknown as vscode.TextDocument;
 
-      provider.updateDiagnostics(mockDocument);
+      provider.updateDiagnosticsImmediate(mockDocument);
 
       const diagnostics = (provider as any).collection.get(mockUri);
       expect(diagnostics).toBeDefined();
@@ -325,7 +325,7 @@ workflow ci {
         uri: mockUri,
       } as unknown as vscode.TextDocument;
 
-      provider.updateDiagnostics(mockDocument);
+      provider.updateDiagnosticsImmediate(mockDocument);
 
       const diagnostics = (provider as any).collection.get(mockUri);
       expect(diagnostics).toBeDefined();

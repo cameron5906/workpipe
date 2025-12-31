@@ -7,6 +7,10 @@ const LANGUAGE_ID = "workpipe";
 
 let diagnosticsProvider: DiagnosticsProvider | undefined;
 
+function isWorkPipeDocument(document: vscode.TextDocument): boolean {
+  return document.languageId === LANGUAGE_ID;
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   diagnosticsProvider = new DiagnosticsProvider();
   context.subscriptions.push(diagnosticsProvider);
@@ -25,35 +29,51 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
-      if (document.languageId === LANGUAGE_ID) {
-        diagnosticsProvider?.updateDiagnostics(document);
+      if (isWorkPipeDocument(document)) {
+        diagnosticsProvider?.updateDiagnosticsImmediate(document);
       }
     })
   );
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((document) => {
-      if (document.languageId === LANGUAGE_ID) {
-        diagnosticsProvider?.updateDiagnostics(document);
+      if (isWorkPipeDocument(document)) {
+        diagnosticsProvider?.updateDiagnosticsImmediate(document);
       }
     })
   );
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.languageId === LANGUAGE_ID) {
+      if (isWorkPipeDocument(event.document)) {
         diagnosticsProvider?.updateDiagnostics(event.document);
       }
     })
   );
 
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      if (isWorkPipeDocument(document)) {
+        diagnosticsProvider?.clearDiagnostics(document);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor && isWorkPipeDocument(editor.document)) {
+        diagnosticsProvider?.updateDiagnosticsImmediate(editor.document);
+      }
+    })
+  );
+
   if (vscode.window.activeTextEditor?.document.languageId === LANGUAGE_ID) {
-    diagnosticsProvider.updateDiagnostics(vscode.window.activeTextEditor.document);
+    diagnosticsProvider.updateDiagnosticsImmediate(vscode.window.activeTextEditor.document);
   }
 
   vscode.workspace.textDocuments.forEach((document) => {
-    if (document.languageId === LANGUAGE_ID) {
-      diagnosticsProvider?.updateDiagnostics(document);
+    if (isWorkPipeDocument(document)) {
+      diagnosticsProvider?.updateDiagnosticsImmediate(document);
     }
   });
 }
