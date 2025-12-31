@@ -1,0 +1,53 @@
+workflow doc_refinement {
+  on: workflow_dispatch
+
+  job initialize {
+    runs_on: ubuntu-latest
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo Initializing documentation review process")
+    ]
+  }
+
+  cycle improve_docs {
+    max_iters = 3
+    key = "doc_iteration"
+    until guard_js """
+      return context.approval_count >= 2;
+    """
+
+    body {
+      agent_job review_docs {
+        steps: [
+          uses("actions/checkout@v4"),
+          agent_task("Review documentation for clarity and completeness") {
+            model: "claude-sonnet-4-20250514"
+            max_turns: 8
+            tools: {
+              allowed: ["Read", "Glob", "Grep", "Write"]
+            }
+            output_artifact: "doc_review"
+          }
+        ]
+      }
+
+      job apply_suggestions {
+        runs_on: ubuntu-latest
+        needs: review_docs
+        steps: [
+          uses("actions/checkout@v4"),
+          run("echo Applying documentation improvements"),
+          run("git diff --stat || true")
+        ]
+      }
+    }
+  }
+
+  job finalize {
+    runs_on: ubuntu-latest
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo Documentation refinement complete")
+    ]
+  }
+}

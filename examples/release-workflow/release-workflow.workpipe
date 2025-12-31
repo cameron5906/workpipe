@@ -1,0 +1,50 @@
+workflow release {
+  on: workflow_dispatch
+
+  job validate {
+    runs_on: ubuntu-latest
+    steps: [
+      uses("actions/checkout@v4"),
+      run("npm ci"),
+      run("npm test"),
+      run("npm run lint")
+    ]
+  }
+
+  job build_artifacts {
+    runs_on: ubuntu-latest
+    needs: [validate]
+    steps: [
+      uses("actions/checkout@v4"),
+      run("npm ci"),
+      run("npm run build"),
+      run("npm pack")
+    ]
+  }
+
+  job generate_changelog {
+    runs_on: ubuntu-latest
+    needs: [validate]
+    steps: [
+      uses("actions/checkout@v4"),
+      run("git log --oneline -10 > CHANGELOG_EXCERPT.md")
+    ]
+  }
+
+  job publish {
+    runs_on: ubuntu-latest
+    needs: [build_artifacts, generate_changelog]
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo Publishing release...")
+    ]
+  }
+
+  job notify {
+    runs_on: ubuntu-latest
+    needs: [publish]
+    steps: [
+      run("echo Release complete! Notifying team...")
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@workpipe/lang",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:grammar": "lezer-generator src/workpipe.grammar -o src/grammar.js",
+    "build:copy": "node -e \"const fs = require('fs'); fs.copyFileSync('src/grammar.js', 'dist/grammar.js'); fs.copyFileSync('src/grammar.terms.js', 'dist/grammar.terms.js'); fs.copyFileSync('src/grammar.terms.d.ts', 'dist/grammar.terms.d.ts'); fs.copyFileSync('src/grammar.d.ts', 'dist/grammar.d.ts');\"",
+    "build:ts": "tsc -b",
+    "build": "pnpm build:grammar && pnpm build:ts && pnpm build:copy",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@lezer/common": "^1.5.0",
+    "@lezer/lr": "^1.4.2"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.8.0"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm vitest:*)",
+      "Bash(pnpm format:check:*)",
+      "Bash(pnpm clean:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run clean:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm run test)",
+      "Bash(node:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm eslint:*)",
+      "Bash(pnpm prettier:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)",
+      "Bash(npm run test:*)",
+      "Bash(pnpm --filter @workpipe/cli build:*)",
+      "Bash(pnpm --filter @workpipe/cli test)",
+      "Bash(echo:*)",
+      "Bash(pnpm --filter @workpipe/lang test:*)",
+      "Bash(npm run build:grammar:*)",
+      "Bash(pnpm run build:grammar:*)"
+    ]
+  }
+}

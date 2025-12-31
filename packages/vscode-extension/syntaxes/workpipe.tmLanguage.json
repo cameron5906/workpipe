@@ -1,0 +1,159 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "WorkPipe",
+  "scopeName": "source.workpipe",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#booleans" },
+    { "include": "#operators" },
+    { "include": "#punctuation" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.workpipe",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.workpipe",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": { "name": "punctuation.definition.comment.workpipe" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.workflow.workpipe",
+          "match": "\\b(workflow|job|agent_job|cycle)\\b"
+        },
+        {
+          "name": "keyword.control.flow.workpipe",
+          "match": "\\b(on|if|needs|after)\\b"
+        },
+        {
+          "name": "keyword.control.cycle.workpipe",
+          "match": "\\b(max_iters|until|guard_js|body|key)\\b"
+        },
+        {
+          "name": "keyword.other.property.workpipe",
+          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes)\\b"
+        },
+        {
+          "name": "keyword.other.step.workpipe",
+          "match": "\\b(run|uses|agent_task)\\b"
+        },
+        {
+          "name": "keyword.other.tools.workpipe",
+          "match": "\\b(allowed|disallowed|strict|config_file)\\b"
+        },
+        {
+          "name": "keyword.other.reference.workpipe",
+          "match": "\\b(file|template|from)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.workpipe",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.workpipe",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.workpipe",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.workpipe",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.workpipe",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    },
+    "booleans": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.workpipe",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.workpipe",
+          "match": "(==|!=)"
+        },
+        {
+          "name": "keyword.operator.assignment.workpipe",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.wildcard.workpipe",
+          "match": "\\*"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.definition.block.workpipe",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.definition.array.workpipe",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.definition.parameters.workpipe",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.separator.colon.workpipe",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.separator.comma.workpipe",
+          "match": ","
+        },
+        {
+          "name": "punctuation.accessor.workpipe",
+          "match": "\\."
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.workpipe",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

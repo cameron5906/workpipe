@@ -1,0 +1,45 @@
+workflow cycle_basic {
+  on: push
+
+  job setup {
+    runs_on: ubuntu-latest
+    steps: [
+      run("echo Setting up environment")
+    ]
+  }
+
+  cycle refine_loop {
+    max_iters = 5
+    key = "iteration"
+    until guard_js """
+      return context.quality_score > 0.95;
+    """
+
+    body {
+      agent_job analyze {
+        steps: [
+          agent_task("Analyze and improve code quality") {
+            model: "claude-sonnet-4-20250514"
+            max_turns: 10
+            prompt: "Review the code and suggest improvements"
+          }
+        ]
+      }
+
+      job apply_fixes {
+        runs_on: ubuntu-latest
+        needs: analyze
+        steps: [
+          run("echo Applying fixes from analysis")
+        ]
+      }
+    }
+  }
+
+  job cleanup {
+    runs_on: ubuntu-latest
+    steps: [
+      run("echo Cleaning up")
+    ]
+  }
+}

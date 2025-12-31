@@ -1,0 +1,51 @@
+name: WorkPipe Compile
+
+on:
+  push:
+    paths:
+      - 'workpipe/**/*.workpipe'
+      - 'workpipe/**/*.wp'
+  pull_request:
+    paths:
+      - 'workpipe/**/*.workpipe'
+      - 'workpipe/**/*.wp'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install WorkPipe
+        run: npm install -g @workpipe/cli
+
+      - name: Compile WorkPipe specs
+        run: |
+          shopt -s globstar nullglob
+          for file in workpipe/**/*.workpipe workpipe/**/*.wp; do
+            [ -f "$file" ] && workpipe build "$file" --output .github/workflows/
+          done
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet .github/workflows/ || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit generated workflows
+        if: steps.changes.outputs.changed == 'true' && github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/
+          git commit -m "chore: regenerate workflows from WorkPipe specs"
+          git push

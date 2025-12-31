@@ -1,0 +1,10 @@
+workflow minimal {
+  on: push
+
+  job hello {
+    runs_on: ubuntu-latest
+    steps: [
+      run("echo Hello, WorkPipe!")
+    ]
+  }
+}

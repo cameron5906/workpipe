@@ -1,0 +1,28 @@
+{
+  "name": "@workpipe/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "workpipe": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@workpipe/compiler": "workspace:*",
+    "@workpipe/lang": "workspace:*",
+    "commander": "^12.1.0",
+    "glob": "^11.0.0"
+  }
+}

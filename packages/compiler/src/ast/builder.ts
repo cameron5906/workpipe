@@ -1,0 +1,1132 @@
+import type { Tree, TreeCursor } from "@lezer/common";
+import * as terms from "@workpipe/lang";
+
+const {
+  WorkflowDecl,
+  Identifier,
+  WorkflowBody,
+  OnClause,
+  TriggerSpec,
+  EventName,
+  EventList,
+  JobDecl,
+  JobBody,
+  JobProperty,
+  RunsOnProperty,
+  RunnerSpec,
+  NeedsProperty,
+  NeedsSpec,
+  IdentifierList,
+  IfProperty,
+  Expression,
+  ComparisonExpr,
+  PrimaryExpr,
+  PropertyAccess,
+  String: StringTerm,
+  Boolean: BooleanTerm,
+  ComparisonOp,
+  StepsProperty,
+  StepList,
+  Step,
+  RunStep,
+  UsesStep,
+  AgentJobDecl,
+  AfterClause,
+  AgentTaskStep,
+  AgentTaskBody,
+  AgentTaskProperty,
+  ModelProperty,
+  MaxTurnsProperty,
+  ToolsProperty,
+  ToolsBlock,
+  ToolsBlockProperty,
+  AllowedProperty,
+  DisallowedProperty,
+  StrictProperty,
+  StringList,
+  StringListItems,
+  StringListOrAll,
+  McpProperty,
+  McpBlock,
+  McpBlockProperty,
+  ConfigFileProperty,
+  SystemPromptProperty,
+  PromptProperty,
+  PromptValue: PromptValueTerm,
+  FileReference,
+  TemplateReference,
+  OutputSchemaProperty,
+  OutputArtifactProperty,
+  ConsumesProperty,
+  ConsumesBlock,
+  ConsumesItem,
+  Number: NumberTerm,
+  CycleDecl,
+  CycleBody,
+  CycleProperty,
+  MaxItersProperty,
+  KeyProperty,
+  UntilProperty,
+  GuardJs,
+  TripleQuotedString,
+  BodyBlock,
+} = terms;
+
+import type {
+  WorkflowNode,
+  TriggerNode,
+  JobNode,
+  AnyJobNode,
+  AgentJobNode,
+  StepNode,
+  RunStepNode,
+  UsesStepNode,
+  AgentTaskNode,
+  ToolsConfig,
+  McpConfig,
+  PromptValue,
+  ConsumeNode,
+  ExpressionNode,
+  BinaryExpressionNode,
+  PropertyAccessNode,
+  StringLiteralNode,
+  BooleanLiteralNode,
+  Span,
+  CycleNode,
+  CycleBodyNode,
+  GuardJsNode,
+} from "./types.js";
+
+function span(cursor: TreeCursor): Span {
+  return { start: cursor.from, end: cursor.to };
+}
+
+function getText(cursor: TreeCursor, source: string): string {
+  return source.slice(cursor.from, cursor.to);
+}
+
+function unquoteTripleString(quoted: string): string {
+  if (quoted.length < 6) return quoted;
+  return quoted.slice(3, -3);
+}
+
+function unquoteString(quoted: string): string {
+  if (quoted.length < 2) return quoted;
+
+  const inner = quoted.slice(1, -1);
+
+  let result = "";
+  let i = 0;
+  while (i < inner.length) {
+    if (inner[i] === "\\" && i + 1 < inner.length) {
+      const next = inner[i + 1];
+      switch (next) {
+        case '"':
+          result += '"';
+          break;
+        case "\\":
+          result += "\\";
+          break;
+        case "n":
+          result += "\n";
+          break;
+        case "t":
+          result += "\t";
+          break;
+        default:
+          result += next;
+      }
+      i += 2;
+    } else {
+      result += inner[i];
+      i++;
+    }
+  }
+
+  return result;
+}
+
+function findChild(cursor: TreeCursor, nodeType: number): boolean {
+  if (!cursor.firstChild()) return false;
+  do {
+    if (cursor.type.id === nodeType) return true;
+  } while (cursor.nextSibling());
+  cursor.parent();
+  return false;
+}
+
+function collectChildren(cursor: TreeCursor, nodeType: number): Span[] {
+  const spans: Span[] = [];
+  if (!cursor.firstChild()) return spans;
+  do {
+    if (cursor.type.id === nodeType) {
+      spans.push(span(cursor));
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+  return spans;
+}
+
+function buildStringList(cursor: TreeCursor, source: string): string[] {
+  const strings: string[] = [];
+  if (!cursor.firstChild()) return strings;
+  do {
+    if (cursor.type.id === StringListItems) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === StringTerm) {
+            strings.push(unquoteString(getText(cursor, source)));
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+  return strings;
+}
+
+function buildToolsConfig(cursor: TreeCursor, source: string): ToolsConfig {
+  const config: {
+    allowed?: string[];
+    disallowed?: string[];
+    strict?: boolean;
+  } = {};
+
+  if (!cursor.firstChild()) return config;
+  do {
+    if (cursor.type.id === ToolsBlock) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === ToolsBlockProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+              if (propType === AllowedProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringListOrAll) {
+                      const text = getText(cursor, source).trim();
+                      if (text === "*") {
+                        config.allowed = ["*"];
+                      } else if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === StringList) {
+                            config.allowed = buildStringList(cursor, source);
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === DisallowedProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringList) {
+                      config.disallowed = buildStringList(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === StrictProperty) {
+                const strictText = getText(cursor, source);
+                if (strictText.includes("true")) {
+                  config.strict = true;
+                } else if (strictText.includes("false")) {
+                  config.strict = false;
+                }
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+
+  return config;
+}
+
+function buildMcpConfig(cursor: TreeCursor, source: string): McpConfig {
+  const config: {
+    configFile?: string;
+    allowed?: string[];
+    disallowed?: string[];
+  } = {};
+
+  if (!cursor.firstChild()) return config;
+  do {
+    if (cursor.type.id === McpBlock) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === McpBlockProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+              if (propType === ConfigFileProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringTerm) {
+                      config.configFile = unquoteString(getText(cursor, source));
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === AllowedProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringListOrAll) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === StringList) {
+                            config.allowed = buildStringList(cursor, source);
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === DisallowedProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringList) {
+                      config.disallowed = buildStringList(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+
+  return config;
+}
+
+function buildPromptValue(cursor: TreeCursor, source: string): PromptValue | null {
+  if (!cursor.firstChild()) return null;
+
+  let result: PromptValue | null = null;
+  do {
+    if (cursor.type.id === PromptValueTerm) {
+      if (cursor.firstChild()) {
+        const valueType = cursor.type.id;
+        if (valueType === StringTerm) {
+          result = {
+            kind: "literal",
+            value: unquoteString(getText(cursor, source)),
+          };
+        } else if (valueType === FileReference) {
+          if (cursor.firstChild()) {
+            do {
+              if (cursor.type.id === StringTerm) {
+                result = {
+                  kind: "file",
+                  path: unquoteString(getText(cursor, source)),
+                };
+              }
+            } while (cursor.nextSibling());
+            cursor.parent();
+          }
+        } else if (valueType === TemplateReference) {
+          if (cursor.firstChild()) {
+            do {
+              if (cursor.type.id === StringTerm) {
+                result = {
+                  kind: "template",
+                  content: unquoteString(getText(cursor, source)),
+                };
+              }
+            } while (cursor.nextSibling());
+            cursor.parent();
+          }
+        }
+        cursor.parent();
+      }
+    } else if (cursor.type.id === StringTerm) {
+      result = {
+        kind: "literal",
+        value: unquoteString(getText(cursor, source)),
+      };
+    } else if (cursor.type.id === FileReference) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === StringTerm) {
+            result = {
+              kind: "file",
+              path: unquoteString(getText(cursor, source)),
+            };
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    } else if (cursor.type.id === TemplateReference) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === StringTerm) {
+            result = {
+              kind: "template",
+              content: unquoteString(getText(cursor, source)),
+            };
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+
+  return result;
+}
+
+function buildConsumes(cursor: TreeCursor, source: string): ConsumeNode[] {
+  const consumes: ConsumeNode[] = [];
+
+  if (!cursor.firstChild()) return consumes;
+  do {
+    if (cursor.type.id === ConsumesBlock) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === ConsumesItem) {
+            const itemSpan = span(cursor);
+            let name = "";
+            let sourceRef = "";
+
+            if (cursor.firstChild()) {
+              do {
+                if (cursor.type.id === Identifier) {
+                  name = getText(cursor, source);
+                } else if (cursor.type.id === StringTerm) {
+                  sourceRef = unquoteString(getText(cursor, source));
+                }
+              } while (cursor.nextSibling());
+              cursor.parent();
+            }
+
+            if (name && sourceRef) {
+              consumes.push({
+                kind: "consume",
+                name,
+                source: sourceRef,
+                span: itemSpan,
+              });
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+
+  return consumes;
+}
+
+function buildAgentTask(cursor: TreeCursor, source: string): AgentTaskNode | null {
+  if (cursor.type.id !== AgentTaskStep) return null;
+
+  const taskSpan = span(cursor);
+  let taskDescription = "";
+  let model: string | undefined;
+  let maxTurns: number | undefined;
+  let tools: ToolsConfig | undefined;
+  let mcpConfig: McpConfig | undefined;
+  let systemPrompt: PromptValue | undefined;
+  let promptValue: PromptValue | undefined;
+  let outputSchema: string | undefined;
+  let outputArtifact: string | undefined;
+  const consumes: ConsumeNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === StringTerm) {
+      taskDescription = unquoteString(getText(cursor, source));
+    } else if (nodeType === AgentTaskBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === AgentTaskProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+
+              if (propType === ModelProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringTerm) {
+                      model = unquoteString(getText(cursor, source));
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === MaxTurnsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NumberTerm) {
+                      maxTurns = parseInt(getText(cursor, source), 10);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === ToolsProperty) {
+                tools = buildToolsConfig(cursor, source);
+              } else if (propType === McpProperty) {
+                mcpConfig = buildMcpConfig(cursor, source);
+              } else if (propType === SystemPromptProperty) {
+                systemPrompt = buildPromptValue(cursor, source) ?? undefined;
+              } else if (propType === PromptProperty) {
+                promptValue = buildPromptValue(cursor, source) ?? undefined;
+              } else if (propType === OutputSchemaProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringTerm) {
+                      outputSchema = unquoteString(getText(cursor, source));
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === OutputArtifactProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringTerm) {
+                      outputArtifact = unquoteString(getText(cursor, source));
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === ConsumesProperty) {
+                consumes.push(...buildConsumes(cursor, source));
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const taskNode: AgentTaskNode = {
+    kind: "agent_task",
+    taskDescription,
+    model,
+    maxTurns,
+    tools,
+    mcp: mcpConfig,
+    systemPrompt,
+    prompt: promptValue,
+    outputSchema,
+    outputArtifact,
+    consumes,
+    span: taskSpan,
+  };
+  return taskNode;
+}
+
+function buildExpression(cursor: TreeCursor, source: string): ExpressionNode | null {
+  const nodeType = cursor.type.id;
+
+  if (nodeType === PrimaryExpr) {
+    if (cursor.firstChild()) {
+      const result = buildExpression(cursor, source);
+      cursor.parent();
+      return result;
+    }
+    return null;
+  }
+
+  if (nodeType === Expression || nodeType === ComparisonExpr) {
+    if (!cursor.firstChild()) return null;
+
+    const leftExpr = buildExpression(cursor, source);
+    if (!leftExpr) {
+      cursor.parent();
+      return null;
+    }
+
+    if (!cursor.nextSibling()) {
+      cursor.parent();
+      return leftExpr;
+    }
+
+    if (cursor.type.id === ComparisonOp) {
+      const operator = getText(cursor, source) as "==" | "!=";
+      const opSpan = span(cursor);
+
+      if (!cursor.nextSibling()) {
+        cursor.parent();
+        return leftExpr;
+      }
+
+      const rightExpr = buildExpression(cursor, source);
+      cursor.parent();
+
+      if (!rightExpr) return leftExpr;
+
+      const binaryNode: BinaryExpressionNode = {
+        kind: "binary",
+        operator,
+        left: leftExpr,
+        right: rightExpr,
+        span: { start: leftExpr.span.start, end: rightExpr.span.end },
+      };
+      return binaryNode;
+    }
+
+    cursor.parent();
+    return leftExpr;
+  }
+
+  if (nodeType === PropertyAccess) {
+    const nodeSpan = span(cursor);
+    const fullText = getText(cursor, source);
+    const path = fullText.split(".");
+
+    const propNode: PropertyAccessNode = {
+      kind: "property",
+      path,
+      span: nodeSpan,
+    };
+    return propNode;
+  }
+
+  if (nodeType === StringTerm) {
+    const raw = getText(cursor, source);
+    const strNode: StringLiteralNode = {
+      kind: "string",
+      value: unquoteString(raw),
+      span: span(cursor),
+    };
+    return strNode;
+  }
+
+  if (nodeType === BooleanTerm) {
+    const raw = getText(cursor, source);
+    const boolNode: BooleanLiteralNode = {
+      kind: "boolean",
+      value: raw === "true",
+      span: span(cursor),
+    };
+    return boolNode;
+  }
+
+  if (cursor.firstChild()) {
+    const result = buildExpression(cursor, source);
+    cursor.parent();
+    return result;
+  }
+
+  return null;
+}
+
+function buildStep(cursor: TreeCursor, source: string): StepNode | null {
+  const nodeType = cursor.type.id;
+
+  if (nodeType === Step) {
+    if (cursor.firstChild()) {
+      const result = buildStep(cursor, source);
+      cursor.parent();
+      return result;
+    }
+    return null;
+  }
+
+  if (nodeType === RunStep) {
+    const stepSpan = span(cursor);
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === StringTerm) {
+          const raw = getText(cursor, source);
+          cursor.parent();
+          const runNode: RunStepNode = {
+            kind: "run",
+            command: unquoteString(raw),
+            span: stepSpan,
+          };
+          return runNode;
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    return null;
+  }
+
+  if (nodeType === UsesStep) {
+    const stepSpan = span(cursor);
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === StringTerm) {
+          const raw = getText(cursor, source);
+          cursor.parent();
+          const usesNode: UsesStepNode = {
+            kind: "uses",
+            action: unquoteString(raw),
+            span: stepSpan,
+          };
+          return usesNode;
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    return null;
+  }
+
+  if (nodeType === AgentTaskStep) {
+    return buildAgentTask(cursor, source);
+  }
+
+  return null;
+}
+
+function buildJob(cursor: TreeCursor, source: string): JobNode | null {
+  if (cursor.type.id !== JobDecl) return null;
+
+  const jobSpan = span(cursor);
+  let name = "";
+  let runsOn: string | null = null;
+  const needs: string[] = [];
+  let condition: ExpressionNode | null = null;
+  const steps: StepNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === JobBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === JobProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+
+              if (propType === RunsOnProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === RunnerSpec) {
+                      runsOn = getText(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === NeedsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NeedsSpec) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Identifier) {
+                            needs.push(getText(cursor, source));
+                          } else if (cursor.type.id === IdentifierList) {
+                            if (cursor.firstChild()) {
+                              do {
+                                if (cursor.type.id === Identifier) {
+                                  needs.push(getText(cursor, source));
+                                }
+                              } while (cursor.nextSibling());
+                              cursor.parent();
+                            }
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === IfProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === Expression || cursor.type.id === ComparisonExpr) {
+                      condition = buildExpression(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === StepsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StepList) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Step) {
+                            const step = buildStep(cursor, source);
+                            if (step) steps.push(step);
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const jobNode: JobNode = {
+    kind: "job",
+    name,
+    runsOn,
+    needs,
+    condition,
+    steps,
+    span: jobSpan,
+  };
+  return jobNode;
+}
+
+function buildAgentJob(cursor: TreeCursor, source: string): AgentJobNode | null {
+  if (cursor.type.id !== AgentJobDecl) return null;
+
+  const jobSpan = span(cursor);
+  let name = "";
+  let after: string | undefined;
+  let runsOn: string | null = null;
+  const needs: string[] = [];
+  const steps: StepNode[] = [];
+  const consumes: ConsumeNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === AfterClause) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === Identifier) {
+            after = getText(cursor, source);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    } else if (nodeType === JobBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === JobProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+
+              if (propType === RunsOnProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === RunnerSpec) {
+                      runsOn = getText(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === NeedsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NeedsSpec) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Identifier) {
+                            needs.push(getText(cursor, source));
+                          } else if (cursor.type.id === IdentifierList) {
+                            if (cursor.firstChild()) {
+                              do {
+                                if (cursor.type.id === Identifier) {
+                                  needs.push(getText(cursor, source));
+                                }
+                              } while (cursor.nextSibling());
+                              cursor.parent();
+                            }
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === StepsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StepList) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Step) {
+                            const step = buildStep(cursor, source);
+                            if (step) steps.push(step);
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const agentJobNode: AgentJobNode = {
+    kind: "agent_job",
+    name,
+    after,
+    runsOn,
+    needs,
+    steps,
+    consumes,
+    span: jobSpan,
+  };
+  return agentJobNode;
+}
+
+function buildGuardJs(cursor: TreeCursor, source: string): GuardJsNode | null {
+  if (cursor.type.id !== GuardJs) return null;
+
+  const guardSpan = span(cursor);
+  let code = "";
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === TripleQuotedString) {
+      code = unquoteTripleString(getText(cursor, source));
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "guard_js",
+    code,
+    span: guardSpan,
+  };
+}
+
+function buildCycleBody(cursor: TreeCursor, source: string): CycleBodyNode {
+  const bodySpan = span(cursor);
+  const jobs: AnyJobNode[] = [];
+
+  if (!cursor.firstChild()) {
+    return { kind: "cycle_body", jobs, span: bodySpan };
+  }
+
+  do {
+    if (cursor.type.id === JobDecl) {
+      const job = buildJob(cursor, source);
+      if (job) jobs.push(job);
+    } else if (cursor.type.id === AgentJobDecl) {
+      const agentJob = buildAgentJob(cursor, source);
+      if (agentJob) jobs.push(agentJob);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "cycle_body",
+    jobs,
+    span: bodySpan,
+  };
+}
+
+function buildCycle(cursor: TreeCursor, source: string): CycleNode | null {
+  if (cursor.type.id !== CycleDecl) return null;
+
+  const cycleSpan = span(cursor);
+  let name = "";
+  let maxIters: number | null = null;
+  let key: string | null = null;
+  let until: GuardJsNode | null = null;
+  let body: CycleBodyNode = { kind: "cycle_body", jobs: [], span: { start: 0, end: 0 } };
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === CycleBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === CycleProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+
+              if (propType === MaxItersProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NumberTerm) {
+                      maxIters = parseInt(getText(cursor, source), 10);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === KeyProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StringTerm) {
+                      key = unquoteString(getText(cursor, source));
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === UntilProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === GuardJs) {
+                      until = buildGuardJs(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              }
+              cursor.parent();
+            }
+          } else if (cursor.type.id === BodyBlock) {
+            body = buildCycleBody(cursor, source);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "cycle",
+    name,
+    maxIters,
+    key,
+    until,
+    body,
+    span: cycleSpan,
+  };
+}
+
+function buildTrigger(cursor: TreeCursor, source: string): TriggerNode | null {
+  if (cursor.type.id !== OnClause) return null;
+
+  const triggerSpan = span(cursor);
+  const events: string[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === TriggerSpec) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === EventName) {
+            events.push(getText(cursor, source));
+          } else if (cursor.type.id === EventList) {
+            if (cursor.firstChild()) {
+              do {
+                if (cursor.type.id === EventName) {
+                  events.push(getText(cursor, source));
+                }
+              } while (cursor.nextSibling());
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const triggerNode: TriggerNode = {
+    kind: "trigger",
+    events,
+    span: triggerSpan,
+  };
+  return triggerNode;
+}
+
+export function buildAST(tree: Tree, source: string): WorkflowNode | null {
+  const cursor = tree.cursor();
+
+  if (!cursor.firstChild()) return null;
+
+  while (cursor.type.id !== WorkflowDecl) {
+    if (!cursor.nextSibling()) return null;
+  }
+
+  const workflowSpan = span(cursor);
+  let name = "";
+  let trigger: TriggerNode | null = null;
+  const jobs: AnyJobNode[] = [];
+  const cycles: CycleNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === WorkflowBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === OnClause) {
+            trigger = buildTrigger(cursor, source);
+          } else if (cursor.type.id === JobDecl) {
+            const job = buildJob(cursor, source);
+            if (job) jobs.push(job);
+          } else if (cursor.type.id === AgentJobDecl) {
+            const agentJob = buildAgentJob(cursor, source);
+            if (agentJob) jobs.push(agentJob);
+          } else if (cursor.type.id === CycleDecl) {
+            const cycle = buildCycle(cursor, source);
+            if (cycle) cycles.push(cycle);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  const workflowNode: WorkflowNode = {
+    kind: "workflow",
+    name,
+    trigger,
+    jobs,
+    cycles,
+    span: workflowSpan,
+  };
+  return workflowNode;
+}

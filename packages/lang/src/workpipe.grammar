@@ -1,0 +1,342 @@
+@top Workflow { WorkflowDecl* }
+
+@skip { whitespace | LineComment | BlockComment }
+
+@detectDelim
+
+WorkflowDecl {
+  kw<"workflow"> Identifier "{" WorkflowBody "}"
+}
+
+WorkflowBody {
+  OnClause?
+  (JobDecl | AgentJobDecl | CycleDecl)*
+}
+
+OnClause {
+  kw<"on"> ":" TriggerSpec
+}
+
+TriggerSpec {
+  EventName |
+  "[" EventList "]"
+}
+
+EventList {
+  EventName ("," EventName)*
+}
+
+EventName {
+  identifier
+}
+
+JobDecl {
+  kw<"job"> Identifier "{" JobBody "}"
+}
+
+AgentJobDecl {
+  kw<"agent_job"> Identifier AfterClause? "{" JobBody "}"
+}
+
+CycleDecl {
+  kw<"cycle"> Identifier "{" CycleBody "}"
+}
+
+CycleBody {
+  CycleProperty* BodyBlock?
+}
+
+CycleProperty {
+  MaxItersProperty | KeyProperty | UntilProperty
+}
+
+MaxItersProperty {
+  kw<"max_iters"> "=" Number
+}
+
+KeyProperty {
+  kw<"key"> "=" String
+}
+
+UntilProperty {
+  kw<"until"> GuardJs
+}
+
+GuardJs {
+  kw<"guard_js"> TripleQuotedString
+}
+
+TripleQuotedString {
+  tripleString
+}
+
+BodyBlock {
+  kw<"body"> "{" (JobDecl | AgentJobDecl)* "}"
+}
+
+AfterClause {
+  kw<"after"> Identifier
+}
+
+JobBody {
+  JobProperty*
+}
+
+JobProperty {
+  RunsOnProperty |
+  NeedsProperty |
+  IfProperty |
+  StepsProperty
+}
+
+RunsOnProperty {
+  kw<"runs_on"> ":" RunnerSpec
+}
+
+RunnerSpec {
+  identifier ("-" identifier)*
+}
+
+NeedsProperty {
+  kw<"needs"> ":" NeedsSpec
+}
+
+NeedsSpec {
+  Identifier |
+  "[" IdentifierList "]"
+}
+
+IdentifierList {
+  Identifier ("," Identifier)*
+}
+
+IfProperty {
+  kw<"if"> ":" Expression
+}
+
+StepsProperty {
+  kw<"steps"> ":" "[" StepList? "]"
+}
+
+StepList {
+  Step ("," Step)*
+}
+
+Step {
+  RunStep |
+  UsesStep |
+  AgentTaskStep
+}
+
+RunStep {
+  kw<"run"> "(" String ")"
+}
+
+UsesStep {
+  kw<"uses"> "(" String ")"
+}
+
+AgentTaskStep {
+  kw<"agent_task"> "(" String ")" "{" AgentTaskBody "}"
+}
+
+AgentTaskBody {
+  AgentTaskProperty*
+}
+
+AgentTaskProperty {
+  ModelProperty |
+  MaxTurnsProperty |
+  ToolsProperty |
+  McpProperty |
+  SystemPromptProperty |
+  PromptProperty |
+  OutputSchemaProperty |
+  OutputArtifactProperty |
+  ConsumesProperty
+}
+
+ModelProperty {
+  kw<"model"> ":" String
+}
+
+MaxTurnsProperty {
+  kw<"max_turns"> ":" Number
+}
+
+ToolsProperty {
+  kw<"tools"> ":" ToolsBlock
+}
+
+ToolsBlock {
+  "{" ToolsBlockProperty* "}"
+}
+
+ToolsBlockProperty {
+  AllowedProperty |
+  DisallowedProperty |
+  StrictProperty
+}
+
+AllowedProperty {
+  kw<"allowed"> ":" StringListOrAll
+}
+
+DisallowedProperty {
+  kw<"disallowed"> ":" StringList
+}
+
+StrictProperty {
+  kw<"strict"> ":" Boolean
+}
+
+StringListOrAll {
+  "*" |
+  StringList
+}
+
+StringList {
+  "[" StringListItems? "]"
+}
+
+StringListItems {
+  String ("," String)*
+}
+
+McpProperty {
+  kw<"mcp"> ":" McpBlock
+}
+
+McpBlock {
+  "{" McpBlockProperty* "}"
+}
+
+McpBlockProperty {
+  ConfigFileProperty |
+  AllowedProperty |
+  DisallowedProperty
+}
+
+ConfigFileProperty {
+  kw<"config_file"> ":" String
+}
+
+SystemPromptProperty {
+  kw<"system_prompt"> ":" PromptValue
+}
+
+PromptProperty {
+  kw<"prompt"> ":" PromptValue
+}
+
+PromptValue {
+  String |
+  FileReference |
+  TemplateReference
+}
+
+FileReference {
+  kw<"file"> "(" String ")"
+}
+
+TemplateReference {
+  kw<"template"> "(" String ")"
+}
+
+OutputSchemaProperty {
+  kw<"output_schema"> ":" String
+}
+
+OutputArtifactProperty {
+  kw<"output_artifact"> ":" String
+}
+
+ConsumesProperty {
+  kw<"consumes"> ":" ConsumesBlock
+}
+
+ConsumesBlock {
+  "{" ConsumesItem* "}"
+}
+
+ConsumesItem {
+  Identifier ":" kw<"from"> "(" String ")"
+}
+
+Expression {
+  ComparisonExpr |
+  PrimaryExpr
+}
+
+ComparisonExpr {
+  PrimaryExpr ComparisonOp PrimaryExpr
+}
+
+PrimaryExpr {
+  PropertyAccess |
+  String |
+  Boolean |
+  Number |
+  "(" Expression ")"
+}
+
+PropertyAccess {
+  identifier ("." identifier)*
+}
+
+ComparisonOp {
+  "==" | "!="
+}
+
+Boolean {
+  @specialize[@name=Boolean]<identifier, "true" | "false">
+}
+
+Identifier {
+  identifier
+}
+
+String {
+  string
+}
+
+Number {
+  number
+}
+
+@tokens {
+  whitespace { @whitespace+ }
+
+  LineComment { "//" ![\n]* }
+
+  BlockComment { "/*" blockCommentContent* "*/" }
+
+  blockCommentContent { ![\*] | "*" ![\\/] }
+
+  identifier { $[a-zA-Z_] $[a-zA-Z0-9_]* }
+
+  string { '"' (![\\\"\n] | "\\" _)* '"' }
+
+  tripleString { '"""' (!["] | '"' !["] | '""' !["])* '"""' }
+
+  number { $[0-9]+ }
+
+  "{"
+  "}"
+  "["
+  "]"
+  "("
+  ")"
+  ":"
+  ","
+  "."
+  "-"
+  "*"
+  "="
+  "=="
+  "!="
+
+  @precedence { "==", "!=", "=", "-", ".", tripleString, number, identifier }
+}
+
+kw<term> { @specialize[@name={term}]<identifier, term> }

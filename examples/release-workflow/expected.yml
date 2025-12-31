@@ -1,0 +1,41 @@
+name: release
+on: workflow_dispatch
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+  build_artifacts:
+    runs-on: ubuntu-latest
+    needs:
+      - validate
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build
+      - run: npm pack
+  generate_changelog:
+    runs-on: ubuntu-latest
+    needs:
+      - validate
+    steps:
+      - uses: actions/checkout@v4
+      - run: git log --oneline -10 > CHANGELOG_EXCERPT.md
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - build_artifacts
+      - generate_changelog
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Publishing release...
+  notify:
+    runs-on: ubuntu-latest
+    needs:
+      - publish
+    steps:
+      - run: echo Release complete! Notifying team...
+
