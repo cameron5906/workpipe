@@ -99,6 +99,8 @@ export const consumes: number;
 export const ConsumesBlock: number;
 export const ConsumesItem: number;
 export const from: number;
+export const GuardJsStep: number;
+export const step: number;
 export const AgentJobDecl: number;
 export const agent_job: number;
 export const AfterClause: number;

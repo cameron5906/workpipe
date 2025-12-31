@@ -5,6 +5,7 @@ import type {
   AgentJobNode,
   StepNode,
   AgentTaskNode,
+  GuardJsStepNode,
   ExpressionNode,
   PromptValue,
   CycleNode,
@@ -205,6 +206,35 @@ function transformAgentTask(
   return steps;
 }
 
+function transformGuardJsStep(step: GuardJsStepNode): StepIR[] {
+  const guardCode = step.code;
+
+  const guardScript = `
+const fs = require('fs');
+const context = {
+  event: JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')),
+  ref: process.env.GITHUB_REF,
+  inputs: JSON.parse(process.env.INPUTS || '{}')
+};
+const result = (function() { ${guardCode} })();
+console.log('Guard result:', result);
+fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + result + '\\n');
+`.trim();
+
+  const scriptStep: ScriptStepIR = {
+    kind: "script",
+    name: "Evaluate guard",
+    id: step.id,
+    run: `node -e "${guardScript.replace(/"/g, '\\"').replace(/\n/g, " ")}"`,
+    shell: "bash",
+    env: {
+      INPUTS: "${{ toJson(inputs) }}",
+    },
+  };
+
+  return [scriptStep];
+}
+
 function transformStep(
   step: StepNode,
   workflowName: string,
@@ -217,6 +247,8 @@ function transformStep(
       return [{ kind: "uses", action: step.action }];
     case "agent_task":
       return transformAgentTask(step, workflowName, jobName);
+    case "guard_js_step":
+      return transformGuardJsStep(step);
   }
 }
 

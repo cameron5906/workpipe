@@ -37,7 +37,7 @@ export interface JobNode {
   readonly span: Span;
 }
 
-export type StepNode = RunStepNode | UsesStepNode | AgentTaskNode;
+export type StepNode = RunStepNode | UsesStepNode | AgentTaskNode | GuardJsStepNode;
 
 export interface RunStepNode {
   readonly kind: "run";
@@ -48,6 +48,13 @@ export interface RunStepNode {
 export interface UsesStepNode {
   readonly kind: "uses";
   readonly action: string;
+  readonly span: Span;
+}
+
+export interface GuardJsStepNode {
+  readonly kind: "guard_js_step";
+  readonly id: string;
+  readonly code: string;
   readonly span: Span;
 }
 

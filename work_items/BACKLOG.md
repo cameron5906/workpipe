@@ -27,15 +27,19 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(No items currently in progress)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-019: Implement guard_js compilation (general guards) - P2-Medium
-2. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+1. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+2. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
+3. WI-021: Create guard helper library - P3-Low
+4. WI-023: Generate strategy.matrix with include/exclude - P2-Medium
+5. WI-024: Add matrix fingerprint to artifact naming - P2-Medium
+6. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium
 
 ---
 
@@ -46,7 +50,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | **A** | COMPLETE | Vertical slice - end-to-end compilation |
 | **A+** | COMPLETE | Agent tasks + diagnostics + formatter |
 | **B** | COMPLETE | Strategy B cycles with full safety |
-| **C** | Not Started | Guards + advanced triggers |
+| **C** | IN PROGRESS | Guards + advanced triggers |
 | **D** | Not Started | Matrices |
 | **E** | IN PROGRESS | Tooling (VS Code extension + bootstrap) |
 
@@ -57,16 +61,16 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 2: Minimal workflow codegen | COMPLETE | YAML IR, build command |
 | 3: Types + outputs | PARTIAL | Diagnostics done; type system future |
 | 4: Artifacts | PARTIAL | Cycle artifacts done; general future |
-| 5: Guards | Not Started | guard_js in cycles done; general future |
+| 5: Guards | IN PROGRESS | guard_js compilation complete; outputs/helpers future |
 | 6: Matrices | Not Started | |
 | 7: Agent tasks | COMPLETE | Claude Code Action integration |
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 450+ tests passing (35 in vscode-extension alone)
-**Work Items Completed:** 37
+**Test Count:** 303+ tests in compiler (450+ total across packages)
+**Work Items Completed:** 38
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 2 (WI-019, WI-022)
+**Work Items In Backlog:** 6 (WI-020, WI-021, WI-022, WI-023, WI-024, WI-025)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -206,7 +210,16 @@ jobs:
 
 ## Completed
 
-### Phase 9: Tooling - MOST RECENT
+### Phase 5: Guards - MOST RECENT
+- **WI-019: Implement guard_js Compilation (General Guards)** - Completed 2025-12-31
+  - Extended grammar with GuardJsStep production
+  - Added GuardJsStepNode to AST
+  - Implemented codegen to transform guard_js to Node.js script
+  - Created `examples/guard-job/` with example and expected YAML
+  - 10 new test cases (303 tests in compiler)
+  - Milestone C now IN PROGRESS
+
+### Phase 9: Tooling - RECENT
 - **WI-039: Enhanced VS Code Diagnostics** - Completed 2025-12-31
   - Created `hover.ts` with HoverProvider for keywords and properties
   - Created `code-actions.ts` with quick fixes for WP7001, WP7002, WP6001, WP6005

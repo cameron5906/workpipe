@@ -142,7 +142,12 @@ StepList {
 Step {
   RunStep |
   UsesStep |
-  AgentTaskStep
+  AgentTaskStep |
+  GuardJsStep
+}
+
+GuardJsStep {
+  kw<"step"> String GuardJs
 }
 
 RunStep {

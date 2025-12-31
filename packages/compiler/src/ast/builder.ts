@@ -84,6 +84,7 @@ const {
   SchemaPrimitiveType,
   NullType,
   StringLiteralType,
+  GuardJsStep,
 } = terms;
 
 import type {
@@ -96,6 +97,7 @@ import type {
   RunStepNode,
   UsesStepNode,
   AgentTaskNode,
+  GuardJsStepNode,
   ToolsConfig,
   McpConfig,
   PromptValue,
@@ -936,7 +938,45 @@ function buildStep(cursor: TreeCursor, source: string): StepNode | null {
     return buildAgentTask(cursor, source);
   }
 
+  if (nodeType === GuardJsStep) {
+    return buildGuardJsStep(cursor, source);
+  }
+
   return null;
+}
+
+function buildGuardJsStep(cursor: TreeCursor, source: string): GuardJsStepNode | null {
+  if (cursor.type.id !== GuardJsStep) return null;
+
+  const stepSpan = span(cursor);
+  let id = "";
+  let code = "";
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === StringTerm) {
+      id = unquoteString(getText(cursor, source));
+    } else if (cursor.type.id === GuardJs) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === TripleQuotedString) {
+            code = unquoteTripleString(getText(cursor, source));
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "guard_js_step",
+    id,
+    code,
+    span: stepSpan,
+  };
 }
 
 function buildJob(cursor: TreeCursor, source: string): JobNode | null {

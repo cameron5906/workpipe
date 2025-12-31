@@ -10,6 +10,7 @@ import type {
   AgentTaskNode,
   RunStepNode,
   UsesStepNode,
+  GuardJsStepNode,
   BinaryExpressionNode,
   PropertyAccessNode,
   StringLiteralNode,
@@ -1210,6 +1211,117 @@ describe("AST Builder", () => {
 
       expect(schema.fields[0].span.start).toBeGreaterThan(0);
       expect(schema.fields[0].span.end).toBeGreaterThan(schema.fields[0].span.start);
+    });
+  });
+
+  describe("guard_js step parsing", () => {
+    it("parses basic guard_js step", () => {
+      const source = `workflow test {
+  on: push
+  job guard {
+    steps: [
+      step "decide" guard_js """
+        return context.event.issue?.labels?.some(l => l.name === 'priority');
+      """
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs).toHaveLength(1);
+      expect(ast!.jobs[0].steps).toHaveLength(1);
+
+      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      expect(step.kind).toBe("guard_js_step");
+      expect(step.id).toBe("decide");
+      expect(step.code).toContain("return context.event.issue?.labels?.some");
+    });
+
+    it("parses guard_js step with simple boolean check", () => {
+      const source = `workflow test {
+  on: push
+  job guard {
+    steps: [
+      step "check_branch" guard_js """
+        return context.ref === 'refs/heads/main';
+      """
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      expect(step.kind).toBe("guard_js_step");
+      expect(step.id).toBe("check_branch");
+      expect(step.code).toContain("refs/heads/main");
+    });
+
+    it("parses guard_js step with multiline code", () => {
+      const source = `workflow test {
+  on: push
+  job guard {
+    steps: [
+      step "complex_guard" guard_js """
+        const labels = context.event.issue?.labels || [];
+        const hasPriority = labels.some(l => l.name === 'priority');
+        const isUrgent = labels.some(l => l.name === 'urgent');
+        return hasPriority || isUrgent;
+      """
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      expect(step.kind).toBe("guard_js_step");
+      expect(step.id).toBe("complex_guard");
+      expect(step.code).toContain("const labels = context.event.issue?.labels");
+      expect(step.code).toContain("return hasPriority || isUrgent");
+    });
+
+    it("parses guard_js step mixed with other steps", () => {
+      const source = `workflow test {
+  on: push
+  job guard {
+    steps: [
+      uses("actions/checkout@v4"),
+      step "check" guard_js """
+        return true;
+      """,
+      run("echo done")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast!.jobs[0].steps).toHaveLength(3);
+      expect(ast!.jobs[0].steps[0].kind).toBe("uses");
+      expect(ast!.jobs[0].steps[1].kind).toBe("guard_js_step");
+      expect(ast!.jobs[0].steps[2].kind).toBe("run");
+    });
+
+    it("preserves guard_js step span", () => {
+      const source = `workflow test {
+  on: push
+  job guard {
+    steps: [
+      step "decide" guard_js """
+        return context.event.action === 'opened';
+      """
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      expect(step.span.start).toBeGreaterThan(0);
+      expect(step.span.end).toBeGreaterThan(step.span.start);
     });
   });
 });

@@ -3,7 +3,7 @@ import { parse } from "@workpipe/lang";
 import { buildAST } from "../ast/index.js";
 import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema } from "../codegen/index.js";
 import { compile } from "../index.js";
-import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode } from "../ast/types.js";
+import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode, GuardJsStepNode, JobNode } from "../ast/types.js";
 import type { WorkflowNode } from "../ast/types.js";
 
 describe("serializeExpression", () => {
@@ -1636,5 +1636,152 @@ describe("agent task with inline schema", () => {
         output_schema: { $ref: "./schemas/my-schema.json" },
       },
     });
+  });
+});
+
+describe("guard_js step transforms", () => {
+  it("transforms guard_js step to ScriptStepIR", () => {
+    const guardStep: GuardJsStepNode = {
+      kind: "guard_js_step",
+      id: "decide",
+      code: "return context.event.issue?.labels?.some(l => l.name === 'priority');",
+      span: { start: 0, end: 100 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "guard",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [guardStep],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "guard-test",
+      trigger: { kind: "trigger", events: ["issues"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("guard")!;
+
+    expect(irJob.steps).toHaveLength(1);
+    expect(irJob.steps[0]).toMatchObject({
+      kind: "script",
+      name: "Evaluate guard",
+      id: "decide",
+      shell: "bash",
+    });
+  });
+
+  it("emits guard_js step as node script with GITHUB_OUTPUT", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "decide" guard_js """
+            return context.event.issue?.labels?.some(l => l.name === 'priority');
+          """
+        ]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("name: Evaluate guard");
+    expect(yaml).toContain("id: decide");
+    expect(yaml).toContain("run:");
+    expect(yaml).toContain("node -e");
+    expect(yaml).toContain("GITHUB_OUTPUT");
+    expect(yaml).toContain("shell: bash");
+  });
+
+  it("transforms guard_js step with branch check logic", () => {
+    const source = `workflow test {
+      on: push
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check_branch" guard_js """
+            return context.ref === 'refs/heads/main';
+          """
+        ]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("guard")!;
+    expect(job.steps[0]).toMatchObject({
+      kind: "script",
+      id: "check_branch",
+    });
+  });
+
+  it("compiles workflow with guard_js step and outputs", () => {
+    const source = `workflow test {
+  on: issues
+  job guard {
+    runs_on: ubuntu-latest
+    outputs: {
+      should_run: bool
+    }
+    steps: [
+      step "decide" guard_js """
+        return context.event.action === 'opened';
+      """
+    ]
+  }
+  job process {
+    runs_on: ubuntu-latest
+    needs: guard
+    steps: [
+      run("echo Processing...")
+    ]
+  }
+}`;
+    const result = compile(source);
+    if (!result.success) {
+      console.log("Diagnostics:", JSON.stringify(result.diagnostics, null, 2));
+    }
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("guard:");
+      expect(result.value).toContain("process:");
+      expect(result.value).toContain("needs:");
+      expect(result.value).toContain("id: decide");
+    }
+  });
+
+  it("guard_js step includes context with event and ref", () => {
+    const source = `workflow test {
+      on: push
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check" guard_js """
+            return context.event && context.ref;
+          """
+        ]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("GITHUB_EVENT_PATH");
+    expect(yaml).toContain("GITHUB_REF");
+    expect(yaml).toContain("context.event && context.ref");
   });
 });
