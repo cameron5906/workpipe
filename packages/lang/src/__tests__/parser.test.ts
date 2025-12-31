@@ -1624,4 +1624,256 @@ describe("WorkPipe Parser", () => {
       expect(terms.TypeName).toBeDefined();
     });
   });
+
+  describe("matrix job syntax", () => {
+    it("parses basic matrix job declaration", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+    }
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundMatrixModifier = false;
+      let foundAxesProperty = false;
+      let foundAxisDecl = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "MatrixModifier") foundMatrixModifier = true;
+        if (node.name === "AxesProperty") foundAxesProperty = true;
+        if (node.name === "AxisDecl") foundAxisDecl = true;
+      });
+
+      expect(foundMatrixModifier).toBe(true);
+      expect(foundAxesProperty).toBe(true);
+      expect(foundAxisDecl).toBe(true);
+    });
+
+    it("parses matrix job with multiple axes", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+      os: [ubuntu-latest, macos-latest]
+    }
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let axisDeclCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "AxisDecl") axisDeclCount++;
+      });
+
+      expect(axisDeclCount).toBe(2);
+    });
+
+    it("parses matrix job with max_parallel property", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    max_parallel = 4
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundMaxParallelProperty = false;
+      let maxParallelValue = "";
+      let inMaxParallel = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "MaxParallelProperty") {
+          foundMaxParallelProperty = true;
+          inMaxParallel = true;
+        }
+        if (inMaxParallel && node.name === "Number") {
+          maxParallelValue = source.slice(node.from, node.to);
+          inMaxParallel = false;
+        }
+      });
+
+      expect(foundMaxParallelProperty).toBe(true);
+      expect(maxParallelValue).toBe("4");
+    });
+
+    it("parses matrix job with fail_fast property", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    fail_fast = false
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundFailFastProperty = false;
+      let failFastValue = "";
+      let inFailFast = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "FailFastProperty") {
+          foundFailFastProperty = true;
+          inFailFast = true;
+        }
+        if (inFailFast && node.name === "Boolean") {
+          failFastValue = source.slice(node.from, node.to);
+          inFailFast = false;
+        }
+      });
+
+      expect(foundFailFastProperty).toBe(true);
+      expect(failFastValue).toBe("false");
+    });
+
+    it("parses matrix job with all properties", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+      os: [ubuntu-latest, macos-latest]
+    }
+    max_parallel = 4
+    fail_fast = false
+    runs_on: ubuntu-latest
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const nodeTypes = new Set<string>();
+      tree.cursor().iterate((node) => {
+        nodeTypes.add(node.name);
+      });
+
+      expect(nodeTypes.has("MatrixModifier")).toBe(true);
+      expect(nodeTypes.has("AxesProperty")).toBe(true);
+      expect(nodeTypes.has("AxisDecl")).toBe(true);
+      expect(nodeTypes.has("MaxParallelProperty")).toBe(true);
+      expect(nodeTypes.has("FailFastProperty")).toBe(true);
+      expect(nodeTypes.has("RunsOnProperty")).toBe(true);
+      expect(nodeTypes.has("StepsProperty")).toBe(true);
+    });
+
+    it("parses axis values as numbers", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      version: [18, 20, 22]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const numbers: string[] = [];
+      let inAxisValueList = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "AxisValueList") {
+          inAxisValueList = true;
+        }
+        if (inAxisValueList && node.name === "Number") {
+          numbers.push(source.slice(node.from, node.to));
+        }
+        if (node.name === "AxisDecl") {
+          inAxisValueList = false;
+        }
+      });
+
+      expect(numbers).toContain("18");
+      expect(numbers).toContain("20");
+      expect(numbers).toContain("22");
+    });
+
+    it("parses axis values as strings", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      env: ["dev", "staging", "prod"]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const strings: string[] = [];
+      let inAxisValueList = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "AxisValueList") {
+          inAxisValueList = true;
+        }
+        if (inAxisValueList && node.name === "String") {
+          strings.push(source.slice(node.from, node.to));
+        }
+        if (node.name === "AxisDecl") {
+          inAxisValueList = false;
+        }
+      });
+
+      expect(strings).toContain('"dev"');
+      expect(strings).toContain('"staging"');
+      expect(strings).toContain('"prod"');
+    });
+
+    it("parses axis values as bare identifiers with hyphens", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest, macos-latest, windows-latest]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundAxisValueList = false;
+      let foundHyphenatedIdentifier = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "AxisValueList") foundAxisValueList = true;
+        if (foundAxisValueList && node.name === "HyphenatedIdentifier") foundHyphenatedIdentifier = true;
+      });
+
+      expect(foundAxisValueList).toBe(true);
+      expect(foundHyphenatedIdentifier).toBe(true);
+    });
+
+    it("exports matrix term constants", () => {
+      expect(terms.MatrixModifier).toBeDefined();
+      expect(terms.AxesProperty).toBeDefined();
+      expect(terms.AxisDecl).toBeDefined();
+      expect(terms.AxisValueList).toBeDefined();
+      expect(terms.AxisValue).toBeDefined();
+      expect(terms.HyphenatedIdentifier).toBeDefined();
+      expect(terms.MaxParallelProperty).toBeDefined();
+      expect(terms.FailFastProperty).toBeDefined();
+    });
+  });
 });

@@ -90,8 +90,23 @@ export interface BooleanLiteralNode {
   readonly span: Span;
 }
 
+// Matrix job node
+export interface MatrixJobNode {
+  readonly kind: "matrix_job";
+  readonly name: string;
+  readonly axes: Record<string, readonly (string | number)[]>;
+  readonly maxParallel?: number;
+  readonly failFast?: boolean;
+  readonly runsOn: string | null;
+  readonly needs: readonly string[];
+  readonly condition: ExpressionNode | null;
+  readonly outputs: readonly OutputDeclaration[];
+  readonly steps: readonly StepNode[];
+  readonly span: Span;
+}
+
 // Union for all job types
-export type AnyJobNode = JobNode | AgentJobNode;
+export type AnyJobNode = JobNode | AgentJobNode | MatrixJobNode;
 
 // Agent job node
 export interface AgentJobNode {

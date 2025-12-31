@@ -7,6 +7,7 @@ export type {
   JobNode,
   AnyJobNode,
   AgentJobNode,
+  MatrixJobNode,
   StepNode,
   RunStepNode,
   UsesStepNode,

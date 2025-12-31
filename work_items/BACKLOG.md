@@ -27,19 +27,18 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No items currently in progress)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-022: Implement matrix axes syntax and parsing - P2-Medium
-2. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
-3. WI-021: Create guard helper library - P3-Low
-4. WI-023: Generate strategy.matrix with include/exclude - P2-Medium
-5. WI-024: Add matrix fingerprint to artifact naming - P2-Medium
-6. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium
+1. WI-023: Generate strategy.matrix with include/exclude - P2-Medium (unblocked by WI-022)
+2. WI-024: Add matrix fingerprint to artifact naming - P2-Medium (depends on WI-023)
+3. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium (unblocked by WI-022)
+4. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
+5. WI-021: Create guard helper library - P3-Low
 
 ---
 
@@ -51,7 +50,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | **A+** | COMPLETE | Agent tasks + diagnostics + formatter |
 | **B** | COMPLETE | Strategy B cycles with full safety |
 | **C** | IN PROGRESS | Guards + advanced triggers |
-| **D** | Not Started | Matrices |
+| **D** | IN PROGRESS | Matrices |
 | **E** | IN PROGRESS | Tooling (VS Code extension + bootstrap) |
 
 | Phase | Status | Key Deliverables |
@@ -62,15 +61,15 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 3: Types + outputs | PARTIAL | Diagnostics done; type system future |
 | 4: Artifacts | PARTIAL | Cycle artifacts done; general future |
 | 5: Guards | IN PROGRESS | guard_js compilation complete; outputs/helpers future |
-| 6: Matrices | Not Started | |
+| 6: Matrices | IN PROGRESS | Matrix syntax and parsing |
 | 7: Agent tasks | COMPLETE | Claude Code Action integration |
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 303+ tests in compiler (450+ total across packages)
-**Work Items Completed:** 38
+**Test Count:** 385+ tests (71 lang + 314 compiler)
+**Work Items Completed:** 39
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 6 (WI-020, WI-021, WI-022, WI-023, WI-024, WI-025)
+**Work Items In Backlog:** 5 (WI-020, WI-021, WI-023, WI-024, WI-025)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -210,7 +209,16 @@ jobs:
 
 ## Completed
 
-### Phase 5: Guards - MOST RECENT
+### Phase 6: Matrices - MOST RECENT
+- **WI-022: Implement Matrix Axes Syntax and Parsing** - Completed 2025-12-31
+  - Extended grammar with MatrixModifier, AxesProperty, MaxParallelProperty, FailFastProperty
+  - Added MatrixJobNode to AST types
+  - Implemented AST builder for matrix jobs
+  - Added codegen support with strategy block generation
+  - 21 new tests (385 total - 71 lang + 314 compiler)
+  - Phase 6 (Matrices) now IN PROGRESS
+
+### Phase 5: Guards
 - **WI-019: Implement guard_js Compilation (General Guards)** - Completed 2025-12-31
   - Extended grammar with GuardJsStep production
   - Added GuardJsStepNode to AST

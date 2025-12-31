@@ -24,11 +24,18 @@ export interface TriggerIR {
   };
 }
 
+export interface MatrixStrategyIR {
+  readonly matrix: Record<string, readonly (string | number)[]>;
+  readonly "max-parallel"?: number;
+  readonly "fail-fast"?: boolean;
+}
+
 export interface JobIR {
   readonly runsOn: string;
   readonly needs?: readonly string[];
   readonly if?: string;
   readonly outputs?: Record<string, string>;
+  readonly strategy?: MatrixStrategyIR;
   readonly steps: readonly StepIR[];
 }
 

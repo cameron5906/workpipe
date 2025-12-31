@@ -85,6 +85,14 @@ const {
   NullType,
   StringLiteralType,
   GuardJsStep,
+  MatrixModifier,
+  AxesProperty,
+  AxisDecl,
+  AxisValueList,
+  AxisValue,
+  HyphenatedIdentifier,
+  MaxParallelProperty,
+  FailFastProperty,
 } = terms;
 
 import type {
@@ -93,6 +101,7 @@ import type {
   JobNode,
   AnyJobNode,
   AgentJobNode,
+  MatrixJobNode,
   StepNode,
   RunStepNode,
   UsesStepNode,
@@ -979,16 +988,78 @@ function buildGuardJsStep(cursor: TreeCursor, source: string): GuardJsStepNode |
   };
 }
 
-function buildJob(cursor: TreeCursor, source: string): JobNode | null {
+function buildAxisValues(cursor: TreeCursor, source: string): (string | number)[] {
+  const values: (string | number)[] = [];
+
+  if (!cursor.firstChild()) return values;
+
+  do {
+    if (cursor.type.id === AxisValue) {
+      if (cursor.firstChild()) {
+        const valueType = cursor.type.id;
+        if (valueType === NumberTerm) {
+          values.push(parseInt(getText(cursor, source), 10));
+        } else if (valueType === StringTerm) {
+          values.push(unquoteString(getText(cursor, source)));
+        } else if (valueType === Identifier) {
+          values.push(getText(cursor, source));
+        } else if (valueType === HyphenatedIdentifier) {
+          values.push(getText(cursor, source));
+        }
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return values;
+}
+
+function buildAxes(cursor: TreeCursor, source: string): Record<string, (string | number)[]> {
+  const axes: Record<string, (string | number)[]> = {};
+
+  if (!cursor.firstChild()) return axes;
+
+  do {
+    if (cursor.type.id === AxisDecl) {
+      let axisName = "";
+      let axisValues: (string | number)[] = [];
+
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === Identifier) {
+            axisName = getText(cursor, source);
+          } else if (cursor.type.id === AxisValueList) {
+            axisValues = buildAxisValues(cursor, source);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+
+      if (axisName) {
+        axes[axisName] = axisValues;
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return axes;
+}
+
+function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode | null {
   if (cursor.type.id !== JobDecl) return null;
 
   const jobSpan = span(cursor);
   let name = "";
+  let isMatrix = false;
   let runsOn: string | null = null;
   const needs: string[] = [];
   let condition: ExpressionNode | null = null;
   const outputs: OutputDeclaration[] = [];
   const steps: StepNode[] = [];
+  let axes: Record<string, (string | number)[]> = {};
+  let maxParallel: number | undefined;
+  let failFast: boolean | undefined;
 
   if (!cursor.firstChild()) return null;
 
@@ -997,6 +1068,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
 
     if (nodeType === Identifier) {
       name = getText(cursor, source);
+    } else if (nodeType === MatrixModifier) {
+      isMatrix = true;
     } else if (nodeType === JobBody) {
       if (cursor.firstChild()) {
         do {
@@ -1066,6 +1139,24 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
                   } while (cursor.nextSibling());
                   cursor.parent();
                 }
+              } else if (propType === AxesProperty) {
+                axes = buildAxes(cursor, source);
+              } else if (propType === MaxParallelProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NumberTerm) {
+                      maxParallel = parseInt(getText(cursor, source), 10);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === FailFastProperty) {
+                const failFastText = getText(cursor, source);
+                if (failFastText.includes("true")) {
+                  failFast = true;
+                } else if (failFastText.includes("false")) {
+                  failFast = false;
+                }
               }
               cursor.parent();
             }
@@ -1077,6 +1168,23 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
   } while (cursor.nextSibling());
 
   cursor.parent();
+
+  if (isMatrix) {
+    const matrixJobNode: MatrixJobNode = {
+      kind: "matrix_job",
+      name,
+      axes,
+      maxParallel,
+      failFast,
+      runsOn,
+      needs,
+      condition,
+      outputs,
+      steps,
+      span: jobSpan,
+    };
+    return matrixJobNode;
+  }
 
   const jobNode: JobNode = {
     kind: "job",

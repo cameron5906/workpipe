@@ -3,6 +3,7 @@ import type {
   JobNode,
   AnyJobNode,
   AgentJobNode,
+  MatrixJobNode,
   StepNode,
   AgentTaskNode,
   GuardJsStepNode,
@@ -23,6 +24,7 @@ import type {
   ScriptStepIR,
   WorkflowDispatchInputIR,
   ConcurrencyIR,
+  MatrixStrategyIR,
 } from "./yaml-ir.js";
 
 export type JsonSchema =
@@ -310,9 +312,50 @@ function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
   return result;
 }
 
+function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
+  const steps: StepIR[] = [];
+  for (const step of job.steps) {
+    const transformed = transformStep(step, workflowName, job.name);
+    steps.push(...transformed);
+  }
+
+  const strategy: MatrixStrategyIR = {
+    matrix: job.axes,
+    ...(job.maxParallel !== undefined ? { "max-parallel": job.maxParallel } : {}),
+    ...(job.failFast !== undefined ? { "fail-fast": job.failFast } : {}),
+  };
+
+  const result: JobIR = {
+    runsOn: job.runsOn ?? "ubuntu-latest",
+    steps,
+    strategy,
+  };
+
+  if (job.needs.length > 0) {
+    (result as { needs: readonly string[] }).needs = job.needs;
+  }
+
+  if (job.condition) {
+    (result as { if: string }).if = serializeExpression(job.condition);
+  }
+
+  if (job.outputs.length > 0) {
+    const outputs: Record<string, string> = {};
+    for (const output of job.outputs) {
+      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    }
+    (result as { outputs: Record<string, string> }).outputs = outputs;
+  }
+
+  return result;
+}
+
 function transformJob(job: AnyJobNode, workflowName: string): JobIR {
   if (job.kind === "agent_job") {
     return transformAgentJob(job, workflowName);
+  }
+  if (job.kind === "matrix_job") {
+    return transformMatrixJob(job, workflowName);
   }
   return transformRegularJob(job, workflowName);
 }

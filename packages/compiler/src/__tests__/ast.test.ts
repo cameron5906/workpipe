@@ -1324,4 +1324,242 @@ describe("AST Builder", () => {
       expect(step.span.end).toBeGreaterThan(step.span.start);
     });
   });
+
+  describe("matrix job parsing", () => {
+    it("parses basic matrix job declaration", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+    }
+    runs_on: ubuntu-latest
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs).toHaveLength(1);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.name).toBe("test");
+      expect(job.axes).toEqual({ node: [18, 20, 22] });
+      expect(job.runsOn).toBe("ubuntu-latest");
+    });
+
+    it("parses matrix job with multiple axes", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+      os: [ubuntu-latest, macos-latest]
+    }
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.axes).toEqual({
+        node: [18, 20, 22],
+        os: ["ubuntu-latest", "macos-latest"],
+      });
+    });
+
+    it("parses matrix job with string axis values", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      env: ["dev", "staging", "prod"]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.axes).toEqual({ env: ["dev", "staging", "prod"] });
+    });
+
+    it("parses matrix job with max_parallel property", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    max_parallel = 4
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.maxParallel).toBe(4);
+    });
+
+    it("parses matrix job with fail_fast = true", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    fail_fast = true
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.failFast).toBe(true);
+    });
+
+    it("parses matrix job with fail_fast = false", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    fail_fast = false
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.failFast).toBe(false);
+    });
+
+    it("parses matrix job with all properties", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+      os: [ubuntu-latest, macos-latest]
+    }
+    max_parallel = 4
+    fail_fast = true
+    runs_on: ubuntu-latest
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.name).toBe("test");
+      expect(job.axes).toEqual({
+        node: [18, 20, 22],
+        os: ["ubuntu-latest", "macos-latest"],
+      });
+      expect(job.maxParallel).toBe(4);
+      expect(job.failFast).toBe(true);
+      expect(job.runsOn).toBe("ubuntu-latest");
+      expect(job.steps).toHaveLength(1);
+    });
+
+    it("parses regular job without matrix modifier", () => {
+      const source = `workflow test {
+  on: push
+  job test {
+    runs_on: ubuntu-latest
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as JobNode;
+      expect(job.kind).toBe("job");
+      expect(job.name).toBe("test");
+    });
+
+    it("parses matrix job with needs dependency", () => {
+      const source = `workflow test {
+  on: push
+  job setup {
+    steps: []
+  }
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    needs: setup
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast!.jobs).toHaveLength(2);
+
+      const setupJob = ast!.jobs[0] as JobNode;
+      expect(setupJob.kind).toBe("job");
+      expect(setupJob.name).toBe("setup");
+
+      const matrixJob = ast!.jobs[1] as import("../ast/index.js").MatrixJobNode;
+      expect(matrixJob.kind).toBe("matrix_job");
+      expect(matrixJob.name).toBe("test");
+      expect(matrixJob.needs).toEqual(["setup"]);
+    });
+
+    it("preserves matrix job span", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      node: [18, 20]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.span.start).toBeGreaterThan(0);
+      expect(job.span.end).toBeGreaterThan(job.span.start);
+    });
+
+    it("parses matrix job with mixed axis value types", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      version: [18, 20, 22]
+      environment: ["dev", "prod"]
+      runner: [ubuntu-latest]
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.axes.version).toEqual([18, 20, 22]);
+      expect(job.axes.environment).toEqual(["dev", "prod"]);
+      expect(job.axes.runner).toEqual(["ubuntu-latest"]);
+    });
+  });
 });

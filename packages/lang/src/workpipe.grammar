@@ -31,7 +31,11 @@ EventName {
 }
 
 JobDecl {
-  kw<"job"> Identifier "{" JobBody "}"
+  kw<"job"> Identifier MatrixModifier? "{" JobBody "}"
+}
+
+MatrixModifier {
+  kw<"matrix">
 }
 
 AgentJobDecl {
@@ -87,7 +91,38 @@ JobProperty {
   NeedsProperty |
   IfProperty |
   OutputsProperty |
-  StepsProperty
+  StepsProperty |
+  AxesProperty |
+  MaxParallelProperty |
+  FailFastProperty
+}
+
+AxesProperty {
+  kw<"axes"> "{" AxisDecl* "}"
+}
+
+AxisDecl {
+  Identifier ":" "[" AxisValueList "]"
+}
+
+AxisValueList {
+  AxisValue ("," AxisValue)*
+}
+
+AxisValue {
+  Number | String | HyphenatedIdentifier
+}
+
+HyphenatedIdentifier {
+  identifier ("-" identifier)*
+}
+
+MaxParallelProperty {
+  kw<"max_parallel"> "=" Number
+}
+
+FailFastProperty {
+  kw<"fail_fast"> "=" Boolean
 }
 
 RunsOnProperty {
