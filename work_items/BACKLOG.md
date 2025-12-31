@@ -27,7 +27,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(none)
 
 ---
 
@@ -40,14 +40,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
    - Improves DX for inline schema authoring
 
 ### Existing Backlog
-3. **WI-054: Validate Output References (WP2011)** - P2-High
-   - Detect references to non-existent outputs
-   - Cross-job semantic validation
-   - WI-046 now complete, ready for implementation
-
-4. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
-5. WI-019: Implement guard_js compilation (general guards) - P2-Medium
-6. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+2. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
+3. WI-019: Implement guard_js compilation (general guards) - P2-Medium
+4. WI-022: Implement matrix axes syntax and parsing - P2-Medium
 
 ---
 
@@ -75,10 +70,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 394 tests passing
-**Work Items Completed:** 34
+**Test Count:** 405 tests passing
+**Work Items Completed:** 35
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 5 (WI-059, WI-054, WI-039, WI-019, WI-022)
+**Work Items In Backlog:** 4 (WI-059, WI-039, WI-019, WI-022)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -220,6 +215,14 @@ jobs:
 ---
 
 ## Completed
+
+### Phase 3: Types + Outputs - RECENT
+- **WI-054: Validate Output References (WP2011)** - Completed 2025-12-31
+  - Added WP2011 diagnostic code for non-existent output references
+  - Extended output-validation.ts with reference scanning
+  - 11 new test cases added
+  - docs/errors.md updated with WP2011 documentation
+  - 405 tests passing
 
 ### Examples & Documentation - RECENT
 - ✅ **WI-058: Add Inline Schema Example to agent-task** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**

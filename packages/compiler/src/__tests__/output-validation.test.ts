@@ -249,6 +249,253 @@ describe("validateOutputs", () => {
   });
 });
 
+describe("WP2011 - Reference to non-existent output", () => {
+  describe("validateOutputs with output references", () => {
+    it("returns error when referencing non-existent output on a needed job", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version"), createOutput("artifact_path")]),
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.typo }}"',
+                span: createSpan(100, 150),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].severity).toBe("error");
+      expect(diagnostics[0].message).toContain("typo");
+      expect(diagnostics[0].message).toContain("build");
+      expect(diagnostics[0].hint).toContain("version");
+      expect(diagnostics[0].hint).toContain("artifact_path");
+    });
+
+    it("returns no error when referencing valid output", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.version }}"',
+                span: createSpan(),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(0);
+    });
+
+    it("returns error when referencing output on job not in needs", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createJob("deploy", []),
+            needs: [],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.version }}"',
+                span: createSpan(100, 150),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].message).toContain("build");
+    });
+
+    it("returns error for each invalid reference in the same step", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command:
+                  'echo "${{ needs.build.outputs.foo }}" && echo "${{ needs.build.outputs.bar }}"',
+                span: createSpan(),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(2);
+      expect(diagnostics.every((d) => d.code === "WP2011")).toBe(true);
+    });
+
+    it("validates references in uses step action strings", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "uses" as const,
+                action: "some-action@${{ needs.build.outputs.invalid }}",
+                span: createSpan(100, 150),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].message).toContain("invalid");
+    });
+
+    it("validates references in agent task descriptions", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createAgentJob("agent", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "agent_task" as const,
+                taskDescription:
+                  "Deploy version ${{ needs.build.outputs.nonexistent }}",
+                consumes: [],
+                span: createSpan(100, 150),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].message).toContain("nonexistent");
+    });
+
+    it("validates references in jobs inside cycles", () => {
+      const workflow = createWorkflow({
+        jobs: [createJob("setup", [createOutput("config")])],
+        cycles: [
+          createCycle("loop", [
+            {
+              ...createJob("work", []),
+              needs: ["setup"],
+              steps: [
+                {
+                  kind: "run" as const,
+                  command: 'echo "${{ needs.setup.outputs.missing }}"',
+                  span: createSpan(),
+                },
+              ],
+            },
+          ]),
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].message).toContain("missing");
+      expect(diagnostics[0].message).toContain("setup");
+    });
+
+    it("shows helpful message when job has no outputs", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", []),
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.version }}"',
+                span: createSpan(),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].hint).toContain("no outputs");
+    });
+
+    it("validates multiple jobs referencing the same dependency", () => {
+      const workflow = createWorkflow({
+        jobs: [
+          createJob("build", [createOutput("version")]),
+          {
+            ...createJob("test", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.version }}"',
+                span: createSpan(),
+              },
+            ],
+          },
+          {
+            ...createJob("deploy", []),
+            needs: ["build"],
+            steps: [
+              {
+                kind: "run" as const,
+                command: 'echo "${{ needs.build.outputs.invalid }}"',
+                span: createSpan(),
+              },
+            ],
+          },
+        ],
+      });
+
+      const diagnostics = validateOutputs(workflow);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe("WP2011");
+      expect(diagnostics[0].message).toContain("invalid");
+    });
+  });
+});
+
 describe("compile integration with output validation", () => {
   it("returns WP2010 error for duplicate outputs via compile()", () => {
     const source = `workflow test {
@@ -290,5 +537,52 @@ describe("compile integration with output validation", () => {
     expect(result.success).toBe(true);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(0);
+  });
+
+  it("returns WP2011 error for referencing non-existent output via compile()", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: {
+          version: string
+        }
+        steps: [run("echo hello")]
+      }
+      job deploy {
+        runs_on: ubuntu-latest
+        needs: [build]
+        steps: [run("echo $\{{ needs.build.outputs.typo }}")]
+      }
+    }`;
+
+    const result = compile(source);
+
+    expect(result.success).toBe(false);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.some((e) => e.code === "WP2011")).toBe(true);
+    expect(errors.some((e) => e.message.includes("typo"))).toBe(true);
+  });
+
+  it("compiles successfully with valid output references", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: {
+          version: string
+        }
+        steps: [run("echo hello")]
+      }
+      job deploy {
+        runs_on: ubuntu-latest
+        needs: [build]
+        steps: [run("echo $\{{ needs.build.outputs.version }}")]
+      }
+    }`;
+
+    const result = compile(source);
+
+    expect(result.success).toBe(true);
   });
 });

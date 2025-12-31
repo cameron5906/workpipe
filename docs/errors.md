@@ -80,6 +80,65 @@ job build {
 
 ---
 
+### WP2011: Reference to Non-Existent Output
+
+**Severity:** Error
+
+**Description:** A job references an output from another job using `${{ needs.<job>.outputs.<name> }}`, but the referenced output does not exist on that job, or the referenced job is not in the `needs` list.
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      version: string
+      artifact_path: string
+    }
+    steps: [run("echo hello")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${{ needs.build.outputs.typo }}")  // Error: 'typo' doesn't exist
+    ]
+  }
+}
+```
+
+**Solution:** Check the spelling of the output name and ensure it matches a declared output on the referenced job:
+
+```workpipe
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]
+  steps: [
+    run("echo ${{ needs.build.outputs.version }}")  // Correct: 'version' exists
+  ]
+}
+```
+
+If referencing a job not in your `needs` list, add it:
+
+```workpipe
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]  // Ensure the job is listed here
+  steps: [
+    run("echo ${{ needs.build.outputs.version }}")
+  ]
+}
+```
+
+The error message will list all available outputs on the referenced job to help identify the correct name.
+
+---
+
 ## WP6xxx - Cycle Validation
 
 ### WP6001: Cycle Missing Termination Condition

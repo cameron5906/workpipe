@@ -1,7 +1,7 @@
 # WI-054: Validate Output References (WP2011)
 
 **ID**: WI-054
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P2-High
 **Milestone**: C+ (Type System)
 **Phase**: 3+ (Types + Outputs)
@@ -16,37 +16,37 @@ This work item adds semantic validation to detect references to undeclared outpu
 
 ## Acceptance Criteria
 
-- [ ] WP2011 diagnostic code for referencing non-existent output
-- [ ] Compiler detects `needs.<job>.outputs.<name>` references
-- [ ] Compiler validates `<name>` exists in the referenced job's outputs
-- [ ] Clear error message with:
+- [x] WP2011 diagnostic code for referencing non-existent output
+- [x] Compiler detects `needs.<job>.outputs.<name>` references
+- [x] Compiler validates `<name>` exists in the referenced job's outputs
+- [x] Clear error message with:
   - The invalid reference
   - The job being referenced
   - Available outputs on that job (if any)
-- [ ] Tests for valid and invalid output references
-- [ ] errors.md updated with WP2011 documentation
+- [x] Tests for valid and invalid output references
+- [x] errors.md updated with WP2011 documentation
 
 ## Deliverables Checklist
 
 ### Semantic Analysis
-- [ ] Parse expressions to identify `needs.*.outputs.*` patterns
-- [ ] Build map of declared outputs per job
-- [ ] Validate references against declared outputs
-- [ ] Create WP2011 diagnostic with helpful hints
+- [x] Parse expressions to identify `needs.*.outputs.*` patterns
+- [x] Build map of declared outputs per job
+- [x] Validate references against declared outputs
+- [x] Create WP2011 diagnostic with helpful hints
 
 ### Code Changes
-- [ ] `packages/compiler/src/semantics/output-validation.ts` - extended or new
-- [ ] Wire validation into compile pipeline
-- [ ] Add diagnostic code WP2011 to diagnostic constants
+- [x] `packages/compiler/src/semantics/output-validation.ts` - extended or new
+- [x] Wire validation into compile pipeline
+- [x] Add diagnostic code WP2011 to diagnostic constants
 
 ### Tests
-- [ ] Test: valid output reference passes
-- [ ] Test: reference to non-existent output produces WP2011
-- [ ] Test: reference to non-existent job produces appropriate error
-- [ ] Test: helpful hints list available outputs
+- [x] Test: valid output reference passes
+- [x] Test: reference to non-existent output produces WP2011
+- [x] Test: reference to non-existent job produces appropriate error
+- [x] Test: helpful hints list available outputs
 
 ### Documentation
-- [ ] Update `docs/errors.md` with WP2011
+- [x] Update `docs/errors.md` with WP2011
 
 ## Technical Context
 
