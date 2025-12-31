@@ -8,6 +8,7 @@ WorkPipe uses diagnostic codes in the format `WPxxxx` to identify specific issue
 |-------|----------|
 | WP0xxx | Parse/AST errors |
 | WP2xxx | Output validation |
+| WP3xxx | Schema validation |
 | WP6xxx | Cycle validation |
 | WP7xxx | Semantic validation (required fields) |
 
@@ -136,6 +137,165 @@ job deploy {
 ```
 
 The error message will list all available outputs on the referenced job to help identify the correct name.
+
+---
+
+## WP3xxx - Schema Validation
+
+### WP3001: Unknown Primitive Type
+
+**Severity:** Error
+
+**Description:** An inline schema uses an unrecognized primitive type. WorkPipe schemas support only `string`, `int`, `float`, and `bool` as primitive types.
+
+**Example:**
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      count: integer  // Error: 'integer' is not valid, use 'int'
+    }
+  }
+}
+```
+
+**Solution:** Use one of the valid primitive types:
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      count: int  // Correct
+    }
+  }
+}
+```
+
+Valid primitive types are: `string`, `int`, `float`, `bool`
+
+---
+
+### WP3002: Empty Object Schema
+
+**Severity:** Error
+
+**Description:** An `output_schema` is defined as an empty object `{}` with no properties. An empty schema serves no purpose and likely indicates a mistake.
+
+**Example:**
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {}  // Error: empty schema
+  }
+}
+```
+
+**Solution:** Add at least one property to the schema, or remove the `output_schema` if not needed:
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      result: string
+      confidence: float
+    }
+  }
+}
+```
+
+---
+
+### WP3003: Invalid Union Type
+
+**Severity:** Error
+
+**Description:** A union type in the schema contains incompatible or nonsensical type combinations. Unions should combine related types that make semantic sense together.
+
+**Example:**
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      value: int | string  // Error: mixing numeric and string primitives
+    }
+  }
+}
+```
+
+**Solution:** Use more specific type combinations:
+
+```workpipe
+// Option 1: Use string literals for known values
+output_schema: {
+  status: "pending" | "complete" | "failed"
+}
+
+// Option 2: Use nullable types
+output_schema: {
+  result: string | null
+}
+
+// Option 3: Use discriminated unions for complex cases
+output_schema: {
+  type: "success"
+  value: string
+} | {
+  type: "error"
+  message: string
+}
+```
+
+Invalid union combinations include:
+- Mixing primitive types like `int | string` or `bool | float`
+- Mixing primitives with objects
+- Mixing primitives with arrays
+- Using string primitives with string literals (use just the literals)
+
+---
+
+### WP3004: Duplicate Property Name
+
+**Severity:** Error
+
+**Description:** The same property name appears more than once in an object schema definition.
+
+**Example:**
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      name: string
+      value: int
+      name: string  // Error: duplicate property 'name'
+    }
+  }
+}
+```
+
+**Solution:** Remove or rename the duplicate property:
+
+```workpipe
+agent_job analyzer {
+  runs_on: ubuntu-latest
+  task "Analyze the data" {
+    output_schema: {
+      name: string
+      value: int
+      display_name: string  // Renamed to avoid duplicate
+    }
+  }
+}
+```
 
 ---
 

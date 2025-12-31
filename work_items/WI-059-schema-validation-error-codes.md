@@ -1,7 +1,7 @@
 # WI-059: Error Codes for Invalid Schema Syntax
 
 **ID**: WI-059
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P2-Medium
 **Milestone**: A+ (Agent Tasks Enhancement)
 **Phase**: 7 (Agent tasks)
@@ -20,33 +20,33 @@ Add semantic validation and diagnostic error codes for invalid inline schema def
 
 ### Error Codes to Implement
 
-- [ ] WP3001: Unknown primitive type in schema
+- [x] WP3001: Unknown primitive type in schema
   - Triggered when a type name isn't recognized (e.g., `integer` instead of `int`)
   - Hint: "Did you mean 'int'? Supported types: string, int, float, bool"
 
-- [ ] WP3002: Empty object schema
+- [x] WP3002: Empty object schema
   - Triggered when `output_schema = {}` with no properties
   - Hint: "Object schemas must have at least one property"
 
-- [ ] WP3003: Invalid union type combination
+- [x] WP3003: Invalid union type combination
   - Triggered for unions that don't make sense (e.g., `int | string` without null)
   - Hint: "Union types are primarily for nullable fields (type | null) or string literal enums"
 
-- [ ] WP3004: Duplicate property name in schema
+- [x] WP3004: Duplicate property name in schema
   - Triggered when same property defined twice
   - Hint: "Property 'X' is defined multiple times"
 
-- [ ] WP3005: Invalid array item type
+- [ ] WP3005: Invalid array item type (DEFERRED - not implemented this iteration)
   - Triggered when array syntax is malformed
   - Hint: "Array type should be [itemType], e.g., [string] or [{...}]"
 
 ### Implementation Requirements
 
-- [ ] Add validation in `packages/compiler/src/semantics/schema-validation.ts`
-- [ ] Register error codes in diagnostic system
-- [ ] Update `docs/errors.md` with new WP3xxx codes
-- [ ] Add tests for each error code
-- [ ] Wire validation into compile pipeline
+- [x] Add validation in `packages/compiler/src/semantics/schema-validation.ts`
+- [x] Register error codes in diagnostic system
+- [x] Update `docs/errors.md` with new WP3xxx codes
+- [x] Add tests for each error code (22 new tests)
+- [x] Wire validation into compile pipeline
 
 ## Technical Context
 

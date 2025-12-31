@@ -27,22 +27,16 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(none)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
-### WI-056 Follow-up Items (User Feedback)
-1. **WI-059: Error Codes for Invalid Schema Syntax** - P2-Medium **[NEW]**
-   - WP3xxx error code range for schema-related errors
-   - Unknown type, empty object, invalid union, duplicate property
-   - Improves DX for inline schema authoring
-
 ### Existing Backlog
-2. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
-3. WI-019: Implement guard_js compilation (general guards) - P2-Medium
-4. WI-022: Implement matrix axes syntax and parsing - P2-Medium
+1. WI-039: Enhanced VS Code Diagnostics - P2-Medium (code actions, hover info)
+2. WI-019: Implement guard_js compilation (general guards) - P2-Medium
+3. WI-022: Implement matrix axes syntax and parsing - P2-Medium
 
 ---
 
@@ -70,10 +64,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 405 tests passing
-**Work Items Completed:** 35
+**Test Count:** 427 tests passing
+**Work Items Completed:** 36
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 4 (WI-059, WI-039, WI-019, WI-022)
+**Work Items In Backlog:** 3 (WI-039, WI-019, WI-022)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -215,6 +209,16 @@ jobs:
 ---
 
 ## Completed
+
+### Phase 7: Agent Tasks - RECENT
+- **WI-059: Error Codes for Invalid Schema Syntax (WP3xxx)** - Completed 2025-12-31
+  - WP3001: Unknown primitive type in schema
+  - WP3002: Empty object schema
+  - WP3003: Invalid union type combination
+  - WP3004: Duplicate property name in schema
+  - Created `packages/compiler/src/semantics/schema-validation.ts`
+  - 22 new tests (427 total passing)
+  - `docs/errors.md` updated with WP3xxx section
 
 ### Phase 3: Types + Outputs - RECENT
 - **WI-054: Validate Output References (WP2011)** - Completed 2025-12-31
