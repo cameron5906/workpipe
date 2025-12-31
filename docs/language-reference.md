@@ -246,6 +246,42 @@ agent_job triage {
 }
 ```
 
+### Inline Output Schemas
+
+Instead of referencing external JSON Schema files, you can define schemas inline:
+
+```workpipe
+agent_task("Analyze code") {
+  output_schema: {
+    rating: int
+    summary: string
+    issues: [{
+      file: string
+      line: int
+      severity: "error" | "warning" | null
+    }]
+  }
+}
+```
+
+**Supported Types:**
+
+| Type | Example | JSON Schema Equivalent |
+|------|---------|----------------------|
+| `string` | `name: string` | `{"type": "string"}` |
+| `int` | `count: int` | `{"type": "integer"}` |
+| `float` | `score: float` | `{"type": "number"}` |
+| `bool` | `active: bool` | `{"type": "boolean"}` |
+| `[T]` | `tags: [string]` | `{"type": "array", "items": ...}` |
+| `{...}` | `meta: { key: string }` | Nested object |
+| `T \| null` | `value: string \| null` | `{"oneOf": [...]}` |
+| `"a" \| "b"` | `status: "pass" \| "fail"` | `{"enum": [...]}` |
+
+**Notes:**
+- All properties are required (per Claude's structured output spec)
+- `additionalProperties` is always `false`
+- You can still use `output_schema: "path/to/schema.json"` for complex schemas
+
 ---
 
 ## Steps
