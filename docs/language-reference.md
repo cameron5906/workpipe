@@ -163,6 +163,28 @@ job deploy {
 }
 ```
 
+### Setting Output Values
+
+To set output values from within a step, write to `$GITHUB_OUTPUT`:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  outputs: {
+    version: string
+    build_number: int
+  }
+  steps: [
+    run("""
+      echo "version=1.0.0" >> $GITHUB_OUTPUT
+      echo "build_number=42" >> $GITHUB_OUTPUT
+    """)
+  ]
+}
+```
+
+Each output is set by writing a line in the format `name=value` to `$GITHUB_OUTPUT`. The output names must match those declared in the `outputs` block.
+
 **Supported Types:**
 
 | Type | Description |
