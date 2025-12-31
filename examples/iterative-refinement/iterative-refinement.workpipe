@@ -18,6 +18,7 @@ workflow doc_refinement {
 
     body {
       agent_job review_docs {
+        runs_on: ubuntu-latest
         steps: [
           uses("actions/checkout@v4"),
           agent_task("Review documentation for clarity and completeness") {
