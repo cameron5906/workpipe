@@ -11,6 +11,7 @@ function createMinimalJob(name: string, needs: string[] = []): JobNode {
     runsOn: "ubuntu-latest",
     needs,
     condition: null,
+    outputs: [],
     steps: [],
     span: { start: 0, end: 0 },
   };
@@ -103,6 +104,7 @@ describe("Graph Builder", () => {
           after: "setup",
           runsOn: "ubuntu-latest",
           needs: [],
+          outputs: [],
           steps: [],
           consumes: [],
           span: { start: 0, end: 0 },
@@ -123,6 +125,7 @@ describe("Graph Builder", () => {
           after: "setup",
           runsOn: "ubuntu-latest",
           needs: ["build", "setup"],
+          outputs: [],
           steps: [],
           consumes: [],
           span: { start: 0, end: 0 },

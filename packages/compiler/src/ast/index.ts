@@ -1,5 +1,7 @@
 export type {
   Span,
+  OutputType,
+  OutputDeclaration,
   WorkflowNode,
   TriggerNode,
   JobNode,

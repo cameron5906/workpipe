@@ -22,6 +22,7 @@ function createJob(name: string, runsOn: string | null): JobNode {
     runsOn,
     needs: [],
     condition: null,
+    outputs: [],
     steps: [{ kind: "run", command: "echo hello", span: { start: 0, end: 10 } }],
     span: { start: 0, end: 50 },
   };
@@ -33,6 +34,7 @@ function createAgentJob(name: string, runsOn: string | null): AgentJobNode {
     name,
     runsOn,
     needs: [],
+    outputs: [],
     steps: [
       {
         kind: "agent_task",

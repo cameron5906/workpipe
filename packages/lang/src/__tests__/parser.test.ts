@@ -1156,4 +1156,226 @@ describe("WorkPipe Parser", () => {
       expect(terms.BodyBlock).toBeDefined();
     });
   });
+
+  describe("job outputs syntax", () => {
+    it("parses job with single output declaration", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      version: string
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundOutputsProperty = false;
+      let foundOutputsBlock = false;
+      let foundOutputDecl = false;
+      let foundTypeName = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "OutputsProperty") foundOutputsProperty = true;
+        if (node.name === "OutputsBlock") foundOutputsBlock = true;
+        if (node.name === "OutputDecl") foundOutputDecl = true;
+        if (node.name === "TypeName") foundTypeName = true;
+      });
+
+      expect(foundOutputsProperty).toBe(true);
+      expect(foundOutputsBlock).toBe(true);
+      expect(foundOutputDecl).toBe(true);
+      expect(foundTypeName).toBe(true);
+    });
+
+    it("parses job with multiple output declarations", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      version: string
+      count: int
+      success: bool
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let outputDeclCount = 0;
+      const typeNames: string[] = [];
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "OutputDecl") outputDeclCount++;
+        if (node.name === "TypeName") {
+          typeNames.push(source.slice(node.from, node.to));
+        }
+      });
+
+      expect(outputDeclCount).toBe(3);
+      expect(typeNames).toContain("string");
+      expect(typeNames).toContain("int");
+      expect(typeNames).toContain("bool");
+    });
+
+    it("parses all supported type names", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      text: string
+      count: int
+      ratio: float
+      flag: bool
+      data: json
+      file_out: path
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const typeNames = new Set<string>();
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "TypeName") {
+          typeNames.add(source.slice(node.from, node.to));
+        }
+      });
+
+      expect(typeNames).toEqual(new Set(["string", "int", "float", "bool", "json", "path"]));
+    });
+
+    it("parses output declaration identifier names", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      my_output: string
+      anotherOutput: int
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      const outputNames: string[] = [];
+      let inOutputDecl = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "OutputDecl") {
+          inOutputDecl = true;
+        }
+        if (inOutputDecl && node.name === "Identifier") {
+          outputNames.push(source.slice(node.from, node.to));
+          inOutputDecl = false;
+        }
+      });
+
+      expect(outputNames).toContain("my_output");
+      expect(outputNames).toContain("anotherOutput");
+    });
+
+    it("parses job with outputs and other properties", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    needs: setup
+    outputs: {
+      version: string
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundRunsOn = false;
+      let foundNeeds = false;
+      let foundOutputs = false;
+      let foundSteps = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "RunsOnProperty") foundRunsOn = true;
+        if (node.name === "NeedsProperty") foundNeeds = true;
+        if (node.name === "OutputsProperty") foundOutputs = true;
+        if (node.name === "StepsProperty") foundSteps = true;
+      });
+
+      expect(foundRunsOn).toBe(true);
+      expect(foundNeeds).toBe(true);
+      expect(foundOutputs).toBe(true);
+      expect(foundSteps).toBe(true);
+    });
+
+    it("parses agent_job with outputs", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyze {
+    outputs: {
+      analysis_result: json
+    }
+    steps: [
+      agent_task("Analyze") {
+        model: "claude-sonnet-4-20250514"
+      }
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundAgentJob = false;
+      let foundOutputsProperty = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "AgentJobDecl") foundAgentJob = true;
+        if (node.name === "OutputsProperty") foundOutputsProperty = true;
+      });
+
+      expect(foundAgentJob).toBe(true);
+      expect(foundOutputsProperty).toBe(true);
+    });
+
+    it("parses empty outputs block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+    }
+    steps: [run("echo test")]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundOutputsBlock = false;
+      let outputDeclCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "OutputsBlock") foundOutputsBlock = true;
+        if (node.name === "OutputDecl") outputDeclCount++;
+      });
+
+      expect(foundOutputsBlock).toBe(true);
+      expect(outputDeclCount).toBe(0);
+    });
+
+    it("exports outputs term constants", () => {
+      expect(terms.OutputsProperty).toBeDefined();
+      expect(terms.OutputsBlock).toBeDefined();
+      expect(terms.OutputDecl).toBeDefined();
+      expect(terms.TypeName).toBeDefined();
+    });
+  });
 });

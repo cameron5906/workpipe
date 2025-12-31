@@ -860,4 +860,96 @@ describe("AST Builder", () => {
       expect(cycle.until!.span.end).toBeGreaterThan(cycle.until!.span.start);
     });
   });
+
+  describe("outputs parsing", () => {
+    it("parses job with outputs block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      version: string
+      success: bool
+    }
+    steps: [
+      run("echo hello")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs).toHaveLength(1);
+
+      const job = ast!.jobs[0] as JobNode;
+      expect(job.outputs).toHaveLength(2);
+      expect(job.outputs[0].name).toBe("version");
+      expect(job.outputs[0].type).toBe("string");
+      expect(job.outputs[1].name).toBe("success");
+      expect(job.outputs[1].type).toBe("bool");
+    });
+
+    it("parses job with all output types", () => {
+      const source = `workflow test {
+  on: push
+  job types {
+    runs_on: ubuntu-latest
+    outputs: {
+      str: string
+      num: int
+      flt: float
+      flag: bool
+      data: json
+      file_out: path
+    }
+    steps: [
+      run("echo")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as JobNode;
+      expect(job.outputs).toHaveLength(6);
+      expect(job.outputs.map(o => o.type)).toEqual(["string", "int", "float", "bool", "json", "path"]);
+    });
+
+    it("parses job without outputs as empty array", () => {
+      const source = `workflow test {
+  on: push
+  job simple {
+    runs_on: ubuntu-latest
+    steps: [
+      run("echo")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as JobNode;
+      expect(job.outputs).toEqual([]);
+    });
+
+    it("preserves output declaration span", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      result: string
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as JobNode;
+      expect(job.outputs[0].span.start).toBeGreaterThan(0);
+      expect(job.outputs[0].span.end).toBeGreaterThan(job.outputs[0].span.start);
+    });
+  });
 });

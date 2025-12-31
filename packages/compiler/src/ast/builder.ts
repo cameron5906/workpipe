@@ -25,6 +25,10 @@ const {
   String: StringTerm,
   Boolean: BooleanTerm,
   ComparisonOp,
+  OutputsProperty,
+  OutputsBlock,
+  OutputDecl,
+  TypeName,
   StepsProperty,
   StepList,
   Step,
@@ -95,6 +99,8 @@ import type {
   CycleNode,
   CycleBodyNode,
   GuardJsNode,
+  OutputDeclaration,
+  OutputType,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -432,6 +438,52 @@ function buildConsumes(cursor: TreeCursor, source: string): ConsumeNode[] {
   return consumes;
 }
 
+function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
+  const outputs: OutputDeclaration[] = [];
+
+  if (!cursor.firstChild()) return outputs;
+  do {
+    if (cursor.type.id === OutputsBlock) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === OutputDecl) {
+            const declSpan = span(cursor);
+            let name = "";
+            let outputType: OutputType = "string";
+
+            if (cursor.firstChild()) {
+              do {
+                if (cursor.type.id === Identifier) {
+                  name = getText(cursor, source);
+                } else if (cursor.name === "TypeName") {
+                  const typeText = getText(cursor, source);
+                  if (typeText === "string" || typeText === "int" || typeText === "float" ||
+                      typeText === "bool" || typeText === "json" || typeText === "path") {
+                    outputType = typeText;
+                  }
+                }
+              } while (cursor.nextSibling());
+              cursor.parent();
+            }
+
+            if (name) {
+              outputs.push({
+                name,
+                type: outputType,
+                span: declSpan,
+              });
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+  cursor.parent();
+
+  return outputs;
+}
+
 function buildAgentTask(cursor: TreeCursor, source: string): AgentTaskNode | null {
   if (cursor.type.id !== AgentTaskStep) return null;
 
@@ -699,6 +751,7 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
   let runsOn: string | null = null;
   const needs: string[] = [];
   let condition: ExpressionNode | null = null;
+  const outputs: OutputDeclaration[] = [];
   const steps: StepNode[] = [];
 
   if (!cursor.firstChild()) return null;
@@ -758,6 +811,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
                   } while (cursor.nextSibling());
                   cursor.parent();
                 }
+              } else if (propType === OutputsProperty) {
+                outputs.push(...buildOutputs(cursor, source));
               } else if (propType === StepsProperty) {
                 if (cursor.firstChild()) {
                   do {
@@ -793,6 +848,7 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | null {
     runsOn,
     needs,
     condition,
+    outputs,
     steps,
     span: jobSpan,
   };
@@ -807,6 +863,7 @@ function buildAgentJob(cursor: TreeCursor, source: string): AgentJobNode | null 
   let after: string | undefined;
   let runsOn: string | null = null;
   const needs: string[] = [];
+  const outputs: OutputDeclaration[] = [];
   const steps: StepNode[] = [];
   const consumes: ConsumeNode[] = [];
 
@@ -867,6 +924,8 @@ function buildAgentJob(cursor: TreeCursor, source: string): AgentJobNode | null 
                   } while (cursor.nextSibling());
                   cursor.parent();
                 }
+              } else if (propType === OutputsProperty) {
+                outputs.push(...buildOutputs(cursor, source));
               } else if (propType === StepsProperty) {
                 if (cursor.firstChild()) {
                   do {
@@ -902,6 +961,7 @@ function buildAgentJob(cursor: TreeCursor, source: string): AgentJobNode | null 
     after,
     runsOn,
     needs,
+    outputs,
     steps,
     consumes,
     span: jobSpan,

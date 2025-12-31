@@ -150,6 +150,14 @@ function transformRegularJob(job: JobNode, workflowName: string): JobIR {
     (result as { if: string }).if = serializeExpression(job.condition);
   }
 
+  if (job.outputs.length > 0) {
+    const outputs: Record<string, string> = {};
+    for (const output of job.outputs) {
+      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    }
+    (result as { outputs: Record<string, string> }).outputs = outputs;
+  }
+
   return result;
 }
 
@@ -167,6 +175,14 @@ function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
 
   if (job.needs.length > 0) {
     (result as { needs: readonly string[] }).needs = job.needs;
+  }
+
+  if (job.outputs.length > 0) {
+    const outputs: Record<string, string> = {};
+    for (const output of job.outputs) {
+      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    }
+    (result as { outputs: Record<string, string> }).outputs = outputs;
   }
 
   return result;

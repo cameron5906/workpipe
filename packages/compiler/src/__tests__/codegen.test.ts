@@ -312,6 +312,7 @@ describe("agent transforms", () => {
       name: "review",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -359,6 +360,7 @@ describe("agent transforms", () => {
       name: "test-runner",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -401,6 +403,7 @@ describe("agent transforms", () => {
       name: "analyze",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -442,6 +445,7 @@ describe("agent transforms", () => {
       name: "reporter",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -489,6 +493,7 @@ describe("agent transforms", () => {
       name: "custom",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -527,6 +532,7 @@ describe("agent transforms", () => {
       name: "deploy",
       runsOn: "ubuntu-latest",
       needs: ["build", "test"],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -563,6 +569,7 @@ describe("agent transforms", () => {
       name: "bugfix",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -602,6 +609,7 @@ describe("agent transforms", () => {
       name: "artifact-job",
       runsOn: "ubuntu-latest",
       needs: [],
+      outputs: [],
       steps: [agentTask],
       consumes: [],
       span: { start: 0, end: 100 },
@@ -623,6 +631,67 @@ describe("agent transforms", () => {
     expect(yaml).toContain("uses: actions/upload-artifact@v4");
     expect(yaml).toContain("name: output.zip");
     expect(yaml).toContain("path: output.zip");
+  });
+});
+
+describe("job outputs", () => {
+  it("transforms job with outputs to IR with outputs", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: {
+          version: string
+          sha: string
+        }
+        steps: [run("echo hello")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("build")!;
+    expect(job.outputs).toBeDefined();
+    expect(job.outputs!.version).toBe("${{ steps.set_outputs.outputs.version }}");
+    expect(job.outputs!.sha).toBe("${{ steps.set_outputs.outputs.sha }}");
+  });
+
+  it("emits outputs in YAML correctly", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: {
+          version: string
+        }
+        steps: [run("echo hello")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("outputs:");
+    expect(yaml).toContain("version: ${{ steps.set_outputs.outputs.version }}");
+  });
+
+  it("does not emit outputs block when job has no outputs", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        steps: [run("echo hello")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    const jobSection = yaml.split("build:")[1].split("steps:")[0];
+    expect(jobSection).not.toContain("outputs:");
   });
 });
 
@@ -657,6 +726,7 @@ describe("concurrency generation", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -697,6 +767,7 @@ describe("concurrency generation", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -737,6 +808,7 @@ describe("concurrency generation", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -785,6 +857,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo processing", span: { start: 0, end: 20 } }],
             span: { start: 0, end: 50 },
           },
@@ -828,6 +901,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -872,6 +946,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo first", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -881,6 +956,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: ["first"],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo second", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -929,6 +1005,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo analyze", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -980,6 +1057,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -1029,6 +1107,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },
@@ -1082,6 +1161,7 @@ describe("cycle transforms", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo working", span: { start: 0, end: 15 } }],
             span: { start: 0, end: 50 },
           },

@@ -3,6 +3,14 @@ export interface Span {
   readonly end: number;
 }
 
+export type OutputType = 'string' | 'int' | 'float' | 'bool' | 'json' | 'path';
+
+export interface OutputDeclaration {
+  readonly name: string;
+  readonly type: OutputType;
+  readonly span: Span;
+}
+
 export interface WorkflowNode {
   readonly kind: "workflow";
   readonly name: string;
@@ -24,6 +32,7 @@ export interface JobNode {
   readonly runsOn: string | null;
   readonly needs: readonly string[];
   readonly condition: ExpressionNode | null;
+  readonly outputs: readonly OutputDeclaration[];
   readonly steps: readonly StepNode[];
   readonly span: Span;
 }
@@ -84,6 +93,7 @@ export interface AgentJobNode {
   readonly after?: string;
   readonly runsOn: string | null;
   readonly needs: readonly string[];
+  readonly outputs: readonly OutputDeclaration[];
   readonly steps: readonly StepNode[];
   readonly consumes: readonly ConsumeNode[];
   readonly span: Span;

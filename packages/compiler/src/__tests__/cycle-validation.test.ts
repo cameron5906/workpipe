@@ -102,6 +102,7 @@ describe("decide job termination_reason output", () => {
             runsOn: "ubuntu-latest",
             needs: [],
             condition: null,
+            outputs: [],
             steps: [{ kind: "run", command: "echo work", span: { start: 0, end: 10 } }],
             span: { start: 0, end: 50 },
           },

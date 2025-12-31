@@ -3,7 +3,7 @@ import { buildAST } from "./ast/index.js";
 import type { WorkflowNode } from "./ast/index.js";
 import { transform, emit } from "./codegen/index.js";
 import { parseError, semanticError, type CompileResult, type Diagnostic } from "./diagnostic/index.js";
-import { validateCycleTermination, validateRequiredFields } from "./semantics/index.js";
+import { validateCycleTermination, validateRequiredFields, validateOutputs } from "./semantics/index.js";
 
 export const VERSION = "0.0.1";
 export { LANG_VERSION };
@@ -58,6 +58,7 @@ export function compile(source: string): CompileResult<string> {
 
   validateCycles(ast, diagnostics);
   diagnostics.push(...validateRequiredFields(ast));
+  diagnostics.push(...validateOutputs(ast));
 
   const hasDiagnosticErrors = diagnostics.some((d) => d.severity === "error");
   if (hasDiagnosticErrors) {
