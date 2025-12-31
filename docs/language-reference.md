@@ -567,17 +567,87 @@ true         until        uses         when         workflow
 
 WorkPipe provides a type system for inputs, outputs, and artifacts.
 
+### Type System Design Philosophy
+
+WorkPipe's type system is designed with these core principles:
+
+1. **Compile-time only**: All type checking happens during compilation. WorkPipe validates type annotations, checks output references, and catches type mismatches before your workflow runs. There is no runtime type enforcement.
+
+2. **GitHub Actions constraint**: At runtime, GitHub Actions passes all job outputs as strings via `$GITHUB_OUTPUT`. This means:
+   - Integers become `"42"` not `42`
+   - Booleans become `"true"` or `"false"`
+   - Complex data must be JSON-serialized as strings
+
+3. **Documentation + validation**: Type annotations serve two purposes:
+   - **Compile-time validation**: The compiler warns about undeclared output references and type mismatches
+   - **Developer documentation**: Types communicate intent to other developers and enable IDE features
+
+4. **Backward compatibility**: Types are always optional. Existing workflows without type annotations continue to work unchanged.
+
+For the complete design rationale, see [ADR-0010: Type System for Data Flow](../adr/0010-type-system-for-data-flow.md).
+
+### User-Defined Types Not Supported
+
+WorkPipe does **not** support custom type definitions. You cannot write:
+
+```workpipe
+// NOT SUPPORTED - this syntax does not exist
+type BuildInfo {
+  version: string
+  commit: string
+}
+```
+
+**Why this limitation exists:**
+
+1. **Simplicity**: WorkPipe targets GitHub Actions workflows where job outputs are typically simple scalar values (version strings, counts, flags). Named type definitions add language complexity without proportional benefit.
+
+2. **GitHub Actions runtime**: Since all values become strings at runtime, elaborate type hierarchies would be compile-time fiction that cannot be enforced.
+
+3. **Sufficient alternatives**: For complex structured data, use the `json` type and optionally validate against a JSON Schema file.
+
+**What to use instead:**
+
+- For simple values: Use primitive types (`string`, `int`, `bool`, etc.)
+- For structured data: Use `json` type for job outputs
+- For agent task outputs: Use `output_schema` with inline schema syntax or a JSON Schema file reference
+
 ### Primitive Types
 
-| Type | Description |
-|------|-------------|
-| `string` | Text value |
-| `int` | Integer number |
-| `float` | Floating-point number |
-| `bool` | Boolean (true/false) |
-| `json` | Untyped JSON blob |
-| `path` | File system path |
-| `secret<string>` | Secret value (from `secrets.*`) |
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `string` | Text value | Names, versions, messages, identifiers |
+| `int` | Integer number | Counts, build numbers, exit codes |
+| `float` | Floating-point number | Scores, percentages, measurements |
+| `bool` | Boolean (true/false) | Flags, success indicators, feature toggles |
+| `json` | Untyped JSON blob | Complex structured data, nested objects, arrays |
+| `path` | File system path | Artifact file locations, directory references |
+| `secret<string>` | Secret value (from `secrets.*`) | API keys, tokens, credentials |
+
+### The `path` Type
+
+The `path` type represents file system paths and is primarily used for artifact declarations:
+
+```workpipe
+job build {
+  emits build_output: path
+
+  steps: [
+    run("npm run build"),
+    emit build_output from_file "dist/bundle.js"
+  ]
+}
+```
+
+**When to use `path` vs `string`:**
+
+| Use `path` when... | Use `string` when... |
+|-------------------|---------------------|
+| Declaring artifact outputs that represent files | Passing arbitrary text between jobs |
+| Referencing build output locations | Storing version strings or identifiers |
+| Working with the `emit`/`emits` artifact system | The value happens to look like a path but is not an artifact |
+
+**Note:** The `path` type is meaningful for artifact declarations where the compiler tracks file relationships. For job outputs (the `outputs:` block), prefer `string` unless you specifically need artifact semantics.
 
 ### Optional Types
 
@@ -593,6 +663,59 @@ Define constrained string values:
 
 ```workpipe
 input environment: enum<"dev", "staging", "prod">
+```
+
+### Job Output Types vs Agent Schema Types
+
+WorkPipe has two different type contexts with different capabilities:
+
+| Feature | Job Outputs (`outputs:` block) | Agent Task Schemas (`output_schema:`) |
+|---------|-------------------------------|--------------------------------------|
+| **Purpose** | Pass values between jobs via GitHub Actions | Define structured JSON output from Claude |
+| **Runtime** | GitHub Actions (`$GITHUB_OUTPUT`) | Claude structured outputs (JSON) |
+| **Primitive types** | `string`, `int`, `float`, `bool`, `json`, `path` | `string`, `int`, `float`, `bool` |
+| **Objects** | Not supported (use `json`) | Supported: `{ field: type }` |
+| **Arrays** | Not supported (use `json`) | Supported: `[type]` or `[{ ... }]` |
+| **Union types** | Not supported | Supported: `"a" \| "b"` or `T \| null` |
+| **Literal types** | Not supported | Supported: `"error" \| "warning"` |
+| **Nullable** | Not supported | Supported: `type \| null` |
+
+**Why the difference?**
+
+- **Job outputs** flow through GitHub Actions, which serializes everything to strings. Complex types would be misleading since there is no runtime structure.
+
+- **Agent task schemas** generate JSON Schema for Claude's structured output feature, which natively supports objects, arrays, and unions.
+
+**Example: Job outputs (simple primitives)**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  outputs: {
+    version: string
+    build_number: int
+    success: bool
+    metadata: json       // For complex data, use json
+  }
+  steps: [...]
+}
+```
+
+**Example: Agent task schema (rich structure)**
+
+```workpipe
+agent_task("Review code") {
+  output_schema: {
+    approved: bool
+    comments: [{
+      file: string
+      line: int
+      severity: "error" | "warning" | "info"
+      message: string
+    }]
+    summary: string | null
+  }
+}
 ```
 
 ---
@@ -691,3 +814,4 @@ job deploy {
 
 - [Getting Started](getting-started.md) - Installation and first workflow
 - [CLI Reference](cli-reference.md) - Command-line interface documentation
+- [ADR-0010: Type System for Data Flow](../adr/0010-type-system-for-data-flow.md) - Design rationale for the type system
