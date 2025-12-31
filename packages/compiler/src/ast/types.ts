@@ -62,11 +62,12 @@ export type ExpressionNode =
   | BinaryExpressionNode
   | PropertyAccessNode
   | StringLiteralNode
-  | BooleanLiteralNode;
+  | BooleanLiteralNode
+  | NumericLiteralNode;
 
 export interface BinaryExpressionNode {
   readonly kind: "binary";
-  readonly operator: "==" | "!=";
+  readonly operator: "==" | "!=" | "<" | ">" | "<=" | ">=" | "+" | "-" | "*" | "/";
   readonly left: ExpressionNode;
   readonly right: ExpressionNode;
   readonly span: Span;
@@ -87,6 +88,13 @@ export interface StringLiteralNode {
 export interface BooleanLiteralNode {
   readonly kind: "boolean";
   readonly value: boolean;
+  readonly span: Span;
+}
+
+export interface NumericLiteralNode {
+  readonly kind: "number";
+  readonly value: number;
+  readonly isFloat: boolean;
   readonly span: Span;
 }
 

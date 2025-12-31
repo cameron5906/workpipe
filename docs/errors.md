@@ -141,6 +141,112 @@ The error message will list all available outputs on the referenced job to help 
 
 ---
 
+### WP2012: Type Mismatch in Comparison
+
+**Severity:** Error
+
+**Description:** A comparison expression uses operands with incompatible types. This occurs when:
+- Comparing a string output to a numeric literal (or vice versa)
+- Comparing a boolean output to a numeric or string literal
+- Using numeric comparison operators (`<`, `>`, `<=`, `>=`) with non-numeric types
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      count: int
+    }
+    steps: [run("echo count=42 >> $GITHUB_OUTPUT")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("if ${{ needs.build.outputs.count == 'hello' }}; then echo yes; fi")
+      // Error: comparing int to string
+    ]
+  }
+}
+```
+
+**Solution:** Ensure both sides of the comparison have compatible types:
+
+```workpipe
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]
+  steps: [
+    run("if ${{ needs.build.outputs.count == 42 }}; then echo yes; fi")
+    // Correct: comparing int to int
+  ]
+}
+```
+
+Compatible type combinations:
+- `int` with `int` or `float`
+- `float` with `int` or `float`
+- `string` with `string`
+- `bool` with `bool`
+
+---
+
+### WP2013: Numeric Operation on Non-Numeric Type
+
+**Severity:** Warning
+
+**Description:** An arithmetic operation (`+`, `-`, `*`, `/`) is used with operands that are not declared as numeric types (`int` or `float`). This may indicate a type error that could cause unexpected behavior at runtime.
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      name: string
+    }
+    steps: [run("echo name=myapp >> $GITHUB_OUTPUT")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${{ needs.build.outputs.name + 1 }}")
+      // Warning: arithmetic on string type
+    ]
+  }
+}
+```
+
+**Solution:** Either change the output type to numeric, or avoid arithmetic operations on string values:
+
+```workpipe
+// Option 1: Use numeric output type
+job build {
+  outputs: {
+    version: int
+  }
+}
+
+// Option 2: Avoid arithmetic on strings
+job deploy {
+  steps: [
+    run("echo ${{ needs.build.outputs.name }}")
+  ]
+}
+```
+
+---
+
 ## WP3xxx - Schema Validation
 
 ### WP3001: Unknown Primitive Type
