@@ -30,7 +30,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- WI-083: Import System - Type Registry Merging - P0-Critical
+- WI-084: Import System - Diagnostics - P0-Critical
 
 ---
 
@@ -113,10 +113,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 830 tests (71 lang + 759 compiler)
-**Work Items Completed:** 82 (WI-001 through WI-082)
-**Work Items In Progress:** 1 (WI-083)
-**Work Items In Backlog:** 5 (WI-084 through WI-088)
+**Test Count:** 864 tests (71 lang + 793 compiler)
+**Work Items Completed:** 83 (WI-001 through WI-083)
+**Work Items In Progress:** 1 (WI-084)
+**Work Items In Backlog:** 4 (WI-085 through WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -288,6 +288,17 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Import System (Milestone F - In Progress)
+
+- **WI-083: Import System - Type Registry Merging** - Completed 2025-12-31
+  - Extended TypeRegistry with importTypes() method
+  - Type alias resolution for aliased imports
+  - Name collision detection (WP7005)
+  - Missing type validation (WP7003)
+  - Type provenance tracking via getTypeProvenance()
+  - Non-transitive import enforcement
+  - Created compile.ts module with ImportContext and compileWithImports()
+  - 34 integration tests added
+  - All 864 tests passing
 
 - **WI-082: Import System - Dependency Graph** - Completed 2025-12-31
   - ImportGraph class with Tarjan's SCC algorithm

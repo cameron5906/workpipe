@@ -10,11 +10,24 @@ import type {
   Span,
 } from "../ast/types.js";
 
+export interface ImportItem {
+  name: string;
+  alias?: string;
+}
+
 export interface TypeRegistry {
   readonly types: Map<string, TypeDeclarationNode>;
   register(type: TypeDeclarationNode): Diagnostic | null;
   resolve(name: string): TypeDeclarationNode | undefined;
   has(name: string): boolean;
+  importTypes(
+    sourceRegistry: TypeRegistry,
+    imports: ImportItem[],
+    sourceFile: string,
+    span?: Span
+  ): Diagnostic[];
+  getTypeProvenance(typeName: string): string | undefined;
+  isExportable(typeName: string): boolean;
 }
 
 const PRIMITIVE_TYPES = new Set(["string", "int", "float", "bool", "json", "path"]);
@@ -25,6 +38,8 @@ function isPrimitiveType(name: string): boolean {
 
 export function createTypeRegistry(): TypeRegistry {
   const types = new Map<string, TypeDeclarationNode>();
+  const provenance = new Map<string, string>();
+  const exportable = new Set<string>();
 
   return {
     types,
@@ -40,6 +55,7 @@ export function createTypeRegistry(): TypeRegistry {
         );
       }
       types.set(type.name, type);
+      exportable.add(type.name);
       return null;
     },
 
@@ -49,6 +65,85 @@ export function createTypeRegistry(): TypeRegistry {
 
     has(name: string): boolean {
       return types.has(name);
+    },
+
+    importTypes(
+      sourceRegistry: TypeRegistry,
+      imports: ImportItem[],
+      sourceFile: string,
+      span?: Span
+    ): Diagnostic[] {
+      const diagnostics: Diagnostic[] = [];
+      const errorSpan = span ?? { start: 0, end: 0 };
+
+      for (const importItem of imports) {
+        const sourceName = importItem.name;
+        const localName = importItem.alias ?? importItem.name;
+
+        const sourceType = sourceRegistry.resolve(sourceName);
+        if (!sourceType) {
+          const availableTypes = Array.from(sourceRegistry.types.keys())
+            .filter(name => sourceRegistry.isExportable(name));
+          const hint = availableTypes.length > 0
+            ? `Available types in '${sourceFile}': ${availableTypes.join(", ")}`
+            : `No exportable types are available in '${sourceFile}'`;
+
+          diagnostics.push(
+            semanticError(
+              "WP7003",
+              `Type '${sourceName}' does not exist in '${sourceFile}'`,
+              errorSpan,
+              hint
+            )
+          );
+          continue;
+        }
+
+        if (!sourceRegistry.isExportable(sourceName)) {
+          diagnostics.push(
+            semanticError(
+              "WP7003",
+              `Type '${sourceName}' is not exportable from '${sourceFile}' (it was imported from another file)`,
+              errorSpan,
+              "Types are not transitive; import directly from the original source file"
+            )
+          );
+          continue;
+        }
+
+        if (types.has(localName)) {
+          const existingType = types.get(localName)!;
+          const existingProvenance = provenance.get(localName);
+          const existingSource = existingProvenance
+            ? `imported from '${existingProvenance}'`
+            : `defined at position ${existingType.span.start}`;
+
+          diagnostics.push(
+            semanticError(
+              "WP7005",
+              `Name collision: '${localName}' already exists (${existingSource})`,
+              errorSpan,
+              importItem.alias
+                ? `Consider using a different alias`
+                : `Use 'import { ${sourceName} as <different_name> }' to avoid collision`
+            )
+          );
+          continue;
+        }
+
+        types.set(localName, sourceType);
+        provenance.set(localName, sourceFile);
+      }
+
+      return diagnostics;
+    },
+
+    getTypeProvenance(typeName: string): string | undefined {
+      return provenance.get(typeName);
+    },
+
+    isExportable(typeName: string): boolean {
+      return exportable.has(typeName);
     },
   };
 }

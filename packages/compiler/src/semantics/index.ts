@@ -21,4 +21,5 @@ export {
   buildTypeRegistry,
   validateTypeReferences,
   type TypeRegistry,
+  type ImportItem,
 } from "./type-registry.js";

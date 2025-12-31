@@ -1,7 +1,7 @@
 # WI-083: Import System - Type Registry Merging
 
 **ID**: WI-083
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -15,18 +15,18 @@ When a file imports types from another file, those types must be resolved and ma
 
 ## Acceptance Criteria
 
-- [ ] Extend `TypeRegistry` to support multi-file type sources
-- [ ] `importTypes(fromRegistry: TypeRegistry, names: ImportItem[])` method
-- [ ] Type alias resolution (`import { Foo as Bar }` maps `Bar` to `Foo`'s definition)
-- [ ] Name collision detection (error if importing name that already exists)
-- [ ] Validate requested types exist in source file (WP7003)
-- [ ] Track type provenance (which file each type came from)
-- [ ] Non-transitive imports (imported types are not re-exportable)
-- [ ] Update `compile()` to accept multi-file compilation context
-- [ ] Integration tests for single import
-- [ ] Integration tests for multiple imports
-- [ ] Integration tests for aliased imports
-- [ ] Integration tests for name collision detection
+- [x] Extend `TypeRegistry` to support multi-file type sources
+- [x] `importTypes(fromRegistry: TypeRegistry, names: ImportItem[])` method
+- [x] Type alias resolution (`import { Foo as Bar }` maps `Bar` to `Foo`'s definition)
+- [x] Name collision detection (error if importing name that already exists)
+- [x] Validate requested types exist in source file (WP7003)
+- [x] Track type provenance (which file each type came from)
+- [x] Non-transitive imports (imported types are not re-exportable)
+- [x] Update `compile()` to accept multi-file compilation context
+- [x] Integration tests for single import
+- [x] Integration tests for multiple imports
+- [x] Integration tests for aliased imports
+- [x] Integration tests for name collision detection
 
 ## Technical Context
 
