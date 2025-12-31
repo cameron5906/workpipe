@@ -1,76 +1,191 @@
 # WorkPipe
 
-**A cleaner way to write GitHub Actions workflows.**
+**Write workflows in minutes, not hours.**
 
-WorkPipe is a domain-specific language (DSL) that compiles to GitHub Actions YAML. Write expressive, type-safe CI/CD pipelines without the verbosity.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 
-## Why WorkPipe?
+WorkPipe is a domain-specific language that compiles to GitHub Actions YAML. Write expressive, type-safe CI/CD pipelines with a clean syntax that eliminates the verbosity and foot-guns of raw YAML.
 
-GitHub Actions YAML is powerful but verbose. Simple workflows become walls of repetitive configuration. WorkPipe fixes this:
+---
 
-| WorkPipe | GitHub Actions YAML |
-|----------|---------------------|
-| 10 lines | 8 lines |
-| Clean syntax | Nested YAML |
-| Type-safe parameters | Stringly-typed |
-| Reusable patterns | Copy-paste |
+## The Problem
 
-**Before (YAML):**
+GitHub Actions YAML is powerful but painful. Complex workflows become walls of repetitive configuration. Matrix builds, job outputs, and conditional logic create deeply nested structures that are hard to read, harder to maintain, and easiest to break.
+
+## The Solution
+
+WorkPipe gives you the same power with a fraction of the complexity.
+
+### Before: 72 lines of YAML
+
 ```yaml
-name: minimal
-on: push
+name: microservices_build
+on:
+  - push
+  - pull_request
 jobs:
-  hello:
+  build_api:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - id: build
+        run: |
+          docker build -t myorg/api:${{ github.sha }} ./services/api
+          echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT
+  build_web:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - id: build
+        run: |
+          docker build -t myorg/web:${{ github.sha }} ./services/web
+          echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT
+  test_api:
     runs-on: ubuntu-latest
     steps:
-      - run: echo Hello, WorkPipe!
+      - uses: actions/checkout@v4
+      - run: cd services/api && npm ci && npm run test:unit
+  test_web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd services/web && npm ci && npm run test:unit
+  integration_tests:
+    runs-on: ubuntu-latest
+    needs: [build_api, build_web, test_api, test_web]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker-compose -f docker-compose.test.yml up -d
+      - run: sleep 30
+      - run: npm run test:integration
+      - run: docker-compose -f docker-compose.test.yml down
+  e2e_tests:
+    runs-on: ubuntu-latest
+    needs: [integration_tests]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker-compose -f docker-compose.e2e.yml up -d
+      - run: npx playwright test
+      - run: docker-compose -f docker-compose.e2e.yml down
+  publish_images:
+    runs-on: ubuntu-latest
+    needs: [e2e_tests]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Publishing all service images
 ```
 
-**After (WorkPipe):**
-```workpipe
-workflow minimal {
-  on: push
+### After: 52 lines of WorkPipe
 
-  job hello {
+```workpipe
+workflow microservices_build {
+  on: [push, pull_request]
+
+  job build_api {
     runs_on: ubuntu-latest
+    outputs: { image_tag: string }
     steps: [
-      run("echo Hello, WorkPipe!")
+      uses("actions/checkout@v4"),
+      uses("docker/setup-buildx-action@v3"),
+      run("docker build -t myorg/api:${{ github.sha }} ./services/api"),
+      run("echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT")
     ]
+  }
+
+  job build_web {
+    runs_on: ubuntu-latest
+    outputs: { image_tag: string }
+    steps: [
+      uses("actions/checkout@v4"),
+      uses("docker/setup-buildx-action@v3"),
+      run("docker build -t myorg/web:${{ github.sha }} ./services/web"),
+      run("echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  job test_api {
+    runs_on: ubuntu-latest
+    steps: [uses("actions/checkout@v4"), run("cd services/api && npm ci && npm run test:unit")]
+  }
+
+  job test_web {
+    runs_on: ubuntu-latest
+    steps: [uses("actions/checkout@v4"), run("cd services/web && npm ci && npm run test:unit")]
+  }
+
+  job integration_tests {
+    runs_on: ubuntu-latest
+    needs: [build_api, build_web, test_api, test_web]
+    steps: [
+      uses("actions/checkout@v4"),
+      run("docker-compose -f docker-compose.test.yml up -d"),
+      run("sleep 30"),
+      run("npm run test:integration"),
+      run("docker-compose -f docker-compose.test.yml down")
+    ]
+  }
+
+  job e2e_tests {
+    runs_on: ubuntu-latest
+    needs: [integration_tests]
+    steps: [
+      uses("actions/checkout@v4"),
+      run("docker-compose -f docker-compose.e2e.yml up -d"),
+      run("npx playwright test"),
+      run("docker-compose -f docker-compose.e2e.yml down")
+    ]
+  }
+
+  job publish_images {
+    runs_on: ubuntu-latest
+    needs: [e2e_tests]
+    if: github.ref == "refs/heads/main"
+    steps: [uses("actions/checkout@v4"), run("echo Publishing all service images")]
   }
 }
 ```
 
-The difference grows dramatically with real-world workflows featuring matrices, job dependencies, and conditional logic.
+Less noise. Same power. Compile-time validation catches errors before you push.
 
-## Installation
+---
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **User-Defined Types** | Define reusable data structures with compile-time property validation |
+| **AI Agent Tasks** | Integrate Claude directly into workflows with structured output schemas |
+| **Smart Cycles** | Iterative workflows that span multiple runs with automatic state management |
+| **Guards** | Conditional job execution with JavaScript expressions |
+| **Matrix Builds** | First-class matrix support with typed axes and fingerprinting |
+| **Typed Outputs** | Declare job outputs with types; the compiler validates references |
+| **Clean Syntax** | No YAML indentation anxiety; brackets and braces make structure explicit |
+| **Escape Hatches** | Use `raw_yaml` blocks for edge cases not yet in the DSL |
+
+---
+
+## Quick Start
 
 **Prerequisites:** Node.js 20+
 
 ```bash
-# npm
+# Install globally
 npm install -g @workpipe/cli
 
-# pnpm
-pnpm add -g @workpipe/cli
-```
-
-Verify installation:
-
-```bash
-workpipe --version
-```
-
-## 5-Minute Quickstart
-
-### 1. Create a WorkPipe file
-
-Create `workpipe/ci.workpipe` in your project:
-
-```bash
+# Create your first workflow
 mkdir -p workpipe
 ```
 
-Add this content:
+Create `workpipe/ci.workpipe`:
 
 ```workpipe
 workflow ci {
@@ -80,11 +195,7 @@ workflow ci {
     runs_on: ubuntu-latest
     steps: [
       uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4") {
-        with: {
-          node-version: "20"
-        }
-      },
+      uses("actions/setup-node@v4") { with: { node-version: "20" } },
       run("npm ci"),
       run("npm test")
     ]
@@ -92,34 +203,16 @@ workflow ci {
 }
 ```
 
-### 2. Compile to YAML
+Compile and commit:
 
 ```bash
+# Compile to GitHub Actions YAML
 workpipe build workpipe/ci.workpipe
-```
 
-This generates `.github/workflows/ci.yml`:
+# Review the generated workflow
+cat .github/workflows/ci.yml
 
-```yaml
-name: ci
-on:
-  - push
-  - pull_request
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm test
-```
-
-### 3. Commit and push
-
-```bash
+# Commit both files
 git add workpipe/ci.workpipe .github/workflows/ci.yml
 git commit -m "Add CI workflow with WorkPipe"
 git push
@@ -127,42 +220,155 @@ git push
 
 Your workflow is now live on GitHub Actions.
 
-## Key Features
+---
 
-- **Clean syntax** - No more YAML indentation anxiety
-- **Job dependencies** - `needs: [build, test]` just works
-- **Matrix builds** - Expressive multi-dimensional matrices
-- **Conditional execution** - `when:` expressions for job/step control
-- **User-defined types** - Reusable type definitions with compile-time validation
-- **Agent jobs** - First-class support for AI-powered CI tasks
-- **Cycles** - Iterative workflows that span multiple runs
-- **Validation** - Catch errors before pushing with `workpipe check`
-- **Formatting** - Consistent style with `workpipe fmt`
+## Example Showcase
+
+### AI-Powered Code Review
+
+Integrate Claude directly into your CI pipeline with structured output:
+
+```workpipe
+type ReviewResult {
+  approved: bool
+  rating: int
+  issues: [{ filepath: string line: int severity: string message: string }]
+}
+
+workflow review {
+  on: pull_request
+
+  agent_job code_review {
+    runs_on: ubuntu-latest
+    steps: [
+      uses("actions/checkout@v4"),
+      agent_task("Review the code changes and provide structured feedback") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: "ReviewResult"
+        output_artifact: "review_result"
+      }
+    ]
+  }
+}
+```
+
+### Iterative Refinement Cycles
+
+Build workflows that iterate until a quality threshold is met:
+
+```workpipe
+workflow quality_gate {
+  on: push
+
+  cycle refine_loop {
+    max_iters = 5
+    until guard_js """
+      return context.quality_score > 0.95;
+    """
+
+    body {
+      agent_job analyze {
+        runs_on: ubuntu-latest
+        steps: [
+          agent_task("Analyze and improve code quality") {
+            model: "claude-sonnet-4-20250514"
+            max_turns: 10
+          }
+        ]
+      }
+
+      job apply_fixes {
+        runs_on: ubuntu-latest
+        needs: analyze
+        steps: [run("echo Applying fixes from analysis")]
+      }
+    }
+  }
+}
+```
+
+### Multi-Environment Deployment
+
+Clean job dependencies with typed outputs:
+
+```workpipe
+workflow deploy {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: { image_tag: string }
+    steps: [
+      uses("actions/checkout@v4"),
+      run("docker build -t myapp:${{ github.sha }} ."),
+      run("echo image_tag=myapp:${{ github.sha }} >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  job deploy_staging {
+    runs_on: ubuntu-latest
+    needs: [build]
+    environment: staging
+    steps: [run("echo Deploying ${{ needs.build.outputs.image_tag }} to staging")]
+  }
+
+  job deploy_production {
+    runs_on: ubuntu-latest
+    needs: [deploy_staging]
+    environment: production
+    steps: [run("echo Deploying to production")]
+  }
+}
+```
+
+See the [examples/](examples/) directory for more complete workflows.
+
+---
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `workpipe build [files...]` | Compile to GitHub Actions YAML |
-| `workpipe check [files...]` | Validate without generating output |
-| `workpipe fmt [files...]` | Format source files |
-| `workpipe init --bootstrap` | Generate auto-compile workflow |
+| `workpipe build [files...]` | Compile `.workpipe` files to GitHub Actions YAML |
+| `workpipe check [files...]` | Validate syntax and semantics without generating output |
+| `workpipe fmt [files...]` | Format source files consistently |
+| `workpipe init --bootstrap` | Generate a WorkPipe auto-compile workflow |
 
-## What's Next?
+---
 
-Ready to dive deeper?
+## Documentation
 
-- [Getting Started Guide](docs/getting-started.md) - Full walkthrough with examples
-- [Language Reference](docs/language-reference.md) - Complete syntax documentation
-- [CLI Reference](docs/cli-reference.md) - All commands and options
+| Resource | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Full walkthrough from installation to first workflow |
+| [Language Reference](docs/language-reference.md) | Complete syntax and semantics documentation |
+| [CLI Reference](docs/cli-reference.md) | All commands, flags, and options |
+| [VS Code Extension](docs/vscode-extension.md) | Syntax highlighting and editor integration |
+| [Troubleshooting](docs/troubleshooting.md) | Common errors and how to fix them |
+| [Examples](examples/) | Real-world workflow examples |
+
+---
 
 ## Project Status
 
 WorkPipe is in active development. The current release includes:
 
-- 5 packages: `@workpipe/cli`, `@workpipe/compiler`, `@workpipe/lang`, `@workpipe/action`, and VS Code extension
-- 326+ passing tests
-- Full compiler pipeline: lexer, parser, semantic analysis, code generation
+- **5 packages:** `@workpipe/cli`, `@workpipe/compiler`, `@workpipe/lang`, `@workpipe/action`, VS Code extension
+- **326+ passing tests** covering lexer, parser, semantic analysis, and code generation
+- **Full compiler pipeline** with comprehensive error diagnostics
+
+---
+
+## Contributing
+
+Contributions are welcome! Please see:
+
+- [GitHub Issues](https://github.com/your-org/workpipe/issues) for bug reports and feature requests
+- [Pull Requests](https://github.com/your-org/workpipe/pulls) for code contributions
+
+---
 
 ## License
 

@@ -29,13 +29,39 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None - User-Defined Type System complete)
+(None currently)
 
 ---
 
 ## Up Next (Priority Order)
 
-(Backlog items will be added as new work is prioritized)
+### Documentation Refresh for Public Release (P1-High)
+
+User-directed initiative to prepare WorkPipe for public release with professional, exciting documentation.
+
+1. **WI-073: README.md Redesign for Public Release** - P1-High
+   - Compelling tagline and value proposition
+   - Status badges, feature grid, dramatic before/after examples
+   - Highlight User-Defined Types, AI Agent Tasks, Cycles
+   - Modern GitHub repo elements for public release
+
+2. **WI-074: Documentation Audit for Feature Completeness** - P1-High
+   - Verify all recent features documented (types, guards, matrices, cycles)
+   - Cross-reference verification between docs
+   - Update outdated statistics and status indicators
+   - Fix documentation drift identified in previous reviews
+
+3. **WI-075: Examples Showcase Enhancement** - P1-High
+   - Redesign examples/README.md as attractive showcase
+   - Validate all examples compile and expected.yml files are current
+   - Standardize per-example README format
+   - Add difficulty indicators and learning progression
+
+4. **WI-076: Getting Started Experience Polish** - P1-High
+   - Verify installation flow end-to-end
+   - Streamline first workflow journey
+   - VS Code extension onboarding
+   - Target: working workflow in < 10 minutes
 
 ---
 
@@ -79,9 +105,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 643 tests (71 lang + 572 compiler)
-**Work Items Completed:** 56 (WI-064, WI-065...WI-072 all complete)
+**Work Items Completed:** 72 (WI-001 through WI-072)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 0 (Next batch TBD)
+**Work Items In Backlog:** 4 (WI-073 through WI-076 - Documentation Refresh)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 

@@ -280,6 +280,8 @@ agent_task("Analyze code") {
 - `additionalProperties` is always `false`
 - You can still use `output_schema: "path/to/schema.json"` for complex schemas
 
+For a complete example, see [examples/agent-task/](../examples/agent-task/).
+
 ---
 
 ## Steps
@@ -417,6 +419,8 @@ until guard_js """
 The guard receives a `state` object containing:
 - `iteration`: Current iteration number
 - Captured outputs from previous jobs
+
+For examples, see [examples/cycle-basic/](../examples/cycle-basic/) and [examples/iterative-refinement/](../examples/iterative-refinement/).
 
 ---
 
@@ -757,6 +761,8 @@ See [WP5003](errors.md#wp5003) for details on property validation errors.
 - Types are **file-scoped**: No cross-file imports
 - **No generics**: Each type is a concrete definition
 - **Structural typing**: Types with the same shape are compatible
+
+For complete examples, see [examples/user-defined-types/](../examples/user-defined-types/).
 
 ### Primitive Types
 

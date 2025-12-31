@@ -2,17 +2,29 @@
 
 WorkPipe is a domain-specific language (DSL) that compiles to GitHub Actions workflow YAML files. It provides a cleaner, type-safe way to define CI/CD pipelines with features like typed parameter passing, agentic task support, and cycle-based iterative workflows.
 
+**Time to complete:** 5-10 minutes
+
+---
+
 ## Installation
 
 ### Prerequisites
 
 - Node.js 20 or later
-- npm or pnpm
+- npm, pnpm, or yarn
 
-### Install via npm
+### Option 1: Install Globally (Recommended)
 
 ```bash
 npm install -g @workpipe/cli
+```
+
+### Option 2: Try Without Installing
+
+Use `npx` to run WorkPipe without global installation:
+
+```bash
+npx @workpipe/cli --version
 ```
 
 ### Verify Installation
@@ -21,7 +33,19 @@ npm install -g @workpipe/cli
 workpipe --version
 ```
 
+**Expected output:**
+
+```
+0.0.1
+```
+
+If you see a version number, installation succeeded. If you get "command not found", ensure Node.js 20+ is installed and your npm global bin directory is in your PATH.
+
+---
+
 ## Your First Workflow
+
+**Time:** 2-3 minutes
 
 ### Step 1: Create a WorkPipe File
 
@@ -46,7 +70,21 @@ workflow ci {
 }
 ```
 
-### Step 2: Compile to GitHub Actions YAML
+### Step 2: Validate Your Syntax (Optional)
+
+Before compiling, you can check for errors:
+
+```bash
+workpipe check workpipe/ci.workpipe
+```
+
+**Expected output:**
+
+```
+All 1 file(s) valid
+```
+
+### Step 3: Compile to GitHub Actions YAML
 
 Run the WorkPipe compiler:
 
@@ -54,7 +92,13 @@ Run the WorkPipe compiler:
 workpipe build workpipe/ci.workpipe
 ```
 
-This generates `.github/workflows/ci.yml`:
+**Expected output:**
+
+```
+Wrote: .github/workflows/ci.yml
+```
+
+The generated `.github/workflows/ci.yml` contains:
 
 ```yaml
 name: ci
@@ -66,7 +110,9 @@ jobs:
       - run: echo Hello, WorkPipe!
 ```
 
-### Step 3: Commit and Push
+**Success!** You have compiled your first WorkPipe workflow.
+
+### Step 4: Commit and Push
 
 Commit both the source `.workpipe` file and the generated `.yml` file:
 
@@ -75,6 +121,10 @@ git add workpipe/ci.workpipe .github/workflows/ci.yml
 git commit -m "Add CI workflow with WorkPipe"
 git push
 ```
+
+Your workflow is now live on GitHub Actions.
+
+---
 
 ## A More Complete Example
 
@@ -130,6 +180,8 @@ workflow build_and_test {
 }
 ```
 
+---
+
 ## Setting Up Automated Compilation
 
 WorkPipe can automatically recompile your workflows when you change `.workpipe` files. Generate a bootstrap workflow:
@@ -138,11 +190,21 @@ WorkPipe can automatically recompile your workflows when you change `.workpipe` 
 workpipe init --bootstrap
 ```
 
-This creates `.github/workflows/workpipe-compile.yml`, which:
+**Expected output:**
+
+```
+Created: .github/workflows/workpipe-compile.yml
+```
+
+This bootstrap workflow:
 
 1. Triggers when `.workpipe` files change
 2. Runs the WorkPipe compiler
 3. Commits the updated workflow files
+
+This means your generated YAML stays in sync automatically.
+
+---
 
 ## Validating Without Building
 
@@ -155,7 +217,9 @@ workpipe check
 This is useful for:
 - Pre-commit hooks
 - CI validation gates
-- Quick syntax checking
+- Quick syntax checking during development
+
+---
 
 ## Formatting Your Code
 
@@ -171,6 +235,8 @@ workpipe fmt --write
 # Check if formatting is needed (for CI)
 workpipe fmt --check
 ```
+
+---
 
 ## Project Structure
 
@@ -188,7 +254,75 @@ my-project/
       workpipe-compile.yml  # Bootstrap workflow (optional)
 ```
 
-## Next Steps
+---
 
-- [CLI Reference](cli-reference.md) - Complete documentation of all CLI commands
-- [Language Reference](language-reference.md) - Full syntax and semantics guide
+## Editor Setup: VS Code Extension
+
+The WorkPipe VS Code extension provides syntax highlighting and real-time error checking.
+
+### Installation
+
+1. Download the `.vsix` file from the releases or build it locally
+2. Open VS Code
+3. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
+4. Type "Install from VSIX" and select **Extensions: Install from VSIX...**
+5. Select the `workpipe-vscode-x.x.x.vsix` file
+6. Reload VS Code when prompted
+
+### What It Provides
+
+| Feature | Description |
+|---------|-------------|
+| **Syntax Highlighting** | Color-coded keywords, strings, and constructs |
+| **Error Squiggles** | Red underlines on syntax and semantic errors |
+| **Hover Information** | See error details and hints by hovering |
+| **Problems Panel** | All diagnostics listed in one place |
+
+For detailed extension documentation, see [VS Code Extension](vscode-extension.md).
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| `command not found: workpipe` | Ensure npm global bin is in PATH. Run `npm bin -g` to find the path. |
+| `Error: Cannot find module` | Re-run `npm install -g @workpipe/cli` |
+| `No files found` | Ensure your file has a `.workpipe` or `.wp` extension |
+| Syntax errors | Run `workpipe check <file>` to see detailed error messages |
+
+### Getting Help
+
+If you encounter issues:
+
+1. Check the [Troubleshooting Guide](troubleshooting.md) for common type and syntax errors
+2. Review the [Error Reference](errors.md) for specific error codes
+3. Open an issue on GitHub with the error message and your WorkPipe source
+
+---
+
+## What's Next?
+
+Now that you have a working workflow, explore these resources:
+
+### Learn the Language
+
+- [Language Reference](language-reference.md) - Complete syntax and semantics guide
+- [Quick Reference](quick-reference.md) - One-page cheat sheet
+
+### Explore Examples
+
+- [Examples Directory](../examples/) - Real-world workflow examples
+- Start with [minimal](../examples/minimal/) and work through the [learning path](../examples/README.md)
+
+### CLI Mastery
+
+- [CLI Reference](cli-reference.md) - All commands, flags, and options
+
+### Advanced Topics
+
+- [User-Defined Types](language-reference.md#user-defined-types) - Reusable type definitions with compile-time validation
+- [Agent Tasks](language-reference.md#agent-jobs) - AI-powered workflows with Claude
+- [Cycles](language-reference.md#cycles) - Iterative workflows that span multiple runs

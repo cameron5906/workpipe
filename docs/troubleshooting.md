@@ -268,6 +268,174 @@ job deploy {
 
 ---
 
+## User-Defined Type Errors
+
+These errors occur when working with user-defined types (the `type` keyword).
+
+### WP5001: Duplicate Type Name
+
+**Problem:** Two type definitions have the same name.
+
+**Code that causes the error:**
+
+```workpipe
+type BuildInfo {
+  version: string
+}
+
+type BuildInfo {
+  status: string
+}
+
+workflow ci {
+  on: push
+}
+```
+
+**Error message:**
+
+```
+error[WP5001]: Duplicate type 'BuildInfo'
+  --> workflow.workpipe:5:1
+   |
+ 5 | type BuildInfo {
+   | ^^^^^^^^^^^^^^
+   |
+   = help: Each type name must be unique within a file
+```
+
+**Fix:**
+
+Rename one of the types to have a unique name:
+
+```workpipe
+type BuildInfo {
+  version: string
+}
+
+type BuildStatus {
+  status: string
+}
+```
+
+---
+
+### WP5002: Unknown Type Reference
+
+**Problem:** A job output references a type that has not been defined.
+
+**Code that causes the error:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+}
+```
+
+**Error message:**
+
+```
+error[WP5002]: Unknown type 'BuildInfo'
+  --> workflow.workpipe:8:13
+   |
+ 8 |       info: BuildInfo
+   |             ^^^^^^^^^
+   |
+   = help: Define the type before using it, or check the spelling
+```
+
+**Fix:**
+
+Define the type before the workflow block:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+}
+```
+
+---
+
+### WP5003: Property Does Not Exist on Type
+
+**Problem:** An expression accesses a property that does not exist on the referenced type.
+
+**Code that causes the error:**
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo version=1.0 >> $GITHUB_OUTPUT")]
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    steps: [
+      run("echo ${{ needs.build.outputs.info.status }}")
+    ]
+  }
+}
+```
+
+**Error message:**
+
+```
+error[WP5003]: Property 'status' does not exist on type 'BuildInfo'
+  --> workflow.workpipe:21:11
+    |
+ 21 |       run("echo ${{ needs.build.outputs.info.status }}")
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: Available properties on 'BuildInfo': version, commit
+```
+
+**Fix:**
+
+Use a property that exists on the type, or add the missing property to the type definition:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  status: string
+}
+```
+
+---
+
 ## Schema Validation Errors
 
 These errors occur when defining inline output schemas for agent tasks.

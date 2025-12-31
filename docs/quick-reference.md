@@ -320,6 +320,8 @@ agent_job review {
 
 ## Types
 
+### Primitive Types
+
 | Type | Description |
 |------|-------------|
 | `string` | Text |
@@ -331,6 +333,40 @@ agent_job review {
 | `secret<string>` | Secret value |
 | `string?` | Optional string |
 | `enum<"a", "b">` | Constrained values |
+
+### User-Defined Types
+
+Define reusable types at file level, before the `workflow` block:
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [...]
+  }
+}
+```
+
+Use in agent task schemas (as quoted string):
+
+```workpipe
+agent_task("Review code") {
+  output_schema: "ReviewResult"
+}
+```
+
+See [Language Reference](language-reference.md#user-defined-types) for details.
 
 ---
 
