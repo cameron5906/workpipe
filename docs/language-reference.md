@@ -133,7 +133,7 @@ job <name> {
 
 | Property | Required | Description |
 |----------|----------|-------------|
-| `runs_on` | Yes | The runner to execute on (e.g., `ubuntu-latest`) |
+| `runs_on` | Yes | The runner to execute on (e.g., `ubuntu-latest`). See [WP7001](errors.md#wp7001) if omitted. |
 | `steps` | Yes | Array of steps to execute |
 | `needs` | No | Array of job dependencies |
 | `if` | No | Conditional execution expression |
@@ -168,7 +168,7 @@ job deploy {
 
 ### Agent Jobs
 
-Agent jobs use the Claude Code GitHub Action for AI-powered tasks:
+Agent jobs use the Claude Code GitHub Action for AI-powered tasks. The `runs_on` field is required; see [WP7002](errors.md#wp7002) if omitted.
 
 ```workpipe
 agent_job triage {
@@ -297,12 +297,12 @@ cycle refine {
 
 | Property | Required | Description |
 |----------|----------|-------------|
-| `max_iters` | Yes* | Maximum number of iterations (safety limit) |
+| `max_iters` | Yes* | Maximum number of iterations (safety limit). See [WP6005](errors.md#wp6005) for why this is recommended even with `until`. |
 | `until` | Yes* | Termination predicate using `guard_js` |
 | `key` | No | Concurrency group identifier |
 | `body` | Yes | Block containing jobs to execute each iteration |
 
-*At least one of `max_iters` or `until` is required.
+*At least one of `max_iters` or `until` is required. See [WP6001](errors.md#wp6001) if neither is provided.
 
 ### Guard JS Blocks
 

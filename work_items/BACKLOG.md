@@ -33,11 +33,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-1. **WI-051: Add Error Code Links to Language Reference** - P3-Low
-   - Link error codes from language-reference.md required field docs
-   - Unblocked by WI-049 completion
-
-2. **WI-050: Surface Diagnostic Hints in VS Code Extension** - P3-Low
+1. **WI-050: Surface Diagnostic Hints in VS Code Extension** - P3-Low
    - Compiler `hint` field not displayed in VS Code
    - Only message and code shown currently
    - Improve developer experience
@@ -69,9 +65,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
 **Test Count:** 340 tests passing
-**Work Items Completed:** 25
+**Work Items Completed:** 26
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 2 (WI-050, WI-051)
+**Work Items In Backlog:** 1 (WI-050)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -218,6 +214,13 @@ jobs:
 ## Completed
 
 ### Phase 9: Tooling - MILESTONE E IN PROGRESS
+- ✅ **WI-051: Add Error Code Links to Language Reference** - 2025-12-31 **[DOCS ENHANCED]**
+  - Added error code links to `docs/language-reference.md`
+  - WP7001 link for job `runs_on` required field
+  - WP7002 link for agent_job `runs_on` required field
+  - WP6001 link for cycle termination condition
+  - WP6005 link for cycle `max_iters` recommendation
+
 - ✅ **WI-049: Create Error Code Documentation** - 2025-12-31 **[DOCS COMPLETE]**
   - Created `docs/errors.md` with all 7 diagnostic codes documented
   - Codes: WP0001, WP0002, WP6001, WP6005, WP7001, WP7002, WP7004
