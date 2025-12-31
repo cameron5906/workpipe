@@ -137,6 +137,42 @@ job <name> {
 | `steps` | Yes | Array of steps to execute |
 | `needs` | No | Array of job dependencies |
 | `if` | No | Conditional execution expression |
+| `outputs` | No | Typed outputs that other jobs can reference |
+
+### Job Outputs
+
+Jobs can declare typed outputs that other jobs can reference:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  outputs: {
+    version: string
+    build_number: int
+    success: bool
+  }
+  steps: [...]
+}
+
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]
+  steps: [
+    run("echo Version: ${{ needs.build.outputs.version }}")
+  ]
+}
+```
+
+**Supported Types:**
+
+| Type | Description |
+|------|-------------|
+| `string` | Text value |
+| `int` | Integer number |
+| `float` | Decimal number |
+| `bool` | Boolean (true/false) |
+| `json` | JSON object or array |
+| `path` | File path |
 
 ### Job Dependencies
 

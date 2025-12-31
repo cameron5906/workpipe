@@ -7,6 +7,7 @@ WorkPipe uses diagnostic codes in the format `WPxxxx` to identify specific issue
 | Range | Category |
 |-------|----------|
 | WP0xxx | Parse/AST errors |
+| WP2xxx | Output validation |
 | WP6xxx | Cycle validation |
 | WP7xxx | Semantic validation (required fields) |
 
@@ -52,6 +53,30 @@ workflow ci {
 1. Simplify your workflow to isolate the problematic construct
 2. Check for unusual combinations of syntax elements
 3. Report the issue if it persists with valid-looking code
+
+---
+
+## WP2xxx - Output Validation
+
+### WP2010: Duplicate Output Name
+
+**Severity:** Error
+
+**Description:** A job declares the same output name more than once.
+
+**Example:**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  outputs: {
+    version: string
+    version: int  // Error: duplicate
+  }
+}
+```
+
+**Solution:** Remove or rename the duplicate output declaration.
 
 ---
 
