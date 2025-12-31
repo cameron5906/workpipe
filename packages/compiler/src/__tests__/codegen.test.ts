@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "@workpipe/lang";
 import { buildAST } from "../ast/index.js";
-import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema } from "../codegen/index.js";
+import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema, generateMatrixFingerprint } from "../codegen/index.js";
 import { compile } from "../index.js";
-import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode, GuardJsStepNode, JobNode } from "../ast/types.js";
+import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode, GuardJsStepNode, JobNode, MatrixJobNode } from "../ast/types.js";
 import type { WorkflowNode } from "../ast/types.js";
 
 describe("serializeExpression", () => {
@@ -1955,5 +1955,167 @@ describe("guard_js step transforms", () => {
     expect(yaml).toContain("GITHUB_EVENT_PATH");
     expect(yaml).toContain("GITHUB_REF");
     expect(yaml).toContain("context.event && context.ref");
+  });
+});
+
+describe("generateMatrixFingerprint", () => {
+  it("generates fingerprint with single axis", () => {
+    const axes = { os: ["ubuntu-latest", "macos-latest"] };
+    const fingerprint = generateMatrixFingerprint(axes);
+    expect(fingerprint).toBe("${{ matrix.os }}");
+  });
+
+  it("generates fingerprint with multiple axes in sorted order", () => {
+    const axes = {
+      os: ["ubuntu-latest", "macos-latest"],
+      node: [18, 20],
+    };
+    const fingerprint = generateMatrixFingerprint(axes);
+    expect(fingerprint).toBe("${{ matrix.node }}-${{ matrix.os }}");
+  });
+
+  it("generates fingerprint with axes in alphabetical order regardless of input order", () => {
+    const axes = {
+      zoo: ["a", "b"],
+      alpha: [1, 2],
+      middle: ["x", "y"],
+    };
+    const fingerprint = generateMatrixFingerprint(axes);
+    expect(fingerprint).toBe("${{ matrix.alpha }}-${{ matrix.middle }}-${{ matrix.zoo }}");
+  });
+
+  it("generates empty string for empty axes", () => {
+    const axes = {};
+    const fingerprint = generateMatrixFingerprint(axes);
+    expect(fingerprint).toBe("");
+  });
+});
+
+describe("matrix job with agent task artifact fingerprinting", () => {
+  it("appends matrix fingerprint to outputArtifact name in matrix job", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Run tests",
+      outputArtifact: "test_results",
+      consumes: [],
+      span: { start: 0, end: 50 },
+    };
+
+    const matrixJob: MatrixJobNode = {
+      kind: "matrix_job",
+      name: "test",
+      axes: {
+        os: ["ubuntu-latest", "macos-latest"],
+        node: [18, 20],
+      },
+      runsOn: null,
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [agentTask],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [matrixJob],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const job = ir.jobs.get("test")!;
+
+    expect(job.steps).toHaveLength(2);
+    expect(job.steps[1]).toMatchObject({
+      kind: "upload_artifact",
+      name: "Upload test_results",
+      with: {
+        name: "test_results-${{ matrix.node }}-${{ matrix.os }}",
+        path: "test_results",
+      },
+    });
+  });
+
+  it("emits fingerprinted artifact name in YAML for matrix job", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Build package",
+      outputArtifact: "dist",
+      consumes: [],
+      span: { start: 0, end: 50 },
+    };
+
+    const matrixJob: MatrixJobNode = {
+      kind: "matrix_job",
+      name: "build",
+      axes: {
+        os: ["ubuntu-latest", "windows-latest"],
+      },
+      runsOn: null,
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [agentTask],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "build-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [matrixJob],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("name: dist-${{ matrix.os }}");
+    expect(yaml).toContain("path: dist");
+  });
+
+  it("does not fingerprint artifact names in non-matrix jobs", () => {
+    const agentTask: AgentTaskNode = {
+      kind: "agent_task",
+      taskDescription: "Generate report",
+      outputArtifact: "report.json",
+      consumes: [],
+      span: { start: 0, end: 50 },
+    };
+
+    const agentJob: AgentJobNode = {
+      kind: "agent_job",
+      name: "reporter",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      outputs: [],
+      steps: [agentTask],
+      consumes: [],
+      span: { start: 0, end: 100 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [agentJob],
+      cycles: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const ir = transform(workflow);
+    const job = ir.jobs.get("reporter")!;
+
+    expect(job.steps[1]).toMatchObject({
+      kind: "upload_artifact",
+      with: {
+        name: "report.json",
+        path: "report.json",
+      },
+    });
   });
 });

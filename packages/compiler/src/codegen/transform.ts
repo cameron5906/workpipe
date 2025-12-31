@@ -136,10 +136,22 @@ function resolvePromptValue(prompt: PromptValue): string {
   }
 }
 
+export function generateMatrixFingerprint(
+  axes: Record<string, readonly (string | number)[]>
+): string {
+  const sortedKeys = Object.keys(axes).sort();
+  return sortedKeys.map((key) => `\${{ matrix.${key} }}`).join("-");
+}
+
+interface MatrixContext {
+  axes: Record<string, readonly (string | number)[]>;
+}
+
 function transformAgentTask(
   task: AgentTaskNode,
   workflowName: string,
-  jobName: string
+  jobName: string,
+  matrixContext?: MatrixContext
 ): StepIR[] {
   const steps: StepIR[] = [];
 
@@ -193,12 +205,17 @@ function transformAgentTask(
   steps.push(claudeStep);
 
   if (task.outputArtifact) {
+    let artifactName = task.outputArtifact;
+    if (matrixContext) {
+      const fingerprint = generateMatrixFingerprint(matrixContext.axes);
+      artifactName = `${task.outputArtifact}-${fingerprint}`;
+    }
     const artifactStep: UploadArtifactStepIR = {
       kind: "upload_artifact",
       name: `Upload ${task.outputArtifact}`,
       uses: "actions/upload-artifact@v4",
       with: {
-        name: task.outputArtifact,
+        name: artifactName,
         path: task.outputArtifact,
       },
     };
@@ -240,7 +257,8 @@ fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + result + '\\n');
 function transformStep(
   step: StepNode,
   workflowName: string,
-  jobName: string
+  jobName: string,
+  matrixContext?: MatrixContext
 ): StepIR[] {
   switch (step.kind) {
     case "run":
@@ -248,7 +266,7 @@ function transformStep(
     case "uses":
       return [{ kind: "uses", action: step.action }];
     case "agent_task":
-      return transformAgentTask(step, workflowName, jobName);
+      return transformAgentTask(step, workflowName, jobName, matrixContext);
     case "guard_js_step":
       return transformGuardJsStep(step);
   }
@@ -313,9 +331,10 @@ function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
 }
 
 function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
+  const matrixContext: MatrixContext = { axes: job.axes };
   const steps: StepIR[] = [];
   for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name);
+    const transformed = transformStep(step, workflowName, job.name, matrixContext);
     steps.push(...transformed);
   }
 

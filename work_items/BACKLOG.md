@@ -27,16 +27,15 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(None currently)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-024: Add matrix fingerprint to artifact naming - P2-Medium (unblocked - WI-023 complete)
-2. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
-3. WI-021: Create guard helper library - P3-Low
+1. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium (Milestone C: Guards)
+2. WI-021: Create guard helper library - P3-Low (Milestone C: Guards)
 
 ---
 
@@ -48,7 +47,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | **A+** | COMPLETE | Agent tasks + diagnostics + formatter |
 | **B** | COMPLETE | Strategy B cycles with full safety |
 | **C** | IN PROGRESS | Guards + advanced triggers |
-| **D** | IN PROGRESS | Matrices |
+| **D** | COMPLETE | Matrices |
 | **E** | IN PROGRESS | Tooling (VS Code extension + bootstrap) |
 
 | Phase | Status | Key Deliverables |
@@ -59,15 +58,15 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 3: Types + outputs | PARTIAL | Diagnostics done; type system future |
 | 4: Artifacts | PARTIAL | Cycle artifacts done; general future |
 | 5: Guards | IN PROGRESS | guard_js compilation complete; outputs/helpers future |
-| 6: Matrices | IN PROGRESS | Matrix syntax and parsing |
+| 6: Matrices | COMPLETE | Matrix syntax, include/exclude, artifact fingerprinting, validation |
 | 7: Agent tasks | COMPLETE | Claude Code Action integration |
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 430+ tests (71 lang + 359 compiler)
-**Work Items Completed:** 41
+**Test Count:** 509 tests (71 lang + 438 compiler)
+**Work Items Completed:** 42
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 3 (WI-020, WI-021, WI-024)
+**Work Items In Backlog:** 2 (WI-020, WI-021)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -208,6 +207,12 @@ jobs:
 ## Completed
 
 ### Phase 6: Matrices - MOST RECENT
+- **WI-024: Add matrix fingerprint to artifact naming** - Completed 2025-12-31
+  - Created `generateMatrixFingerprint()` helper function in transform.ts
+  - Modified transformMatrixJob to pass MatrixContext through step transformation
+  - Artifact names in matrix jobs now include `${{ matrix.X }}-${{ matrix.Y }}` suffix
+  - 7 new tests (509 total)
+
 - **WI-025: Enforce 256-job matrix limit with diagnostics** - Completed 2025-12-31
   - Created `matrix-validation.ts` with `calculateMatrixJobCount` and `validateMatrixJobs`
   - WP4001 error for >256 jobs, WP4002 warning for >200 jobs
