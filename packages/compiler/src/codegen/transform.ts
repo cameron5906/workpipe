@@ -272,6 +272,18 @@ function transformStep(
   }
 }
 
+function collectGuardJsOutputs(
+  steps: readonly StepNode[]
+): Record<string, string> {
+  const outputs: Record<string, string> = {};
+  for (const step of steps) {
+    if (step.kind === "guard_js_step") {
+      outputs[`${step.id}_result`] = `\${{ steps.${step.id}.outputs.result }}`;
+    }
+  }
+  return outputs;
+}
+
 function transformRegularJob(job: JobNode, workflowName: string): JobIR {
   const steps: StepIR[] = [];
   for (const step of job.steps) {
@@ -292,12 +304,15 @@ function transformRegularJob(job: JobNode, workflowName: string): JobIR {
     (result as { if: string }).if = serializeExpression(job.condition);
   }
 
-  if (job.outputs.length > 0) {
-    const outputs: Record<string, string> = {};
-    for (const output of job.outputs) {
-      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
-    }
-    (result as { outputs: Record<string, string> }).outputs = outputs;
+  const guardOutputs = collectGuardJsOutputs(job.steps);
+  const userOutputs: Record<string, string> = {};
+  for (const output of job.outputs) {
+    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+  }
+
+  const mergedOutputs = { ...guardOutputs, ...userOutputs };
+  if (Object.keys(mergedOutputs).length > 0) {
+    (result as { outputs: Record<string, string> }).outputs = mergedOutputs;
   }
 
   return result;
@@ -319,12 +334,15 @@ function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
     (result as { needs: readonly string[] }).needs = job.needs;
   }
 
-  if (job.outputs.length > 0) {
-    const outputs: Record<string, string> = {};
-    for (const output of job.outputs) {
-      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
-    }
-    (result as { outputs: Record<string, string> }).outputs = outputs;
+  const guardOutputs = collectGuardJsOutputs(job.steps);
+  const userOutputs: Record<string, string> = {};
+  for (const output of job.outputs) {
+    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+  }
+
+  const mergedOutputs = { ...guardOutputs, ...userOutputs };
+  if (Object.keys(mergedOutputs).length > 0) {
+    (result as { outputs: Record<string, string> }).outputs = mergedOutputs;
   }
 
   return result;
@@ -360,12 +378,15 @@ function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
     (result as { if: string }).if = serializeExpression(job.condition);
   }
 
-  if (job.outputs.length > 0) {
-    const outputs: Record<string, string> = {};
-    for (const output of job.outputs) {
-      outputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
-    }
-    (result as { outputs: Record<string, string> }).outputs = outputs;
+  const guardOutputs = collectGuardJsOutputs(job.steps);
+  const userOutputs: Record<string, string> = {};
+  for (const output of job.outputs) {
+    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+  }
+
+  const mergedOutputs = { ...guardOutputs, ...userOutputs };
+  if (Object.keys(mergedOutputs).length > 0) {
+    (result as { outputs: Record<string, string> }).outputs = mergedOutputs;
   }
 
   return result;

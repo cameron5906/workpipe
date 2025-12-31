@@ -1958,6 +1958,171 @@ describe("guard_js step transforms", () => {
   });
 });
 
+describe("guard_js auto-generated outputs", () => {
+  it("auto-generates output for job with guard_js step", () => {
+    const guardStep: GuardJsStepNode = {
+      kind: "guard_js_step",
+      id: "check_labels",
+      code: "return context.event.issue?.labels?.some(l => l.name === 'priority');",
+      span: { start: 0, end: 100 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "guard",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [guardStep],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "guard-test",
+      trigger: { kind: "trigger", events: ["issues"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("guard")!;
+
+    expect(irJob.outputs).toBeDefined();
+    expect(irJob.outputs!.check_labels_result).toBe("${{ steps.check_labels.outputs.result }}");
+  });
+
+  it("auto-generates multiple outputs for multiple guard_js steps", () => {
+    const guardStep1: GuardJsStepNode = {
+      kind: "guard_js_step",
+      id: "check_labels",
+      code: "return context.event.issue?.labels?.some(l => l.name === 'priority');",
+      span: { start: 0, end: 100 },
+    };
+
+    const guardStep2: GuardJsStepNode = {
+      kind: "guard_js_step",
+      id: "check_author",
+      code: "return context.event.issue?.user?.login === 'admin';",
+      span: { start: 0, end: 100 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "guard",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [guardStep1, guardStep2],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "guard-test",
+      trigger: { kind: "trigger", events: ["issues"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("guard")!;
+
+    expect(irJob.outputs).toBeDefined();
+    expect(irJob.outputs!.check_labels_result).toBe("${{ steps.check_labels.outputs.result }}");
+    expect(irJob.outputs!.check_author_result).toBe("${{ steps.check_author.outputs.result }}");
+  });
+
+  it("merges auto-generated outputs with user-declared outputs", () => {
+    const guardStep: GuardJsStepNode = {
+      kind: "guard_js_step",
+      id: "check_labels",
+      code: "return context.event.issue?.labels?.some(l => l.name === 'priority');",
+      span: { start: 0, end: 100 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "guard",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [
+        { name: "custom_output", type: "string", span: { start: 0, end: 10 } },
+      ],
+      steps: [guardStep],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "guard-test",
+      trigger: { kind: "trigger", events: ["issues"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("guard")!;
+
+    expect(irJob.outputs).toBeDefined();
+    expect(irJob.outputs!.check_labels_result).toBe("${{ steps.check_labels.outputs.result }}");
+    expect(irJob.outputs!.custom_output).toBe("${{ steps.set_outputs.outputs.custom_output }}");
+  });
+
+  it("does not generate outputs for jobs without guard_js steps", () => {
+    const job: JobNode = {
+      kind: "job",
+      name: "build",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [{ kind: "run", command: "echo hi", span: { start: 0, end: 10 } }],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "build-test",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("build")!;
+
+    expect(irJob.outputs).toBeUndefined();
+  });
+
+  it("emits auto-generated outputs in YAML correctly", () => {
+    const source = `workflow test {
+      on: issues
+      job guard {
+        runs_on: ubuntu-latest
+        steps: [
+          step "check_labels" guard_js """
+            return context.event.issue?.labels?.some(l => l.name === 'priority');
+          """
+        ]
+      }
+    }`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("outputs:");
+      expect(result.value).toContain("check_labels_result: ${{ steps.check_labels.outputs.result }}");
+    }
+  });
+});
+
 describe("generateMatrixFingerprint", () => {
   it("generates fingerprint with single axis", () => {
     const axes = { os: ["ubuntu-latest", "macos-latest"] };

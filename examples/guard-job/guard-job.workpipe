@@ -3,9 +3,6 @@ workflow guard_job_example {
 
   job guard {
     runs_on: ubuntu-latest
-    outputs: {
-      should_process: bool
-    }
     steps: [
       step "check_labels" guard_js """
         const labels = context.event.issue?.labels || [];

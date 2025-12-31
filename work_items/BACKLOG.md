@@ -27,15 +27,14 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None currently)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium (Milestone C: Guards)
-2. WI-021: Create guard helper library - P3-Low (Milestone C: Guards)
+1. WI-021: Create guard helper library - P3-Low (Milestone C: Guards)
 
 ---
 
@@ -63,10 +62,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 509 tests (71 lang + 438 compiler)
-**Work Items Completed:** 42
+**Test Count:** 514 tests (71 lang + 443 compiler)
+**Work Items Completed:** 43
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 2 (WI-020, WI-021)
+**Work Items In Backlog:** 1 (WI-021)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -206,7 +205,16 @@ jobs:
 
 ## Completed
 
-### Phase 6: Matrices - MOST RECENT
+### Phase 5: Guards - MOST RECENT
+- **WI-020: Generate guard job outputs with GITHUB_OUTPUT** - Completed 2025-12-31
+  - Added `collectGuardJsOutputs()` helper function in transform.ts
+  - Auto-generates job outputs for guard_js steps in format: `{stepId}_result`
+  - Works for regular jobs, agent jobs, and matrix jobs
+  - User-declared outputs merge with and take precedence over auto-generated
+  - Updated examples/guard-job/ with cleaner syntax
+  - 5 new tests (514 total)
+
+### Phase 6: Matrices
 - **WI-024: Add matrix fingerprint to artifact naming** - Completed 2025-12-31
   - Created `generateMatrixFingerprint()` helper function in transform.ts
   - Modified transformMatrixJob to pass MatrixContext through step transformation
