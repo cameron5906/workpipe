@@ -14,6 +14,7 @@ export * from "./diagnostic/index.js";
 export * from "./analysis/index.js";
 export * from "./semantics/index.js";
 export { format, type FormatOptions } from "./format/index.js";
+export * from "./imports/index.js";
 
 function validateCycles(ast: WorkflowNode, diagnostics: Diagnostic[]): void {
   for (const cycle of ast.cycles) {

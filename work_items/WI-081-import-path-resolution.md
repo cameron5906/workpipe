@@ -1,7 +1,7 @@
 # WI-081: Import System - Path Resolution
 
 **ID**: WI-081
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -15,20 +15,20 @@ Path resolution must work correctly across CLI and VS Code extension contexts, h
 
 ## Acceptance Criteria
 
-- [ ] Create `packages/compiler/src/imports/path-resolver.ts`
-- [ ] `resolvePath(importPath: string, fromFile: string): string` function
-- [ ] Relative path resolution (`./`, `../`)
-- [ ] Path normalization (collapse `..`, remove redundant `.`)
-- [ ] Cross-platform support (Unix `/` and Windows `\`)
-- [ ] Validate `.workpipe` extension is present (no implicit extensions)
-- [ ] `FileResolver` interface abstraction for file reading
-- [ ] CLI implementation of `FileResolver` (filesystem reads)
-- [ ] VS Code extension implementation of `FileResolver` (workspace reads)
-- [ ] Detect absolute paths and warn (WP7006 preparation)
-- [ ] Detect paths escaping project root (WP7007 preparation)
-- [ ] Unit tests for path resolution
-- [ ] Unit tests for normalization edge cases
-- [ ] Unit tests for cross-platform paths
+- [x] Create `packages/compiler/src/imports/path-resolver.ts`
+- [x] `resolvePath(importPath: string, fromFile: string): string` function
+- [x] Relative path resolution (`./`, `../`)
+- [x] Path normalization (collapse `..`, remove redundant `.`)
+- [x] Cross-platform support (Unix `/` and Windows `\`)
+- [x] Validate `.workpipe` extension is present (no implicit extensions)
+- [x] `FileResolver` interface abstraction for file reading
+- [x] CLI implementation of `FileResolver` (filesystem reads)
+- [x] VS Code extension implementation of `FileResolver` (workspace reads)
+- [x] Detect absolute paths and warn (WP7006 preparation)
+- [x] Detect paths escaping project root (WP7007 preparation)
+- [x] Unit tests for path resolution
+- [x] Unit tests for normalization edge cases
+- [x] Unit tests for cross-platform paths
 
 ## Technical Context
 
