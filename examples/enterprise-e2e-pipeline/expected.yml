@@ -1,0 +1,76 @@
+name: enterprise_e2e_pipeline
+on:
+  - push
+  - pull_request
+jobs:
+  provision_env:
+    runs-on: ubuntu-latest
+    outputs:
+      env_url: ${{ steps.step_0.outputs.env_url }}
+      env_id: ${{ steps.step_0.outputs.env_id }}
+    steps:
+      - id: step_0
+        run: |
+          # Simulate environment provisioning
+          echo "env_url=https://test-env-123.example.com" >> $GITHUB_OUTPUT
+          echo "env_id=test-123" >> $GITHUB_OUTPUT
+  unit_tests:
+    runs-on: ubuntu-latest
+    needs:
+      - provision_env
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run test:unit
+  integration_tests:
+    runs-on: ubuntu-latest
+    needs:
+      - provision_env
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run test:integration -- --env-url=${{ needs.provision_env.outputs.env_url }}
+  e2e_tests:
+    runs-on: ubuntu-latest
+    needs:
+      - provision_env
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npx playwright test --base-url=${{ needs.provision_env.outputs.env_url }}
+  aggregate_results:
+    runs-on: ubuntu-latest
+    needs:
+      - unit_tests
+      - integration_tests
+      - e2e_tests
+    if: always()
+    steps:
+      - run: |
+          echo "Test Results Summary"
+          echo "===================="
+          echo "Unit Tests: ${{ needs.unit_tests.result }}"
+          echo "Integration Tests: ${{ needs.integration_tests.result }}"
+          echo "E2E Tests: ${{ needs.e2e_tests.result }}"
+  teardown:
+    runs-on: ubuntu-latest
+    needs:
+      - unit_tests
+      - integration_tests
+      - e2e_tests
+    if: always()
+    steps:
+      - run: echo Tearing down environment ${{ needs.provision_env.outputs.env_id }}
+  notify:
+    runs-on: ubuntu-latest
+    needs:
+      - aggregate_results
+      - teardown
+    if: always()
+    steps:
+      - run: |
+          if [[ "${{ needs.aggregate_results.result }}" == "success" ]]; then
+            echo "Sending success notification..."
+          else
+            echo "Sending failure notification..."
+          fi

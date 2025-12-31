@@ -14,6 +14,7 @@ This directory contains example WorkPipe specifications and their generated GitH
 | [job-outputs](./job-outputs/) | Typed job outputs | Output declarations, cross-job data passing |
 | [release-workflow](./release-workflow/) | Manual release process | `workflow_dispatch`, fan-in pattern |
 | [iterative-refinement](./iterative-refinement/) | AI doc improvement cycle | Cycles with agent tasks |
+| [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) | Enterprise testing pipeline | Parallel tests, `if: always()`, teardown |
 | [matrix-build](./matrix-build/) | Multi-config builds | *Planned* - matrix axes, sharding |
 
 ## Running Examples
@@ -44,6 +45,7 @@ Each example directory contains:
 4. **Release patterns**: [release-workflow](./release-workflow/) - manual triggers and fan-in
 5. **AI integration**: [agent-task](./agent-task/) - Claude Code for automation
 6. **Advanced**: [cycle-basic](./cycle-basic/) and [iterative-refinement](./iterative-refinement/) - iterative workflows
+7. **Enterprise**: [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) - complex testing pipelines with cleanup
 
 ## Contributing Examples
 
