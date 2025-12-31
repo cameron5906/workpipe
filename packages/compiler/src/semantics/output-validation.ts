@@ -1,11 +1,13 @@
 import { semanticError, type Diagnostic } from "../diagnostic/index.js";
 import type {
   WorkflowNode,
+  WorkPipeFileNode,
   AnyJobNode,
   OutputDeclaration,
   StepNode,
   Span,
 } from "../ast/types.js";
+import type { TypeRegistry } from "./type-registry.js";
 
 interface JobOutputs {
   name: string;
@@ -139,19 +141,89 @@ function validateOutputReferencesInJob(
   return diagnostics;
 }
 
-export function validateOutputs(ast: WorkflowNode): Diagnostic[] {
+const PRIMITIVE_TYPES = new Set(["string", "int", "float", "bool", "json", "path"]);
+
+function isPrimitiveType(name: string): boolean {
+  return PRIMITIVE_TYPES.has(name);
+}
+
+function isFilePath(value: string): boolean {
+  return value.endsWith(".json") || value.startsWith("./") || value.startsWith("../") || value.includes("/");
+}
+
+function validateOutputTypeReferencesInJob(
+  job: AnyJobNode,
+  registry: TypeRegistry,
+  cycleName?: string
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const availableTypes = Array.from(registry.types.keys());
+
+  for (const output of job.outputs) {
+    if (output.typeReference) {
+      if (!isPrimitiveType(output.typeReference) && !registry.has(output.typeReference)) {
+        const hint =
+          availableTypes.length > 0
+            ? `Available types: ${availableTypes.join(", ")}`
+            : "No user-defined types are available";
+
+        const context = cycleName ? ` in cycle '${cycleName}'` : "";
+        diagnostics.push(
+          semanticError(
+            "WP5002",
+            `Unknown type '${output.typeReference}' for output '${output.name}' in job '${job.name}'${context}`,
+            output.span,
+            hint
+          )
+        );
+      }
+    }
+  }
+
+  for (const step of job.steps) {
+    if (step.kind === "agent_task" && typeof step.outputSchema === "string") {
+      const schemaRef = step.outputSchema;
+      if (!isFilePath(schemaRef) && !registry.has(schemaRef)) {
+        const hint =
+          availableTypes.length > 0
+            ? `Available types: ${availableTypes.join(", ")}`
+            : "No user-defined types are available";
+
+        const context = cycleName ? ` in cycle '${cycleName}'` : "";
+        diagnostics.push(
+          semanticError(
+            "WP5002",
+            `Unknown type '${schemaRef}' in output_schema of agent_task in job '${job.name}'${context}`,
+            step.span,
+            hint
+          )
+        );
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+export function validateOutputs(ast: WorkflowNode, registry?: TypeRegistry): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
   const jobOutputsMap = new Map<string, JobOutputs>();
 
   for (const job of ast.jobs) {
     diagnostics.push(...validateDuplicateOutputsInJob(job));
+    if (registry) {
+      diagnostics.push(...validateOutputTypeReferencesInJob(job, registry));
+    }
     jobOutputsMap.set(job.name, collectJobOutputs(job));
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
       diagnostics.push(...validateDuplicateOutputsInJob(job, cycle.name));
+      if (registry) {
+        diagnostics.push(...validateOutputTypeReferencesInJob(job, registry, cycle.name));
+      }
       const prefixedName = `${cycle.name}_body_${job.name}`;
       jobOutputsMap.set(prefixedName, collectJobOutputs(job));
       jobOutputsMap.set(job.name, collectJobOutputs(job));

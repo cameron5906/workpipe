@@ -586,3 +586,307 @@ describe("compile integration with output validation", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("WP5002 - Type reference validation in job outputs", () => {
+  describe("compile integration with output type references", () => {
+    it("compiles successfully with type reference in output", () => {
+      const source = `type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(true);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+    });
+
+    it("returns WP5002 error for invalid type reference in output", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: NonExistentType
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.some((e) => e.code === "WP5002")).toBe(true);
+      expect(errors.some((e) => e.message.includes("NonExistentType"))).toBe(true);
+      expect(errors.some((e) => e.message.includes("info"))).toBe(true);
+      expect(errors.some((e) => e.message.includes("build"))).toBe(true);
+    });
+
+    it("shows available types in hint for invalid type reference", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+type DeployConfig {
+  env: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: UnknownType
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const error = result.diagnostics.find((d) => d.code === "WP5002");
+      expect(error).toBeDefined();
+      expect(error?.hint).toContain("BuildInfo");
+      expect(error?.hint).toContain("DeployConfig");
+    });
+
+    it("allows primitive types in outputs", () => {
+      const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: {
+          version: string
+          sha: string
+        }
+        steps: [run("echo hello")]
+      }
+    }`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("validates type references in multiple jobs", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    outputs: {
+      result: InvalidType
+    }
+    steps: [run("echo deploy")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const errors = result.diagnostics.filter((d) => d.code === "WP5002");
+      expect(errors).toHaveLength(1);
+      expect(errors[0].message).toContain("InvalidType");
+      expect(errors[0].message).toContain("deploy");
+    });
+
+    it("validates type references in jobs inside cycles", () => {
+      const source = `type CycleResult {
+  status: string
+}
+
+workflow test {
+  on: push
+  cycle review_loop {
+    max_iters = 5
+    body {
+      job review {
+        runs_on: ubuntu-latest
+        outputs: {
+          result: InvalidCycleType
+        }
+        steps: [run("echo review")]
+      }
+    }
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const errors = result.diagnostics.filter((d) => d.code === "WP5002");
+      expect(errors.some((e) => e.message.includes("InvalidCycleType"))).toBe(true);
+      expect(errors.some((e) => e.message.includes("cycle 'review_loop'"))).toBe(true);
+    });
+
+    it("allows valid type reference in job inside cycle", () => {
+      const source = `type CycleResult {
+  status: string
+}
+
+workflow test {
+  on: push
+  cycle review_loop {
+    max_iters = 5
+    body {
+      job review {
+        runs_on: ubuntu-latest
+        outputs: {
+          result: CycleResult
+        }
+        steps: [run("echo review")]
+      }
+    }
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("allows mix of primitive and type-referenced outputs", () => {
+      const source = `type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      status: string
+      info: BuildInfo
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("validates multiple type references in same job", () => {
+      const source = `type TypeA {
+  value: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      first: UnknownA
+      second: TypeA
+      third: UnknownB
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const errors = result.diagnostics.filter((d) => d.code === "WP5002");
+      expect(errors).toHaveLength(2);
+      expect(errors.some((e) => e.message.includes("UnknownA"))).toBe(true);
+      expect(errors.some((e) => e.message.includes("UnknownB"))).toBe(true);
+    });
+
+    it("shows helpful message when no types are available", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: SomeType
+    }
+    steps: [run("echo hello")]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const error = result.diagnostics.find((d) => d.code === "WP5002");
+      expect(error).toBeDefined();
+      expect(error?.hint).toContain("No user-defined types are available");
+    });
+
+    it("validates type references in agent_job outputs", () => {
+      const source = `type AgentResult {
+  response: string
+}
+
+workflow test {
+  on: push
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    outputs: {
+      result: InvalidAgentType
+    }
+    steps: [
+      agent_task("Review the code") {}
+    ]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(false);
+      const errors = result.diagnostics.filter((d) => d.code === "WP5002");
+      expect(errors.some((e) => e.message.includes("InvalidAgentType"))).toBe(true);
+      expect(errors.some((e) => e.message.includes("reviewer"))).toBe(true);
+    });
+
+    it("allows valid type reference in agent_job outputs", () => {
+      const source = `type AgentResult {
+  response: string
+}
+
+workflow test {
+  on: push
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    outputs: {
+      result: AgentResult
+    }
+    steps: [
+      agent_task("Review the code") {}
+    ]
+  }
+}`;
+
+      const result = compile(source);
+
+      expect(result.success).toBe(true);
+    });
+  });
+});

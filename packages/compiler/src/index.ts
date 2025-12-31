@@ -71,7 +71,7 @@ export function compile(source: string): CompileResult<string> {
 
   validateCycles(ast, diagnostics);
   diagnostics.push(...validateRequiredFields(ast));
-  diagnostics.push(...validateOutputs(ast));
+  diagnostics.push(...validateOutputs(ast, registry));
   diagnostics.push(...validateSchemas(ast));
   diagnostics.push(...validateMatrixJobs(ast));
   diagnostics.push(...validateExpressionTypes(ast));
@@ -81,7 +81,7 @@ export function compile(source: string): CompileResult<string> {
     return { success: false, diagnostics };
   }
 
-  const ir = transform(ast);
+  const ir = transform(ast, registry);
   const yaml = emit(ir);
 
   return { success: true, value: yaml, diagnostics };

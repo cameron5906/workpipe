@@ -29,8 +29,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-068: Type References in Job Outputs** - P0-Critical
-- **WI-069: Type References in Agent Task Schemas** - P0-Critical
+- **WI-070: Property Access Validation in Expressions** - P1-High
 
 ---
 
@@ -45,11 +44,6 @@ This is a user directive - takes priority over all other work.
    - Enables `type` declarations at workflow level
    - Allows type references in job outputs and agent task schemas
    - Compile-time property validation
-
-4. **WI-070: Property Access Validation in Expressions** - P1-High
-   - Validate `${{ needs.job.outputs.typed.property }}` expressions
-   - Diagnostic: WP5003 (property not found on type)
-   - Depends on: WI-067, WI-068
 
 5. **WI-071: VS Code Diagnostics for Type Errors** - P1-High
    - Surface WP5001, WP5002, WP5003 in VS Code
@@ -91,9 +85,9 @@ This is a user directive - takes priority over all other work.
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 643 tests (71 lang + 572 compiler)
-**Work Items Completed:** 51 (WI-067)
-**Work Items In Progress:** 2 (WI-068, WI-069 - Parallelized)
-**Work Items In Backlog:** 4 (User-Defined Type System)
+**Work Items Completed:** 53 (WI-068, WI-069)
+**Work Items In Progress:** 1 (WI-070)
+**Work Items In Backlog:** 3 (User-Defined Type System)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -265,6 +259,18 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Type System - MOST RECENT
+- **WI-069: Type References in Agent Task Schemas** - Completed 2025-12-31
+  - Agent task `output_schema` accepts user-defined type references
+  - Type references resolved via TypeRegistry
+  - JSON Schema generated from type definitions
+  - Existing inline schema and file reference forms continue to work
+
+- **WI-068: Type References in Job Outputs** - Completed 2025-12-31
+  - Job outputs accept user-defined type references instead of primitives
+  - Type references resolved via TypeRegistry
+  - Type information stored for downstream property validation (WI-070)
+  - Backward compatibility: primitive types continue to work
+
 - **WI-067: Type Registry and Resolver** - Completed 2025-12-31
   - TypeRegistry class implementation
   - TypeResolver for reference validation

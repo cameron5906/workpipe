@@ -7,7 +7,8 @@ export type OutputType = 'string' | 'int' | 'float' | 'bool' | 'json' | 'path';
 
 export interface OutputDeclaration {
   readonly name: string;
-  readonly type: OutputType;
+  readonly type: OutputType | string;
+  readonly typeReference?: string;
   readonly span: Span;
 }
 

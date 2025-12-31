@@ -12,7 +12,11 @@ import type {
   CycleNode,
   SchemaTypeNode,
   SchemaObjectNode,
+  TypeDeclarationNode,
+  TypeExpressionNode,
+  TypeFieldNode,
 } from "../ast/types.js";
+import type { TypeRegistry } from "../semantics/type-registry.js";
 import type {
   WorkflowIR,
   TriggerIR,
@@ -106,6 +110,101 @@ export function inlineSchemaToJsonSchema(schema: SchemaObjectNode): JsonSchema {
   };
 }
 
+function typeExpressionToJsonSchema(
+  typeExpr: TypeExpressionNode,
+  registry?: TypeRegistry
+): JsonSchema {
+  switch (typeExpr.kind) {
+    case "primitive_type":
+      switch (typeExpr.type) {
+        case "string":
+          return { type: "string" };
+        case "int":
+          return { type: "integer" };
+        case "float":
+          return { type: "number" };
+        case "bool":
+          return { type: "boolean" };
+        case "json":
+          return { type: "object", properties: {}, required: [], additionalProperties: false };
+        case "path":
+          return { type: "string" };
+        default:
+          throw new Error(`Unknown primitive type: ${typeExpr.type}`);
+      }
+    case "null_type":
+      return { type: "null" };
+    case "array_type":
+      return {
+        type: "array",
+        items: typeExpressionToJsonSchema(typeExpr.elementType, registry),
+      };
+    case "object_type": {
+      const properties: Record<string, JsonSchema> = {};
+      const required: string[] = [];
+      for (const field of typeExpr.fields) {
+        properties[field.name] = typeExpressionToJsonSchema(field.type, registry);
+        required.push(field.name);
+      }
+      return {
+        type: "object",
+        properties,
+        required,
+        additionalProperties: false,
+      };
+    }
+    case "string_literal_type":
+      return { enum: [typeExpr.value] };
+    case "union_type": {
+      const allStringLiterals = typeExpr.members.every(
+        (m) => m.kind === "string_literal_type"
+      );
+      if (allStringLiterals) {
+        const enumValues = typeExpr.members.map((m) => {
+          if (m.kind === "string_literal_type") {
+            return m.value;
+          }
+          throw new Error("Expected string literal in union");
+        });
+        return { enum: enumValues };
+      }
+      return {
+        oneOf: typeExpr.members.map((m) => typeExpressionToJsonSchema(m, registry)),
+      };
+    }
+    case "type_reference": {
+      if (registry) {
+        const resolvedType = registry.resolve(typeExpr.name);
+        if (resolvedType) {
+          return typeDeclarationToJsonSchema(resolvedType, registry);
+        }
+      }
+      return { $ref: typeExpr.name } as unknown as JsonSchema;
+    }
+  }
+  throw new Error(`Unknown type expression: ${(typeExpr as TypeExpressionNode).kind}`);
+}
+
+export function typeDeclarationToJsonSchema(
+  type: TypeDeclarationNode,
+  registry?: TypeRegistry
+): JsonSchema {
+  const properties: Record<string, JsonSchema> = {};
+  const required: string[] = [];
+
+  for (const field of type.fields) {
+    properties[field.name] = typeExpressionToJsonSchema(field.type, registry);
+    required.push(field.name);
+  }
+
+  return {
+    type: "object",
+    properties,
+    required,
+    additionalProperties: false,
+  };
+}
+
 export function serializeExpression(expr: ExpressionNode): string {
   switch (expr.kind) {
     case "binary": {
@@ -151,7 +250,8 @@ function transformAgentTask(
   task: AgentTaskNode,
   workflowName: string,
   jobName: string,
-  matrixContext?: MatrixContext
+  matrixContext?: MatrixContext,
+  registry?: TypeRegistry
 ): StepIR[] {
   const steps: StepIR[] = [];
 
@@ -189,7 +289,17 @@ function transformAgentTask(
 
   if (task.outputSchema) {
     if (typeof task.outputSchema === "string") {
-      withConfig.output_schema = { $ref: task.outputSchema };
+      const isFilePath = task.outputSchema.endsWith(".json");
+      if (!isFilePath && registry) {
+        const resolvedType = registry.resolve(task.outputSchema);
+        if (resolvedType) {
+          withConfig.output_schema = typeDeclarationToJsonSchema(resolvedType, registry);
+        } else {
+          withConfig.output_schema = { $ref: task.outputSchema };
+        }
+      } else {
+        withConfig.output_schema = { $ref: task.outputSchema };
+      }
     } else {
       withConfig.output_schema = inlineSchemaToJsonSchema(task.outputSchema);
     }
@@ -296,7 +406,8 @@ function transformStep(
   step: StepNode,
   workflowName: string,
   jobName: string,
-  matrixContext?: MatrixContext
+  matrixContext?: MatrixContext,
+  registry?: TypeRegistry
 ): StepIR[] {
   switch (step.kind) {
     case "run":
@@ -304,7 +415,7 @@ function transformStep(
     case "uses":
       return [{ kind: "uses", action: step.action }];
     case "agent_task":
-      return transformAgentTask(step, workflowName, jobName, matrixContext);
+      return transformAgentTask(step, workflowName, jobName, matrixContext, registry);
     case "guard_js_step":
       return transformGuardJsStep(step);
   }
@@ -322,10 +433,10 @@ function collectGuardJsOutputs(
   return outputs;
 }
 
-function transformRegularJob(job: JobNode, workflowName: string): JobIR {
+function transformRegularJob(job: JobNode, workflowName: string, registry?: TypeRegistry): JobIR {
   const steps: StepIR[] = [];
   for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name);
+    const transformed = transformStep(step, workflowName, job.name, undefined, registry);
     steps.push(...transformed);
   }
 
@@ -356,10 +467,10 @@ function transformRegularJob(job: JobNode, workflowName: string): JobIR {
   return result;
 }
 
-function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
+function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
   const steps: StepIR[] = [];
   for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name);
+    const transformed = transformStep(step, workflowName, job.name, undefined, registry);
     steps.push(...transformed);
   }
 
@@ -386,11 +497,11 @@ function transformAgentJob(job: AgentJobNode, workflowName: string): JobIR {
   return result;
 }
 
-function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
+function transformMatrixJob(job: MatrixJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
   const matrixContext: MatrixContext = { axes: job.axes };
   const steps: StepIR[] = [];
   for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name, matrixContext);
+    const transformed = transformStep(step, workflowName, job.name, matrixContext, registry);
     steps.push(...transformed);
   }
 
@@ -430,23 +541,24 @@ function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
   return result;
 }
 
-function transformJob(job: AnyJobNode, workflowName: string): JobIR {
+function transformJob(job: AnyJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
   if (job.kind === "agent_job") {
-    return transformAgentJob(job, workflowName);
+    return transformAgentJob(job, workflowName, registry);
   }
   if (job.kind === "matrix_job") {
-    return transformMatrixJob(job, workflowName);
+    return transformMatrixJob(job, workflowName, registry);
   }
-  return transformRegularJob(job, workflowName);
+  return transformRegularJob(job, workflowName, registry);
 }
 
 function transformCycleBodyJob(
   job: AnyJobNode,
   workflowName: string,
   cycleName: string,
-  hydrateJobName: string
+  hydrateJobName: string,
+  registry?: TypeRegistry
 ): JobIR {
-  const baseJob = transformJob(job, workflowName);
+  const baseJob = transformJob(job, workflowName, registry);
 
   const cycleJobNeeds = [...(baseJob.needs ?? [])].map((need) => {
     const bodyJobNames = [];
@@ -470,7 +582,8 @@ function transformCycleBodyJob(
 
 export function transformCycle(
   cycle: CycleNode,
-  workflow: WorkflowNode
+  workflow: WorkflowNode,
+  registry?: TypeRegistry
 ): Map<string, JobIR> {
   const jobs = new Map<string, JobIR>();
   const cycleName = cycle.name;
@@ -489,7 +602,8 @@ export function transformCycle(
       bodyJob,
       workflow.name,
       cycleName,
-      hydrateJobName
+      hydrateJobName,
+      registry
     );
 
     const needsWithCyclePrefix = (bodyJob.needs ?? []).map((need) => {
@@ -737,15 +851,15 @@ function generateConcurrency(cycles: readonly CycleNode[]): ConcurrencyIR | unde
   };
 }
 
-export function transform(ast: WorkflowNode): WorkflowIR {
+export function transform(ast: WorkflowNode, registry?: TypeRegistry): WorkflowIR {
   const jobs = new Map<string, JobIR>();
 
   for (const job of ast.jobs) {
-    jobs.set(job.name, transformJob(job, ast.name));
+    jobs.set(job.name, transformJob(job, ast.name, registry));
   }
 
   for (const cycle of ast.cycles) {
-    const cycleJobs = transformCycle(cycle, ast);
+    const cycleJobs = transformCycle(cycle, ast, registry);
     for (const [name, jobIR] of cycleJobs) {
       jobs.set(name, jobIR);
     }

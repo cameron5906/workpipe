@@ -12,6 +12,6 @@ export type {
   WorkflowDispatchInputIR,
 } from "./yaml-ir.js";
 
-export { transform, transformCycle, serializeExpression, inlineSchemaToJsonSchema, generateMatrixFingerprint } from "./transform.js";
+export { transform, transformCycle, serializeExpression, inlineSchemaToJsonSchema, typeDeclarationToJsonSchema, generateMatrixFingerprint } from "./transform.js";
 export type { JsonSchema } from "./transform.js";
 export { emit } from "./emit.js";

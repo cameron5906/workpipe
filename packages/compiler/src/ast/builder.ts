@@ -667,6 +667,12 @@ function buildInlineSchema(cursor: TreeCursor, source: string): SchemaObjectNode
   };
 }
 
+const PRIMITIVE_OUTPUT_TYPES = new Set(["string", "int", "float", "bool", "json", "path"]);
+
+function isPrimitiveOutputType(name: string): name is OutputType {
+  return PRIMITIVE_OUTPUT_TYPES.has(name);
+}
+
 function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
   const outputs: OutputDeclaration[] = [];
 
@@ -678,7 +684,8 @@ function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
           if (cursor.type.id === OutputDecl) {
             const declSpan = span(cursor);
             let name = "";
-            let outputType: OutputType = "string";
+            let outputType: OutputType | string = "string";
+            let typeReference: string | undefined;
 
             if (cursor.firstChild()) {
               do {
@@ -687,17 +694,36 @@ function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
                 } else if (cursor.type.id === OutputTypeTerm) {
                   if (cursor.firstChild()) {
                     const typeText = getText(cursor, source);
-                    if (typeText === "string" || typeText === "int" || typeText === "float" ||
-                        typeText === "bool" || typeText === "json" || typeText === "path") {
+                    if (isPrimitiveOutputType(typeText)) {
                       outputType = typeText;
+                    } else {
+                      outputType = typeText;
+                      typeReference = typeText;
                     }
+                    cursor.parent();
+                  }
+                } else if (cursor.type.id === TypeReferenceTerm) {
+                  if (cursor.firstChild()) {
+                    do {
+                      if (cursor.type.id === TypeName) {
+                        const typeText = getText(cursor, source);
+                        if (isPrimitiveOutputType(typeText)) {
+                          outputType = typeText;
+                        } else {
+                          outputType = typeText;
+                          typeReference = typeText;
+                        }
+                      }
+                    } while (cursor.nextSibling());
                     cursor.parent();
                   }
                 } else if (cursor.name === "TypeName") {
                   const typeText = getText(cursor, source);
-                  if (typeText === "string" || typeText === "int" || typeText === "float" ||
-                      typeText === "bool" || typeText === "json" || typeText === "path") {
+                  if (isPrimitiveOutputType(typeText)) {
                     outputType = typeText;
+                  } else {
+                    outputType = typeText;
+                    typeReference = typeText;
                   }
                 }
               } while (cursor.nextSibling());
@@ -708,6 +734,7 @@ function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
               outputs.push({
                 name,
                 type: outputType,
+                ...(typeReference ? { typeReference } : {}),
                 span: declSpan,
               });
             }
