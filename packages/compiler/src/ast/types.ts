@@ -90,11 +90,16 @@ export interface BooleanLiteralNode {
   readonly span: Span;
 }
 
+// Matrix combination type for include/exclude
+export type MatrixCombination = Record<string, string | number | boolean>;
+
 // Matrix job node
 export interface MatrixJobNode {
   readonly kind: "matrix_job";
   readonly name: string;
   readonly axes: Record<string, readonly (string | number)[]>;
+  readonly include?: readonly MatrixCombination[];
+  readonly exclude?: readonly MatrixCombination[];
   readonly maxParallel?: number;
   readonly failFast?: boolean;
   readonly runsOn: string | null;

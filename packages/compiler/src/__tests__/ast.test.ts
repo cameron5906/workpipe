@@ -1561,5 +1561,170 @@ describe("AST Builder", () => {
       expect(job.axes.environment).toEqual(["dev", "prod"]);
       expect(job.axes.runner).toEqual(["ubuntu-latest"]);
     });
+
+    it("parses matrix job with include clause", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest, macos-latest]
+      node: [18, 20]
+    }
+    include [
+      { os: ubuntu-latest, node: 22, experimental: true }
+    ]
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.include).toBeDefined();
+      expect(job.include).toHaveLength(1);
+      expect(job.include![0]).toEqual({
+        os: "ubuntu-latest",
+        node: 22,
+        experimental: true,
+      });
+    });
+
+    it("parses matrix job with exclude clause", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest, macos-latest]
+      node: [18, 20]
+    }
+    exclude [
+      { os: macos-latest, node: 18 }
+    ]
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.exclude).toBeDefined();
+      expect(job.exclude).toHaveLength(1);
+      expect(job.exclude![0]).toEqual({
+        os: "macos-latest",
+        node: 18,
+      });
+    });
+
+    it("parses matrix job with both include and exclude", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest, macos-latest]
+      node: [18, 20]
+    }
+    include [
+      { os: ubuntu-latest, node: 22, experimental: true }
+    ]
+    exclude [
+      { os: macos-latest, node: 18 }
+    ]
+    runs_on: matrix.os
+    steps: [run("npm test")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.kind).toBe("matrix_job");
+      expect(job.axes).toEqual({
+        os: ["ubuntu-latest", "macos-latest"],
+        node: [18, 20],
+      });
+      expect(job.include).toHaveLength(1);
+      expect(job.include![0]).toEqual({
+        os: "ubuntu-latest",
+        node: 22,
+        experimental: true,
+      });
+      expect(job.exclude).toHaveLength(1);
+      expect(job.exclude![0]).toEqual({
+        os: "macos-latest",
+        node: 18,
+      });
+    });
+
+    it("parses matrix job with multiple include combinations", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest]
+    }
+    include [
+      { os: ubuntu-latest, node: 18 },
+      { os: ubuntu-latest, node: 20 },
+      { os: windows-latest, node: 20 }
+    ]
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.include).toHaveLength(3);
+      expect(job.include![0]).toEqual({ os: "ubuntu-latest", node: 18 });
+      expect(job.include![1]).toEqual({ os: "ubuntu-latest", node: 20 });
+      expect(job.include![2]).toEqual({ os: "windows-latest", node: 20 });
+    });
+
+    it("parses matrix job with string values in include", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest]
+    }
+    include [
+      { os: "ubuntu-20.04", name: "legacy" }
+    ]
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.include).toHaveLength(1);
+      expect(job.include![0]).toEqual({
+        os: "ubuntu-20.04",
+        name: "legacy",
+      });
+    });
+
+    it("parses matrix job with boolean false in include", () => {
+      const source = `workflow test {
+  on: push
+  job test matrix {
+    axes {
+      os: [ubuntu-latest]
+    }
+    include [
+      { os: ubuntu-latest, experimental: false }
+    ]
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
+      expect(job.include).toHaveLength(1);
+      expect(job.include![0].experimental).toBe(false);
+    });
   });
 });

@@ -24,8 +24,12 @@ export interface TriggerIR {
   };
 }
 
+export type MatrixCombinationIR = Record<string, string | number | boolean>;
+
 export interface MatrixStrategyIR {
   readonly matrix: Record<string, readonly (string | number)[]>;
+  readonly include?: readonly MatrixCombinationIR[];
+  readonly exclude?: readonly MatrixCombinationIR[];
   readonly "max-parallel"?: number;
   readonly "fail-fast"?: boolean;
 }

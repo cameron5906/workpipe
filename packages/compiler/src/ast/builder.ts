@@ -93,6 +93,13 @@ const {
   HyphenatedIdentifier,
   MaxParallelProperty,
   FailFastProperty,
+  IncludeProperty,
+  ExcludeProperty,
+  MatrixCombinationList,
+  MatrixCombination: MatrixCombinationTerm,
+  MatrixCombinationEntryList,
+  MatrixCombinationEntry,
+  MatrixCombinationValue,
 } = terms;
 
 import type {
@@ -102,6 +109,7 @@ import type {
   AnyJobNode,
   AgentJobNode,
   MatrixJobNode,
+  MatrixCombination,
   StepNode,
   RunStepNode,
   UsesStepNode,
@@ -1046,6 +1054,96 @@ function buildAxes(cursor: TreeCursor, source: string): Record<string, (string |
   return axes;
 }
 
+function buildMatrixCombinationValue(cursor: TreeCursor, source: string): string | number | boolean {
+  if (!cursor.firstChild()) return "";
+
+  let value: string | number | boolean = "";
+
+  do {
+    const valueType = cursor.type.id;
+
+    if (valueType === StringTerm) {
+      value = unquoteString(getText(cursor, source));
+      break;
+    } else if (valueType === NumberTerm) {
+      value = parseInt(getText(cursor, source), 10);
+      break;
+    } else if (valueType === BooleanTerm) {
+      value = getText(cursor, source) === "true";
+      break;
+    } else if (valueType === HyphenatedIdentifier || valueType === Identifier) {
+      value = getText(cursor, source);
+      break;
+    } else if (cursor.name === "Boolean") {
+      value = getText(cursor, source) === "true";
+      break;
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return value;
+}
+
+function buildMatrixCombination(cursor: TreeCursor, source: string): MatrixCombination {
+  const combination: MatrixCombination = {};
+
+  if (!cursor.firstChild()) return combination;
+
+  do {
+    if (cursor.type.id === MatrixCombinationEntryList) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === MatrixCombinationEntry) {
+            let key = "";
+            let value: string | number | boolean = "";
+
+            if (cursor.firstChild()) {
+              do {
+                if (cursor.type.id === Identifier) {
+                  key = getText(cursor, source);
+                } else if (cursor.type.id === MatrixCombinationValue) {
+                  value = buildMatrixCombinationValue(cursor, source);
+                }
+              } while (cursor.nextSibling());
+              cursor.parent();
+            }
+
+            if (key) {
+              combination[key] = value;
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return combination;
+}
+
+function buildMatrixCombinations(cursor: TreeCursor, source: string): MatrixCombination[] {
+  const combinations: MatrixCombination[] = [];
+
+  if (!cursor.firstChild()) return combinations;
+
+  do {
+    if (cursor.type.id === MatrixCombinationList) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === MatrixCombinationTerm) {
+            combinations.push(buildMatrixCombination(cursor, source));
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return combinations;
+}
+
 function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode | null {
   if (cursor.type.id !== JobDecl) return null;
 
@@ -1058,6 +1156,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
   const outputs: OutputDeclaration[] = [];
   const steps: StepNode[] = [];
   let axes: Record<string, (string | number)[]> = {};
+  let include: MatrixCombination[] | undefined;
+  let exclude: MatrixCombination[] | undefined;
   let maxParallel: number | undefined;
   let failFast: boolean | undefined;
 
@@ -1157,6 +1257,10 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
                 } else if (failFastText.includes("false")) {
                   failFast = false;
                 }
+              } else if (propType === IncludeProperty) {
+                include = buildMatrixCombinations(cursor, source);
+              } else if (propType === ExcludeProperty) {
+                exclude = buildMatrixCombinations(cursor, source);
               }
               cursor.parent();
             }
@@ -1174,6 +1278,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
       kind: "matrix_job",
       name,
       axes,
+      ...(include && include.length > 0 ? { include } : {}),
+      ...(exclude && exclude.length > 0 ? { exclude } : {}),
       maxParallel,
       failFast,
       runsOn,

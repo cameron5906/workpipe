@@ -321,6 +321,8 @@ function transformMatrixJob(job: MatrixJobNode, workflowName: string): JobIR {
 
   const strategy: MatrixStrategyIR = {
     matrix: job.axes,
+    ...(job.include ? { include: job.include } : {}),
+    ...(job.exclude ? { exclude: job.exclude } : {}),
     ...(job.maxParallel !== undefined ? { "max-parallel": job.maxParallel } : {}),
     ...(job.failFast !== undefined ? { "fail-fast": job.failFast } : {}),
   };

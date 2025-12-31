@@ -27,18 +27,17 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(None - ready to pick up next item)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### Existing Backlog
-1. WI-023: Generate strategy.matrix with include/exclude - P2-Medium (unblocked by WI-022)
-2. WI-024: Add matrix fingerprint to artifact naming - P2-Medium (depends on WI-023)
-3. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium (unblocked by WI-022)
-4. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
-5. WI-021: Create guard helper library - P3-Low
+1. WI-024: Add matrix fingerprint to artifact naming - P2-Medium (unblocked - WI-023 complete)
+2. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium (unblocked - WI-022 complete)
+3. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
+4. WI-021: Create guard helper library - P3-Low
 
 ---
 
@@ -67,9 +66,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
 **Test Count:** 385+ tests (71 lang + 314 compiler)
-**Work Items Completed:** 39
+**Work Items Completed:** 40
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 5 (WI-020, WI-021, WI-023, WI-024, WI-025)
+**Work Items In Backlog:** 4 (WI-020, WI-021, WI-024, WI-025)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -210,6 +209,13 @@ jobs:
 ## Completed
 
 ### Phase 6: Matrices - MOST RECENT
+- **WI-023: Generate strategy.matrix with include/exclude** - Completed 2025-12-31
+  - Extended grammar with IncludeProperty, ExcludeProperty, MatrixCombination
+  - Extended MatrixJobNode with include/exclude arrays
+  - Updated IR and emit to output strategy.matrix.include/exclude
+  - Tests for parsing, transform, and emit
+  - Documentation updated in language-reference.md
+
 - **WI-022: Implement Matrix Axes Syntax and Parsing** - Completed 2025-12-31
   - Extended grammar with MatrixModifier, AxesProperty, MaxParallelProperty, FailFastProperty
   - Added MatrixJobNode to AST types

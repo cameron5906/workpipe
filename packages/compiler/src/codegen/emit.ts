@@ -82,6 +82,30 @@ function serializeJob(job: JobIR): Record<string, unknown> {
     result.outputs = { ...job.outputs };
   }
 
+  if (job.strategy) {
+    const strategyResult: Record<string, unknown> = {
+      matrix: { ...job.strategy.matrix },
+    };
+
+    if (job.strategy.include && job.strategy.include.length > 0) {
+      (strategyResult.matrix as Record<string, unknown>).include = job.strategy.include.map(c => ({ ...c }));
+    }
+
+    if (job.strategy.exclude && job.strategy.exclude.length > 0) {
+      (strategyResult.matrix as Record<string, unknown>).exclude = job.strategy.exclude.map(c => ({ ...c }));
+    }
+
+    if (job.strategy["max-parallel"] !== undefined) {
+      strategyResult["max-parallel"] = job.strategy["max-parallel"];
+    }
+
+    if (job.strategy["fail-fast"] !== undefined) {
+      strategyResult["fail-fast"] = job.strategy["fail-fast"];
+    }
+
+    result.strategy = strategyResult;
+  }
+
   result.steps = job.steps.map(serializeStep);
 
   return result;

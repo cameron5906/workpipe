@@ -1639,6 +1639,178 @@ describe("agent task with inline schema", () => {
   });
 });
 
+describe("matrix job transforms", () => {
+  it("transforms matrix job with include to IR", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        include [
+          { os: ubuntu-latest, node: 22, experimental: true }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("test")!;
+    expect(job.strategy).toBeDefined();
+    expect(job.strategy!.matrix).toEqual({
+      os: ["ubuntu-latest", "macos-latest"],
+      node: [18, 20],
+    });
+    expect(job.strategy!.include).toHaveLength(1);
+    expect(job.strategy!.include![0]).toEqual({
+      os: "ubuntu-latest",
+      node: 22,
+      experimental: true,
+    });
+  });
+
+  it("transforms matrix job with exclude to IR", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        exclude [
+          { os: macos-latest, node: 18 }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("test")!;
+    expect(job.strategy).toBeDefined();
+    expect(job.strategy!.exclude).toHaveLength(1);
+    expect(job.strategy!.exclude![0]).toEqual({
+      os: "macos-latest",
+      node: 18,
+    });
+  });
+
+  it("transforms matrix job with both include and exclude to IR", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        include [
+          { os: ubuntu-latest, node: 22, experimental: true }
+        ]
+        exclude [
+          { os: macos-latest, node: 18 }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("test")!;
+    expect(job.strategy!.include).toHaveLength(1);
+    expect(job.strategy!.exclude).toHaveLength(1);
+  });
+
+  it("emits matrix job with include in YAML", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        include [
+          { os: ubuntu-latest, node: 22, experimental: true }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("strategy:");
+    expect(yaml).toContain("matrix:");
+    expect(yaml).toContain("include:");
+    expect(yaml).toContain("os: ubuntu-latest");
+    expect(yaml).toContain("node: 22");
+    expect(yaml).toContain("experimental: true");
+  });
+
+  it("emits matrix job with exclude in YAML", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        exclude [
+          { os: macos-latest, node: 18 }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("strategy:");
+    expect(yaml).toContain("matrix:");
+    expect(yaml).toContain("exclude:");
+    expect(yaml).toContain("os: macos-latest");
+    expect(yaml).toContain("node: 18");
+  });
+
+  it("emits full matrix job with include and exclude matching target YAML", () => {
+    const source = `workflow test {
+      on: push
+      job test matrix {
+        axes {
+          os: [ubuntu-latest, macos-latest]
+          node: [18, 20]
+        }
+        include [
+          { os: ubuntu-latest, node: 22, experimental: true }
+        ]
+        exclude [
+          { os: macos-latest, node: 18 }
+        ]
+        steps: [run("npm test")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("strategy:");
+    expect(yaml).toContain("matrix:");
+    expect(yaml).toContain("- ubuntu-latest");
+    expect(yaml).toContain("- macos-latest");
+    expect(yaml).toContain("- 18");
+    expect(yaml).toContain("- 20");
+    expect(yaml).toContain("include:");
+    expect(yaml).toContain("exclude:");
+  });
+});
+
 describe("guard_js step transforms", () => {
   it("transforms guard_js step to ScriptStepIR", () => {
     const guardStep: GuardJsStepNode = {

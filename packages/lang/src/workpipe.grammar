@@ -94,7 +94,37 @@ JobProperty {
   StepsProperty |
   AxesProperty |
   MaxParallelProperty |
-  FailFastProperty
+  FailFastProperty |
+  IncludeProperty |
+  ExcludeProperty
+}
+
+IncludeProperty {
+  kw<"include"> "[" MatrixCombinationList? "]"
+}
+
+ExcludeProperty {
+  kw<"exclude"> "[" MatrixCombinationList? "]"
+}
+
+MatrixCombinationList {
+  MatrixCombination ("," MatrixCombination)*
+}
+
+MatrixCombination {
+  "{" MatrixCombinationEntryList? "}"
+}
+
+MatrixCombinationEntryList {
+  MatrixCombinationEntry ("," MatrixCombinationEntry)*
+}
+
+MatrixCombinationEntry {
+  Identifier ":" MatrixCombinationValue
+}
+
+MatrixCombinationValue {
+  String | Number | Boolean | HyphenatedIdentifier
 }
 
 AxesProperty {
