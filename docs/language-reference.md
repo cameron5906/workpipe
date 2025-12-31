@@ -175,10 +175,8 @@ job build {
     build_number: int
   }
   steps: [
-    run("""
-      echo "version=1.0.0" >> $GITHUB_OUTPUT
-      echo "build_number=42" >> $GITHUB_OUTPUT
-    """)
+    run("echo \"version=1.0.0\" >> $GITHUB_OUTPUT"),
+    run("echo \"build_number=42\" >> $GITHUB_OUTPUT")
   ]
 }
 ```
@@ -304,15 +302,23 @@ step "greet" run("echo Hello, World!")
 
 ### Multi-line Commands
 
-Use triple-quoted strings for multi-line commands:
+For multi-line shell commands, use multiple `run()` steps or combine commands with `&&`:
 
 ```workpipe
-run("""
-  npm ci
-  npm run build
-  npm test
-""")
+steps: [
+  run("npm ci"),
+  run("npm run build"),
+  run("npm test")
+]
 ```
+
+Or chain commands:
+
+```workpipe
+run("npm ci && npm run build && npm test")
+```
+
+**Note:** Triple-quoted strings (`"""..."""`) are only supported in `guard_js` blocks, not in `run()` steps.
 
 ### Uses Step
 
@@ -430,19 +436,20 @@ Standard strings with escape sequences:
 
 ### Triple-Quoted Strings
 
-Multi-line strings that preserve whitespace:
+Multi-line strings that preserve whitespace. Currently only supported in `guard_js` blocks:
 
 ```workpipe
-"""
-This is a
-multi-line string
+until guard_js """
+  return state.score > 0.95 || state.iteration >= 5;
 """
 ```
 
 Triple-quoted strings:
 - Preserve all whitespace and newlines
 - Do not process escape sequences
-- Are ideal for scripts and prompts
+- Are ideal for JavaScript guards and prompts
+
+**Note:** Triple-quoted strings are not currently supported in `run()` steps. For multi-line shell commands, use multiple `run()` steps or chain commands with `&&`.
 
 ### Template Strings
 
@@ -648,6 +655,84 @@ job build {
 | Working with the `emit`/`emits` artifact system | The value happens to look like a path but is not an artifact |
 
 **Note:** The `path` type is meaningful for artifact declarations where the compiler tracks file relationships. For job outputs (the `outputs:` block), prefer `string` unless you specifically need artifact semantics.
+
+### The `json` Type
+
+The `json` type allows you to pass complex structured data between jobs. Unlike simple primitives, JSON can represent objects, arrays, and nested structures.
+
+**Declaring a json output:**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  outputs: {
+    metadata: json
+  }
+  steps: [
+    run("echo \"metadata={\\\"version\\\":\\\"1.0.0\\\",\\\"count\\\":42}\" >> $GITHUB_OUTPUT")
+  ]
+}
+```
+
+**Setting json output values:**
+
+JSON must be serialized as a string when writing to `$GITHUB_OUTPUT`. This requires escaping quotes:
+
+```workpipe
+job gather_data {
+  runs_on: ubuntu-latest
+  outputs: {
+    config: json
+    items: json
+  }
+  steps: [
+    run("echo \"config={\\\"env\\\":\\\"prod\\\",\\\"replicas\\\":3}\" >> $GITHUB_OUTPUT"),
+    run("echo \"items=[\\\"a\\\",\\\"b\\\",\\\"c\\\"]\" >> $GITHUB_OUTPUT")
+  ]
+}
+```
+
+**Consuming json output in downstream jobs:**
+
+Use the `fromJSON()` function in expressions to parse JSON and access its properties:
+
+```workpipe
+job deploy {
+  runs_on: ubuntu-latest
+  needs: [build]
+  steps: [
+    run("echo Version: ${{ fromJSON(needs.build.outputs.metadata).version }}"),
+    run("echo Count: ${{ fromJSON(needs.build.outputs.metadata).count }}")
+  ]
+}
+```
+
+For arrays, use bracket notation:
+
+```workpipe
+run("echo First item: ${{ fromJSON(needs.gather_data.outputs.items)[0] }}")
+```
+
+**Important caveats:**
+
+| Caveat | Details |
+|--------|---------|
+| **Size limit** | GitHub Actions limits output values to approximately 1MB. For larger data, use artifacts instead. |
+| **Must be valid JSON** | The value must be parseable JSON. Malformed JSON will cause `fromJSON()` to fail at runtime. |
+| **String at runtime** | Like all outputs, JSON is passed as a string. You must use `fromJSON()` in expressions to access properties. |
+| **No compile-time field checking** | WorkPipe cannot validate that `fromJSON(x).field` exists; that check happens at runtime. |
+| **Shell escaping** | Building JSON inline requires careful escaping. Each quote level adds backslashes. |
+
+**When to use `json` vs alternatives:**
+
+| Use `json` when... | Use alternatives when... |
+|-------------------|-------------------------|
+| Data is under 1MB and needed in expressions | Data is large (use artifacts) |
+| You need to access fields in `${{ }}` expressions | You only need to pass data to a script (use artifacts) |
+| Data structure is relatively flat | Data is deeply nested (consider artifacts with file parsing) |
+| Multiple downstream jobs need the same data | Only one job needs the data (consider direct file passing) |
+
+For a complete example, see [examples/json-outputs/](../examples/json-outputs/).
 
 ### Optional Types
 

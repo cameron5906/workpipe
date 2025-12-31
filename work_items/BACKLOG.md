@@ -33,9 +33,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-1. **WI-062: Document `json` Type Usage Pattern** - P2-Medium
-   - Example showing setting and consuming json typed outputs
-   - Document caveats (size limits, expression access)
+(None - all high-priority work complete)
 
 ---
 
@@ -64,9 +62,9 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 47
+**Work Items Completed:** 48
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1
+**Work Items In Backlog:** 0 (all shipped)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -202,17 +200,36 @@ jobs:
 - WI-040: Create bootstrap workflow template - P2-Medium
 - WI-041: Write documentation and example specs - P3-Low
 
-### Type System Work (USER ESCALATED - Active Backlog)
+### Type System Work (USER ESCALATED - ALL COMPLETE)
 - WI-060: Document Type System Limitations Clearly - **COMPLETED** 2025-12-31
+- WI-061: Add Type Error Examples to Documentation - **COMPLETED** 2025-12-31
+- WI-062: Document `json` Type Usage Pattern - **COMPLETED** 2025-12-31
 - WI-063: Implement Expression Type Checking - **COMPLETED** 2025-12-31
-- WI-061: Add Type Error Examples to Documentation - P2-Medium
-- WI-062: Document `json` Type Usage Pattern - P2-Medium
+
+---
+
+## Known Issues & Follow-Up Work
+
+The following issues were identified by the documentation steward during WI-062 review. These are tracked for future work but are not blocking.
+
+### Doc Clarification Needed
+- **Triple-quoted strings scope**: Language-reference.md incorrectly suggests triple-quoted strings work in `run()` shell steps. They only work in `guard_js` blocks. Update docs to clarify scope.
+
+### Example Syntax Issues
+- **WI-057 examples with unsupported syntax**: `examples/multi-environment-deploy/` and `examples/enterprise-e2e-pipeline/` were created with syntax that isn't currently supported. Action: either fix examples to use only supported syntax or mark as "aspirational future examples."
 
 ---
 
 ## Completed
 
-### Type System - MOST RECENT
+### Type System Documentation - MOST RECENT
+- **WI-062: Document `json` Type Usage Pattern** - Completed 2025-12-31
+  - Example and documentation merged into `examples/job-outputs/`
+  - Shows JSON serialization in shell steps and consumption via `fromJSON()` expressions
+  - Documented caveats: GitHub Actions size limits, expression access patterns
+  - **Follow-up issues**: See Known Issues section (doc clarifications + example syntax fixes)
+
+### Type System - PRIOR
 - **WI-063: Implement Expression Type Checking** - Completed 2025-12-31
   - WP2012 warning for type mismatch in comparisons
   - WP2013 info diagnostic for numeric operations on non-numeric types

@@ -1,0 +1,25 @@
+workflow json_outputs {
+  on: push
+
+  job gather_info {
+    runs_on: ubuntu-latest
+    outputs: {
+      build_info: json
+      deploy_config: json
+    }
+    steps: [
+      run("echo \"build_info={\\\"version\\\":\\\"2.1.0\\\",\\\"commit\\\":\\\"${{ github.sha }}\\\"}\" >> $GITHUB_OUTPUT"),
+      run("echo \"deploy_config={\\\"env\\\":\\\"staging\\\",\\\"replicas\\\":3}\" >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  job process_info {
+    runs_on: ubuntu-latest
+    needs: [gather_info]
+    steps: [
+      run("echo Build version: ${{ fromJSON(needs.gather_info.outputs.build_info).version }}"),
+      run("echo Deploy env: ${{ fromJSON(needs.gather_info.outputs.deploy_config).env }}"),
+      run("echo Replicas: ${{ fromJSON(needs.gather_info.outputs.deploy_config).replicas }}")
+    ]
+  }
+}

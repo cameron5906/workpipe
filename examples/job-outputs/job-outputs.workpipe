@@ -8,10 +8,8 @@ workflow job_outputs {
       build_number: int
     }
     steps: [
-      run("""
-        echo "version=1.2.3" >> $GITHUB_OUTPUT
-        echo "build_number=42" >> $GITHUB_OUTPUT
-      """)
+      run("echo \"version=1.2.3\" >> $GITHUB_OUTPUT"),
+      run("echo \"build_number=42\" >> $GITHUB_OUTPUT")
     ]
   }
 

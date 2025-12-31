@@ -119,11 +119,7 @@ job deploy {
 ```workpipe
 run("npm install")
 
-run("""
-  npm ci
-  npm run build
-  npm test
-""")
+run("npm ci && npm run build && npm test")
 ```
 
 ### Use Actions
