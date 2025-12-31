@@ -1,7 +1,7 @@
 # WI-082: Import System - Dependency Graph
 
 **ID**: WI-082
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -18,20 +18,20 @@ The dependency graph enables:
 
 ## Acceptance Criteria
 
-- [ ] Create `packages/compiler/src/imports/dependency-graph.ts`
-- [ ] `ImportGraph` class to represent file dependencies
-- [ ] `addFile(path: string, imports: string[])` method
-- [ ] `hasCycle(): boolean` method
-- [ ] `getCycle(): string[] | null` method (returns files in cycle)
-- [ ] `getTopologicalOrder(): string[]` method for compilation order
-- [ ] `getDependentsOf(path: string): string[]` for invalidation
-- [ ] Cycle detection algorithm (Tarjan's SCC or DFS with coloring)
-- [ ] Path normalization before graph insertion (dedupe same file)
-- [ ] Unit tests for acyclic graphs
-- [ ] Unit tests for direct cycles (A -> B -> A)
-- [ ] Unit tests for transitive cycles (A -> B -> C -> A)
-- [ ] Unit tests for complex multi-file scenarios
-- [ ] Unit tests for topological order correctness
+- [x] Create `packages/compiler/src/imports/dependency-graph.ts`
+- [x] `ImportGraph` class to represent file dependencies
+- [x] `addFile(path: string, imports: string[])` method
+- [x] `hasCycle(): boolean` method
+- [x] `getCycle(): string[] | null` method (returns files in cycle)
+- [x] `getTopologicalOrder(): string[]` method for compilation order
+- [x] `getDependentsOf(path: string): string[]` for invalidation
+- [x] Cycle detection algorithm (Tarjan's SCC or DFS with coloring)
+- [x] Path normalization before graph insertion (dedupe same file)
+- [x] Unit tests for acyclic graphs
+- [x] Unit tests for direct cycles (A -> B -> A)
+- [x] Unit tests for transitive cycles (A -> B -> C -> A)
+- [x] Unit tests for complex multi-file scenarios
+- [x] Unit tests for topological order correctness
 
 ## Technical Context
 

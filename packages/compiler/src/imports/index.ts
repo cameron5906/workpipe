@@ -27,3 +27,7 @@ export {
   createNodeFileResolver,
   createMemoryFileResolver,
 } from "./file-resolver.js";
+
+export type { ImportEdge } from "./dependency-graph.js";
+
+export { ImportGraph } from "./dependency-graph.js";

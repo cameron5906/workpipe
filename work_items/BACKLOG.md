@@ -30,7 +30,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- WI-082: Import System - Dependency Graph - P0-Critical
+- WI-083: Import System - Type Registry Merging - P0-Critical
 
 ---
 
@@ -40,12 +40,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementation phases:
 
-1. **WI-083: Import System - Type Registry Merging** - P0-Critical
-   - Cross-file type resolution
-   - Name collision detection
-   - Import validation (type exists in target)
-
-2. **WI-084: Import System - Diagnostics** - P0-Critical
+1. **WI-084: Import System - Diagnostics** - P0-Critical
    - WP7001: Circular import detected
    - WP7002: Import file not found
    - WP7003: Type not exported by imported file
@@ -54,24 +49,24 @@ ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementati
    - WP7006: Invalid import path
    - WP7007: Import path resolves outside project root
 
-3. **WI-085: Import System - CLI Integration** - P0-Critical
+2. **WI-085: Import System - CLI Integration** - P0-Critical
    - Update `workpipe build` for multi-file compilation
    - Update `workpipe check` for import validation
    - Files with only types produce no YAML output
 
-4. **WI-086: Import System - VS Code Extension** - P0-Critical
+3. **WI-086: Import System - VS Code Extension** - P0-Critical
    - Cross-file diagnostics
    - File watching for dependents
    - Go-to-definition for imported types (stretch)
 
-5. **WI-087: Import System - Documentation** - P0-Critical
+4. **WI-087: Import System - Documentation** - P0-Critical
    - Import syntax documentation
    - Best practices guide
    - Example: `examples/shared-types/`
 
 ### Tooling Enhancements (Lower Priority)
 
-6. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
+5. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
    - Rich hover information for keywords and symbols
    - Context-aware hovers showing job/type details
    - Import provenance in hovers
@@ -118,10 +113,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 779 tests (71 lang + 708 compiler)
-**Work Items Completed:** 81 (WI-001 through WI-081)
-**Work Items In Progress:** 1 (WI-082)
-**Work Items In Backlog:** 6 (WI-083 through WI-088)
+**Test Count:** 830 tests (71 lang + 759 compiler)
+**Work Items Completed:** 82 (WI-001 through WI-082)
+**Work Items In Progress:** 1 (WI-083)
+**Work Items In Backlog:** 5 (WI-084 through WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -295,10 +290,11 @@ The following issues were identified by the documentation steward during WI-062 
 ### Import System (Milestone F - In Progress)
 
 - **WI-082: Import System - Dependency Graph** - Completed 2025-12-31
-  - Build import dependency graph from import declarations
-  - Cycle detection algorithm (detects circular import scenarios)
-  - Topological sort for optimal compilation order
-  - 67 new tests for graph analysis and cycle detection
+  - ImportGraph class with Tarjan's SCC algorithm
+  - hasCycle(), getCycle(), getTopologicalOrder() methods
+  - getDependentsOf() and getDependenciesOf() for incremental invalidation
+  - Path normalization and deduplication
+  - 51 comprehensive tests for acyclic/cyclic graphs and topological ordering
 
 - **WI-081: Import System - Path Resolution** - Completed 2025-12-31
   - Relative path resolution with `./` and `../` support
