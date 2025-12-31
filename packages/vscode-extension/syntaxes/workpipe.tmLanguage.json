@@ -59,6 +59,10 @@
         {
           "name": "keyword.other.reference.workpipe",
           "match": "\\b(file|template|from)\\b"
+        },
+        {
+          "name": "keyword.control.import.workpipe",
+          "match": "\\b(import|as)\\b"
         }
       ]
     },

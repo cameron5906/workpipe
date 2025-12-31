@@ -31,6 +31,8 @@ import type {
   UnionTypeNode,
   StringLiteralTypeNode,
   NullTypeNode,
+  ImportDeclarationNode,
+  ImportItemNode,
 } from "../ast/index.js";
 
 function loadExample(name: string): string {
@@ -2132,6 +2134,214 @@ workflow cd {
       expect(fileAst!.workflows).toHaveLength(2);
       expect(fileAst!.workflows[0].name).toBe("ci");
       expect(fileAst!.workflows[1].name).toBe("cd");
+    });
+  });
+
+  describe("import declaration parsing", () => {
+    it("parses single import declaration", () => {
+      const source = `import { Foo } from "./foo.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst).not.toBeNull();
+      expect(fileAst!.imports).toHaveLength(1);
+
+      const importDecl = fileAst!.imports[0];
+      expect(importDecl.kind).toBe("import_declaration");
+      expect(importDecl.path).toBe("./foo.workpipe");
+      expect(importDecl.items).toHaveLength(1);
+      expect(importDecl.items[0].name).toBe("Foo");
+      expect(importDecl.items[0].alias).toBeUndefined();
+    });
+
+    it("parses import with multiple items", () => {
+      const source = `import { Foo, Bar, Baz } from "./types.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+
+      const importDecl = fileAst!.imports[0];
+      expect(importDecl.path).toBe("./types.workpipe");
+      expect(importDecl.items).toHaveLength(3);
+      expect(importDecl.items[0].name).toBe("Foo");
+      expect(importDecl.items[1].name).toBe("Bar");
+      expect(importDecl.items[2].name).toBe("Baz");
+    });
+
+    it("parses import with alias", () => {
+      const source = `import { Foo as F } from "./foo.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+
+      const importDecl = fileAst!.imports[0];
+      expect(importDecl.items).toHaveLength(1);
+      expect(importDecl.items[0].name).toBe("Foo");
+      expect(importDecl.items[0].alias).toBe("F");
+    });
+
+    it("parses import with multiple aliased items", () => {
+      const source = `import { Foo as F, Bar as B } from "./types.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+
+      const importDecl = fileAst!.imports[0];
+      expect(importDecl.items).toHaveLength(2);
+      expect(importDecl.items[0].name).toBe("Foo");
+      expect(importDecl.items[0].alias).toBe("F");
+      expect(importDecl.items[1].name).toBe("Bar");
+      expect(importDecl.items[1].alias).toBe("B");
+    });
+
+    it("parses import with trailing comma", () => {
+      const source = `import { Foo, } from "./foo.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+      expect(fileAst!.imports[0].items).toHaveLength(1);
+      expect(fileAst!.imports[0].items[0].name).toBe("Foo");
+    });
+
+    it("parses multiple import statements", () => {
+      const source = `import { BuildInfo } from "./types.workpipe"
+import { ReviewResult as CodeReview } from "../shared/review.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(2);
+
+      expect(fileAst!.imports[0].path).toBe("./types.workpipe");
+      expect(fileAst!.imports[0].items[0].name).toBe("BuildInfo");
+
+      expect(fileAst!.imports[1].path).toBe("../shared/review.workpipe");
+      expect(fileAst!.imports[1].items[0].name).toBe("ReviewResult");
+      expect(fileAst!.imports[1].items[0].alias).toBe("CodeReview");
+    });
+
+    it("parses file with imports, types, and workflows", () => {
+      const source = `import { BuildInfo, DeployResult } from "./types.workpipe"
+
+type LocalConfig {
+  name: string
+}
+
+workflow ci {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+      expect(fileAst!.imports[0].items).toHaveLength(2);
+      expect(fileAst!.types).toHaveLength(1);
+      expect(fileAst!.types[0].name).toBe("LocalConfig");
+      expect(fileAst!.workflows).toHaveLength(1);
+      expect(fileAst!.workflows[0].name).toBe("ci");
+    });
+
+    it("parses file without imports as empty imports array", () => {
+      const source = `type Config {
+  name: string
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toEqual([]);
+      expect(fileAst!.types).toHaveLength(1);
+      expect(fileAst!.workflows).toHaveLength(1);
+    });
+
+    it("preserves import declaration span", () => {
+      const source = `import { Foo } from "./foo.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const importDecl = fileAst!.imports[0];
+      expect(importDecl.span.start).toBe(0);
+      expect(importDecl.span.end).toBeGreaterThan(importDecl.span.start);
+    });
+
+    it("preserves import item span", () => {
+      const source = `import { Foo } from "./foo.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const item = fileAst!.imports[0].items[0];
+      expect(item.span.start).toBeGreaterThan(0);
+      expect(item.span.end).toBeGreaterThan(item.span.start);
+    });
+
+    it("parses complex import with mixed aliased and non-aliased items", () => {
+      const source = `import { BuildInfo, DeployResult as Deploy, Config } from "./types.workpipe"
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.imports).toHaveLength(1);
+
+      const items = fileAst!.imports[0].items;
+      expect(items).toHaveLength(3);
+      expect(items[0].name).toBe("BuildInfo");
+      expect(items[0].alias).toBeUndefined();
+      expect(items[1].name).toBe("DeployResult");
+      expect(items[1].alias).toBe("Deploy");
+      expect(items[2].name).toBe("Config");
+      expect(items[2].alias).toBeUndefined();
     });
   });
 });

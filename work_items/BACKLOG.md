@@ -30,7 +30,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None currently)
+- WI-081: Import System - Path Resolution - P0-Critical
 
 ---
 
@@ -40,27 +40,17 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementation phases:
 
-1. **WI-080: Import System - Grammar and Parser** - P0-Critical
-   - Add import syntax to Lezer grammar
-   - Reserve `import`, `from`, `as` keywords
-   - Parse import declarations to CST
-
-2. **WI-081: Import System - Path Resolution** - P0-Critical
-   - Relative path resolution (`./`, `../`)
-   - FileResolver abstraction for CLI and VS Code
-   - Path normalization and cross-platform support
-
-3. **WI-082: Import System - Dependency Graph** - P0-Critical
+1. **WI-082: Import System - Dependency Graph** - P0-Critical
    - Build import dependency graph
    - Cycle detection algorithm
    - Topological sort for compilation order
 
-4. **WI-083: Import System - Type Registry Merging** - P0-Critical
+3. **WI-083: Import System - Type Registry Merging** - P0-Critical
    - Cross-file type resolution
    - Name collision detection
    - Import validation (type exists in target)
 
-5. **WI-084: Import System - Diagnostics** - P0-Critical
+4. **WI-084: Import System - Diagnostics** - P0-Critical
    - WP7001: Circular import detected
    - WP7002: Import file not found
    - WP7003: Type not exported by imported file
@@ -69,24 +59,24 @@ ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementati
    - WP7006: Invalid import path
    - WP7007: Import path resolves outside project root
 
-6. **WI-085: Import System - CLI Integration** - P0-Critical
+5. **WI-085: Import System - CLI Integration** - P0-Critical
    - Update `workpipe build` for multi-file compilation
    - Update `workpipe check` for import validation
    - Files with only types produce no YAML output
 
-7. **WI-086: Import System - VS Code Extension** - P0-Critical
+6. **WI-086: Import System - VS Code Extension** - P0-Critical
    - Cross-file diagnostics
    - File watching for dependents
    - Go-to-definition for imported types (stretch)
 
-8. **WI-087: Import System - Documentation** - P0-Critical
+7. **WI-087: Import System - Documentation** - P0-Critical
    - Import syntax documentation
    - Best practices guide
    - Example: `examples/shared-types/`
 
 ### Tooling Enhancements (Lower Priority)
 
-9. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
+8. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
    - Rich hover information for keywords and symbols
    - Context-aware hovers showing job/type details
    - Import provenance in hovers
@@ -133,10 +123,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 643 tests (71 lang + 572 compiler)
-**Work Items Completed:** 79 (WI-001 through WI-079)
-**Work Items In Progress:** 0
-**Work Items In Backlog:** 9 (WI-080 through WI-088)
+**Test Count:** 712 tests (71 lang + 641 compiler)
+**Work Items Completed:** 80 (WI-001 through WI-080)
+**Work Items In Progress:** 1 (WI-081)
+**Work Items In Backlog:** 7 (WI-082 through WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -306,6 +296,15 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Import System (Milestone F - In Progress)
+
+- **WI-080: Import System - Grammar and Parser** - Completed 2025-12-31
+  - Grammar extended with `ImportDecl`, `ImportList`, `ImportItem`, `ImportPath` productions
+  - `import`, `from`, and `as` keywords reserved
+  - Imports appear before type and workflow declarations
+  - Parser error recovery and source spans preserved
+  - 69 new grammar tests (712 total - 71 lang + 641 compiler)
 
 ### Bug Fixes & Research (Latest)
 

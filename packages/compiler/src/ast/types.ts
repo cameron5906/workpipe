@@ -3,6 +3,20 @@ export interface Span {
   readonly end: number;
 }
 
+export interface ImportDeclarationNode {
+  readonly kind: "import_declaration";
+  readonly items: readonly ImportItemNode[];
+  readonly path: string;
+  readonly span: Span;
+}
+
+export interface ImportItemNode {
+  readonly kind: "import_item";
+  readonly name: string;
+  readonly alias?: string;
+  readonly span: Span;
+}
+
 export type OutputType = 'string' | 'int' | 'float' | 'bool' | 'json' | 'path';
 
 export interface OutputDeclaration {
@@ -23,6 +37,7 @@ export interface WorkflowNode {
 
 export interface WorkPipeFileNode {
   readonly kind: "file";
+  readonly imports: readonly ImportDeclarationNode[];
   readonly types: readonly TypeDeclarationNode[];
   readonly workflows: readonly WorkflowNode[];
   readonly span: Span;

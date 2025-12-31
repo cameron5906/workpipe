@@ -105,6 +105,10 @@ const {
   TypeDecl,
   TypeDeclName,
   TypeField,
+  ImportDecl,
+  ImportList,
+  ImportItem,
+  ImportPath,
 } = terms;
 
 import type {
@@ -154,6 +158,8 @@ import type {
   UnionTypeNode,
   StringLiteralTypeNode,
   NullTypeNode,
+  ImportDeclarationNode,
+  ImportItemNode,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -1875,18 +1881,99 @@ function buildWorkflow(cursor: TreeCursor, source: string): WorkflowNode | null 
   };
 }
 
+function buildImportItem(cursor: TreeCursor, source: string): ImportItemNode | null {
+  if (cursor.type.id !== ImportItem) return null;
+
+  const itemSpan = span(cursor);
+  let name = "";
+  let alias: string | undefined;
+
+  if (!cursor.firstChild()) return null;
+
+  let identifierIndex = 0;
+  do {
+    if (cursor.type.id === Identifier) {
+      if (identifierIndex === 0) {
+        name = getText(cursor, source);
+      } else {
+        alias = getText(cursor, source);
+      }
+      identifierIndex++;
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name) return null;
+
+  return {
+    kind: "import_item",
+    name,
+    ...(alias ? { alias } : {}),
+    span: itemSpan,
+  };
+}
+
+function buildImportDeclaration(cursor: TreeCursor, source: string): ImportDeclarationNode | null {
+  if (cursor.type.id !== ImportDecl) return null;
+
+  const declSpan = span(cursor);
+  const items: ImportItemNode[] = [];
+  let path = "";
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === ImportList) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === ImportItem) {
+            const item = buildImportItem(cursor, source);
+            if (item) items.push(item);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    } else if (cursor.type.id === ImportPath) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === StringTerm) {
+            path = unquoteString(getText(cursor, source));
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (items.length === 0 || !path) return null;
+
+  return {
+    kind: "import_declaration",
+    items,
+    path,
+    span: declSpan,
+  };
+}
+
 export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | null {
   const cursor = tree.cursor();
+  const imports: ImportDeclarationNode[] = [];
   const types: TypeDeclarationNode[] = [];
   const workflows: WorkflowNode[] = [];
   const fileSpan = span(cursor);
 
   if (!cursor.firstChild()) {
-    return { kind: "file", types: [], workflows: [], span: fileSpan };
+    return { kind: "file", imports: [], types: [], workflows: [], span: fileSpan };
   }
 
   do {
-    if (cursor.type.id === TypeDecl) {
+    if (cursor.type.id === ImportDecl) {
+      const importDecl = buildImportDeclaration(cursor, source);
+      if (importDecl) imports.push(importDecl);
+    } else if (cursor.type.id === TypeDecl) {
       const typeDecl = buildTypeDeclaration(cursor, source);
       if (typeDecl) types.push(typeDecl);
     } else if (cursor.type.id === WorkflowDecl) {
@@ -1897,6 +1984,7 @@ export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | nul
 
   return {
     kind: "file",
+    imports,
     types,
     workflows,
     span: fileSpan,

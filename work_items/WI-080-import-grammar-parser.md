@@ -1,7 +1,7 @@
 # WI-080: Import System - Grammar and Parser
 
 **ID**: WI-080
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -30,19 +30,19 @@ import {
 
 ## Acceptance Criteria
 
-- [ ] Grammar extended with `ImportDecl` production
-- [ ] `import` keyword reserved
-- [ ] `from` keyword reserved
-- [ ] `as` keyword handling (may already exist)
-- [ ] `ImportList` production for comma-separated import items
-- [ ] `ImportItem` production with optional `as` alias
-- [ ] `ImportPath` production for string literal paths
-- [ ] Imports must appear before type and workflow declarations
-- [ ] Parser error recovery for malformed imports
-- [ ] Source spans preserved for all import nodes
-- [ ] Grammar tests for valid import syntax
-- [ ] Grammar tests for malformed imports (error recovery)
-- [ ] Grammar tests for multi-line import lists
+- [x] Grammar extended with `ImportDecl` production
+- [x] `import` keyword reserved
+- [x] `from` keyword reserved
+- [x] `as` keyword handling (may already exist)
+- [x] `ImportList` production for comma-separated import items
+- [x] `ImportItem` production with optional `as` alias
+- [x] `ImportPath` production for string literal paths
+- [x] Imports must appear before type and workflow declarations
+- [x] Parser error recovery for malformed imports
+- [x] Source spans preserved for all import nodes
+- [x] Grammar tests for valid import syntax
+- [x] Grammar tests for malformed imports (error recovery)
+- [x] Grammar tests for multi-line import lists
 
 ## Technical Context
 

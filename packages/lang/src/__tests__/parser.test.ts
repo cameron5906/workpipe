@@ -2303,4 +2303,240 @@ workflow second {
       expect(workflowDeclCount).toBe(1);
     });
   });
+
+  describe("import syntax", () => {
+    it("parses single import", () => {
+      const source = `import { Foo } from "./foo.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundImportDecl = false;
+      let foundImportItem = false;
+      let foundImportPath = false;
+      let importName = "";
+      let importPath = "";
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportDecl") foundImportDecl = true;
+        if (node.name === "ImportItem") foundImportItem = true;
+        if (node.name === "ImportPath") foundImportPath = true;
+        if (node.name === "Identifier" && foundImportItem && !importName) {
+          importName = source.slice(node.from, node.to);
+        }
+        if (node.name === "String" && foundImportPath && !importPath) {
+          importPath = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(foundImportDecl).toBe(true);
+      expect(foundImportItem).toBe(true);
+      expect(foundImportPath).toBe(true);
+      expect(importName).toBe("Foo");
+      expect(importPath).toBe('"./foo.workpipe"');
+    });
+
+    it("parses multiple imports in single statement", () => {
+      const source = `import { Foo, Bar, Baz } from "./types.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let importItemCount = 0;
+      const importNames: string[] = [];
+      let inImportItem = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportItem") {
+          importItemCount++;
+          inImportItem = true;
+        }
+        if (inImportItem && node.name === "Identifier") {
+          importNames.push(source.slice(node.from, node.to));
+          inImportItem = false;
+        }
+      });
+
+      expect(importItemCount).toBe(3);
+      expect(importNames).toContain("Foo");
+      expect(importNames).toContain("Bar");
+      expect(importNames).toContain("Baz");
+    });
+
+    it("parses aliased import", () => {
+      const source = `import { Foo as F } from "./foo.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundImportItem = false;
+      const identifiers: string[] = [];
+      let inImportItem = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportItem") {
+          foundImportItem = true;
+          inImportItem = true;
+        }
+        if (inImportItem && node.name === "Identifier") {
+          identifiers.push(source.slice(node.from, node.to));
+        }
+        if (node.name === "ImportPath") {
+          inImportItem = false;
+        }
+      });
+
+      expect(foundImportItem).toBe(true);
+      expect(identifiers).toContain("Foo");
+      expect(identifiers).toContain("F");
+    });
+
+    it("parses multiple aliased imports", () => {
+      const source = `import { Foo as F, Bar as B } from "./types.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let importItemCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportItem") importItemCount++;
+      });
+
+      expect(importItemCount).toBe(2);
+    });
+
+    it("parses import with trailing comma", () => {
+      const source = `import { Foo, } from "./foo.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundImportDecl = false;
+      let importItemCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportDecl") foundImportDecl = true;
+        if (node.name === "ImportItem") importItemCount++;
+      });
+
+      expect(foundImportDecl).toBe(true);
+      expect(importItemCount).toBe(1);
+    });
+
+    it("parses multiple import statements", () => {
+      const source = `import { Foo } from "./foo.workpipe"
+import { Bar, Baz } from "./bar.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let importDeclCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportDecl") importDeclCount++;
+      });
+
+      expect(importDeclCount).toBe(2);
+    });
+
+    it("parses import before types before workflows (order enforced)", () => {
+      const source = `import { BuildInfo } from "./types.workpipe"
+
+type LocalType {
+  name: string
+}
+
+workflow test {
+  on: push
+  job build {
+    outputs: {
+      info: BuildInfo
+    }
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundImportDecl = false;
+      let foundTypeDecl = false;
+      let foundWorkflowDecl = false;
+      let importPosition = -1;
+      let typePosition = -1;
+      let workflowPosition = -1;
+      let position = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportDecl" && !foundImportDecl) {
+          foundImportDecl = true;
+          importPosition = position++;
+        }
+        if (node.name === "TypeDecl" && !foundTypeDecl) {
+          foundTypeDecl = true;
+          typePosition = position++;
+        }
+        if (node.name === "WorkflowDecl" && !foundWorkflowDecl) {
+          foundWorkflowDecl = true;
+          workflowPosition = position++;
+        }
+      });
+
+      expect(foundImportDecl).toBe(true);
+      expect(foundTypeDecl).toBe(true);
+      expect(foundWorkflowDecl).toBe(true);
+      expect(importPosition).toBeLessThan(typePosition);
+      expect(typePosition).toBeLessThan(workflowPosition);
+    });
+
+    it("parses import with relative parent path", () => {
+      const source = `import { ReviewResult as CodeReview } from "../shared/review.workpipe"
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundImportPath = false;
+      let importPathValue = "";
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportPath") {
+          foundImportPath = true;
+        }
+        if (foundImportPath && node.name === "String" && !importPathValue) {
+          importPathValue = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(foundImportPath).toBe(true);
+      expect(importPathValue).toBe('"../shared/review.workpipe"');
+    });
+
+    it("exports import term constants", () => {
+      expect(terms.ImportDecl).toBeDefined();
+      expect(terms.ImportList).toBeDefined();
+      expect(terms.ImportItem).toBeDefined();
+      expect(terms.ImportPath).toBeDefined();
+    });
+  });
 });

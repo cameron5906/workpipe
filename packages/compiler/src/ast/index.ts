@@ -2,6 +2,8 @@ export type {
   Span,
   OutputType,
   OutputDeclaration,
+  ImportDeclarationNode,
+  ImportItemNode,
   WorkflowNode,
   WorkPipeFileNode,
   TriggerNode,

@@ -1,4 +1,20 @@
-@top Workflow { TypeDecl* WorkflowDecl* }
+@top Workflow { ImportDecl* TypeDecl* WorkflowDecl* }
+
+ImportDecl {
+  kw<"import"> "{" ImportList "}" kw<"from"> ImportPath
+}
+
+ImportList {
+  ImportItem ("," ImportItem)* ","?
+}
+
+ImportItem {
+  Identifier (kw<"as"> Identifier)?
+}
+
+ImportPath {
+  String
+}
 
 TypeDecl {
   kw<"type"> TypeDeclName "{" TypeField* "}"
