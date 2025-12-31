@@ -27,7 +27,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No items currently in progress)
+- **WI-047: Improve README and Onboarding Experience** - P1-High
+  - Complete "zero to workflow" experience in README
+  - Bootstrap docs, project structure guide
+  - Assigned to: Software Engineer
 
 ---
 
@@ -58,6 +61,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 **Test Count:** 326 tests passing
 **Work Items Completed:** 21
 **Work Items In Progress:** 0
+**Work Items In Backlog:** 3 (from user feedback) + existing
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -108,33 +112,43 @@ jobs:
 
 ## Ready for Development
 
+### User Feedback (Priority)
+1. **WI-045: Enhanced Editor Validation and Required Field Diagnostics** - P1-High
+   - User feedback: Expects errors/warnings for missing required fields
+   - Add semantic validation for required fields in all constructs
+   - Ensure diagnostics surface correctly in VS Code extension
+   - Extends WI-039 scope
+
 ### Phase 9: Tooling (Milestone E) - Remaining
-1. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
+3. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
    - Enhance existing diagnostics with code actions
    - Add hover information
+   - Note: WI-045 covers required field validation (user feedback priority)
 
-2. **WI-042: Bootstrap docs and project README** - P3-Low
-   - Stream C items deferred from WI-041
-   - `docs/bootstrap.md`, `docs/project-structure.md`
-   - Update project README.md
+### Future Enhancements (Phase 3+)
+4. **WI-046: Type System for Task/Job Data Flow** - P2-Medium
+   - User feedback: Wants type declarations for data passing between tasks/jobs
+   - Type annotations for outputs, inputs, artifacts
+   - Compile-time type checking
+   - Consolidates/extends WI-012, WI-013, WI-014
 
 ### Milestone C: Guards (Phase 5)
-3. **WI-019: Implement guard_js compilation** - P2-Medium
+5. **WI-019: Implement guard_js compilation** - P2-Medium
    - General guard jobs (not just in cycles)
    - Reuse patterns from cycle guard_js
 
-4. **WI-020: Generate guard job outputs with GITHUB_OUTPUT** - P2-Medium
+6. **WI-020: Generate guard job outputs with GITHUB_OUTPUT** - P2-Medium
 
-5. **WI-021: Create guard helper library** - P3-Low
+7. **WI-021: Create guard helper library** - P3-Low
 
 ### Milestone D: Matrices (Phase 6)
-6. **WI-022: Implement matrix axes syntax and parsing** - P2-Medium
+8. **WI-022: Implement matrix axes syntax and parsing** - P2-Medium
 
-7. **WI-023: Generate strategy.matrix with include/exclude** - P2-Medium
+9. **WI-023: Generate strategy.matrix with include/exclude** - P2-Medium
 
-8. **WI-024: Add matrix fingerprint to artifact naming** - P2-Medium
+10. **WI-024: Add matrix fingerprint to artifact naming** - P2-Medium
 
-9. **WI-025: Enforce 256-job matrix limit with diagnostics** - P2-Medium
+11. **WI-025: Enforce 256-job matrix limit with diagnostics** - P2-Medium
 
 ---
 
