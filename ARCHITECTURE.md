@@ -100,15 +100,18 @@ The WorkPipe grammar is implemented using [Lezer](https://lezer.codemirror.net/)
 The following keywords are reserved and cannot be used as identifiers:
 
 ```
-after        agent_job    agent_task   axes         body
-consumes     cycle        emit         emits        env
-false        guard_js     if           inputs       job
-key          matrix       max_iters    mcp          model
-needs        on           output_artifact           output_schema
-outputs      prompt       raw_yaml     run          runs_on
-step         steps        system_prompt tools       triggers
-true         until        uses         when         workflow
+after        agent_job    agent_task   as           axes
+body         consumes     cycle        emit         emits
+env          false        from         guard_js     if
+import       inputs       job          key          matrix
+max_iters    mcp          model        needs        on
+output_artifact           output_schema outputs     prompt
+raw_yaml     run          runs_on      step         steps
+system_prompt tools       triggers     true         until
+uses         when         workflow
 ```
+
+Note: `import`, `from`, and `as` are reserved for the import system (see [ADR-0012](adr/0012-import-system.md)).
 
 ### String Syntax
 
@@ -428,7 +431,7 @@ WorkPipe enforces typed data flow between jobs. See [ADR-0010](adr/0010-type-sys
 - Schema validation via `--json-schema` flag
 - Output uploaded as artifact for downstream consumption
 
-### User-Defined Types (Planned)
+### User-Defined Types
 
 User-defined types enable complex JSON shapes to be declared once and reused across job outputs and agent task schemas. See [ADR-0011](adr/0011-user-defined-type-declarations.md) for detailed design.
 
@@ -472,6 +475,77 @@ workflow ci {
 | WP5003 | Property does not exist on type |
 | WP5004 | Declared type is never used |
 | WP5005 | Duplicate type declaration |
+
+### Import System (Planned)
+
+The import system enables sharing type definitions across multiple workflow files. See [ADR-0012](adr/0012-import-system.md) for detailed design and implementation guidance.
+
+**Syntax**:
+```workpipe
+// Named imports
+import { BuildInfo, DeployResult } from "./types.workpipe"
+
+// Aliased imports
+import { BuildInfo as BI } from "./types.workpipe"
+
+// Multiple imports from same file
+import {
+  BuildInfo,
+  DeployResult,
+  TestSummary
+} from "./shared/types.workpipe"
+
+workflow ci {
+  job build {
+    outputs: { info: BuildInfo }  // Use imported type
+  }
+}
+```
+
+**Key design decisions**:
+- **Named imports only**: Explicit `{ Type } from "path"` syntax
+- **Relative paths**: Paths resolved from importing file's directory
+- **Non-transitive**: Only types declared in target file are importable
+- **Implicit exports**: All types are automatically exportable (no `export` keyword)
+- **No index files**: Must specify full path including filename
+
+**Path resolution rules**:
+- Paths must start with `./` or `../`
+- Paths must end with `.workpipe`
+- Absolute paths are rejected (error WP7006)
+- Paths escaping project root are rejected (error WP7007)
+
+**Import diagnostic codes**:
+| Code | Severity | Description |
+|------|----------|-------------|
+| WP7001 | Error | Circular import detected |
+| WP7002 | Error | Import file not found |
+| WP7003 | Error | Type not exported by imported file |
+| WP7004 | Error | Duplicate import of same type |
+| WP7005 | Warning | Unused import |
+| WP7006 | Error | Invalid import path (absolute path) |
+| WP7007 | Error | Import path resolves outside project root |
+
+**Compiler pipeline impact**:
+```
+Source -> Parse -> AST
+                    |
+                    v
+             [Import Resolution]
+                    |
+       +------------+------------+
+       |            |            |
+       v            v            v
+  Parse Dep 1   Parse Dep 2   ... (parallel)
+       |            |
+       v            v
+    Merge Type Registries
+               |
+               v
+        Semantics -> Transform -> Emit
+```
+
+Files containing only type declarations (no workflows) produce no YAML output but are parsed and validated for their dependents.
 
 ---
 
@@ -864,6 +938,7 @@ The extension bundles `@workpipe/lang` and `@workpipe/compiler` using esbuild, p
 - [ADR-0009](adr/0009-vscode-extension-architecture.md): VS Code extension architecture
 - [ADR-0010](adr/0010-type-system-for-data-flow.md): Type system for task/job data flow
 - [ADR-0011](adr/0011-user-defined-type-declarations.md): User-defined type declarations
+- [ADR-0012](adr/0012-import-system.md): Import system for cross-file references
 
 ---
 
@@ -881,3 +956,4 @@ The extension bundles `@workpipe/lang` and `@workpipe/compiler` using esbuild, p
 | 2025-12-30 | Added Cycle Syntax section, updated reserved keywords | ADR-0007 |
 | 2025-12-30 | Added Editor Integration section for VS Code extension | ADR-0009 |
 | 2025-12-31 | Added User-Defined Types section to Typed Parameter Passing | ADR-0011 |
+| 2025-12-31 | Added Import System section to Typed Parameter Passing | ADR-0012 |
