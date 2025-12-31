@@ -15,7 +15,8 @@ This directory contains example WorkPipe specifications and their generated GitH
 | [release-workflow](./release-workflow/) | Manual release process | `workflow_dispatch`, fan-in pattern |
 | [iterative-refinement](./iterative-refinement/) | AI doc improvement cycle | Cycles with agent tasks |
 | [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) | Enterprise testing pipeline | Parallel tests, `if: always()`, teardown |
-| [matrix-build](./matrix-build/) | Multi-config builds | *Planned* - matrix axes, sharding |
+| [multi-environment-deploy](./multi-environment-deploy/) | Build-once deploy-many | Environment promotion, approval gates |
+| [microservices-build](./microservices-build/) | Parallel service builds | Fan-out/fan-in, multi-stage testing |
 
 ## Running Examples
 
@@ -46,6 +47,8 @@ Each example directory contains:
 5. **AI integration**: [agent-task](./agent-task/) - Claude Code for automation
 6. **Advanced**: [cycle-basic](./cycle-basic/) and [iterative-refinement](./iterative-refinement/) - iterative workflows
 7. **Enterprise**: [enterprise-e2e-pipeline](./enterprise-e2e-pipeline/) - complex testing pipelines with cleanup
+8. **Deployment**: [multi-environment-deploy](./multi-environment-deploy/) - build-once deploy-many pattern
+9. **Microservices**: [microservices-build](./microservices-build/) - parallel service builds with fan-out/fan-in
 
 ## Contributing Examples
 

@@ -7,6 +7,7 @@ A workflow demonstrating Claude Code integration for AI-powered automation.
 - Using `agent_job` for AI-powered workflows
 - Configuring `agent_task` with model and tool settings
 - Restricting tools available to the agent
+- **Inline output schemas** for structured agent responses
 - Generating output artifacts from agent tasks
 
 ## Key Concepts
@@ -16,7 +17,30 @@ A workflow demonstrating Claude Code integration for AI-powered automation.
 3. **Model selection**: `model: "claude-sonnet-4-20250514"` specifies the model
 4. **Turn limits**: `max_turns: 5` prevents runaway agent loops
 5. **Tool restrictions**: `tools: { allowed: [...] }` limits agent capabilities
-6. **Output artifacts**: `output_artifact` saves agent results for downstream use
+6. **Inline output schemas**: Define structured output format directly in the workflow
+7. **Output artifacts**: `output_artifact` saves agent results for downstream use
+
+## Inline Schema Syntax
+
+The `output_schema` block uses a concise inline syntax to define the expected structure of the agent's response:
+
+```workpipe
+output_schema: {
+  overall_rating: int
+  summary: string
+  issues: [{ filepath: string line_number: int severity: "error" | "warning" | "info" description: string }]
+  recommendations: [string]
+}
+```
+
+**Supported types:**
+- `string`, `int`, `float`, `bool` - primitive types
+- `[T]` - arrays (e.g., `[string]` for string array)
+- `[{...}]` - arrays of objects
+- `"a" | "b"` - string enums
+- `T | null` - nullable types
+
+This compiles to a full JSON Schema that Claude uses for structured output.
 
 ## Source
 
@@ -33,6 +57,12 @@ workflow agent_demo {
         max_turns: 5
         tools: {
           allowed: ["Read", "Glob", "Grep"]
+        }
+        output_schema: {
+          overall_rating: int
+          summary: string
+          issues: [{ filepath: string line_number: int severity: "error" | "warning" | "info" description: string }]
+          recommendations: [string]
         }
         output_artifact: "review_result"
       }

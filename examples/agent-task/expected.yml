@@ -12,6 +12,45 @@ jobs:
           allowed_tools: '["Read","Glob","Grep"]'
           max_turns: 5
           model: claude-sonnet-4-20250514
+          output_schema:
+            type: object
+            properties:
+              overall_rating:
+                type: integer
+              summary:
+                type: string
+              issues:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    filepath:
+                      type: string
+                    line_number:
+                      type: integer
+                    severity:
+                      enum:
+                        - error
+                        - warning
+                        - info
+                    description:
+                      type: string
+                  required:
+                    - filepath
+                    - line_number
+                    - severity
+                    - description
+                  additionalProperties: false
+              recommendations:
+                type: array
+                items:
+                  type: string
+            required:
+              - overall_rating
+              - summary
+              - issues
+              - recommendations
+            additionalProperties: false
       - name: Upload review_result
         uses: actions/upload-artifact@v4
         with:

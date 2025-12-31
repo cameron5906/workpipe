@@ -27,23 +27,20 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High **[USER FEEDBACK]**
-  - Define output schemas inline with type syntax instead of file references
-  - Support primitives, objects, arrays, nullable unions, string enums
-  - Significant feature request from user
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
-### User Feedback Items
-1. **WI-057: Real-World Enterprise Examples** - P2-Medium **[USER FEEDBACK]**
-   - User wants examples for complex enterprise scenarios
-   - Multi-stage pipelines with env provisioning/teardown
-   - Test suite orchestration, deployment patterns
+### WI-056 Follow-up Items (User Feedback)
+1. **WI-059: Error Codes for Invalid Schema Syntax** - P2-Medium **[NEW]**
+   - WP3xxx error code range for schema-related errors
+   - Unknown type, empty object, invalid union, duplicate property
+   - Improves DX for inline schema authoring
 
 ### Existing Backlog
-2. **WI-054: Validate Output References (WP2011)** - P2-High
+3. **WI-054: Validate Output References (WP2011)** - P2-High
    - Detect references to non-existent outputs
    - Cross-job semantic validation
    - WI-046 now complete, ready for implementation
@@ -78,10 +75,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 367 tests passing
-**Work Items Completed:** 31
-**Work Items In Progress:** 1 (WI-056)
-**Work Items In Backlog:** 5 (WI-054, WI-057, WI-039, WI-019, WI-022)
+**Test Count:** 394 tests passing
+**Work Items Completed:** 34
+**Work Items In Progress:** 0
+**Work Items In Backlog:** 5 (WI-059, WI-054, WI-039, WI-019, WI-022)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -131,19 +128,6 @@ jobs:
 ---
 
 ## Ready for Development
-
-### User Feedback Items (NEW - Triaged 2025-12-31)
-
-1. **WI-056: JSON Schema Type Definitions for Agent Tasks** - P1-High
-   - User wants inline type definitions instead of file references for output schemas
-   - Support: primitives, objects, arrays, `type | null` unions, string enum unions
-   - All properties required by default (Claude spec requirement)
-   - Explicitly excludes: $if/$def/$ref, complex conditionals
-
-2. **WI-057: Real-World Enterprise Examples** - P2-Medium
-   - User feedback: examples don't show complex enterprise patterns
-   - New examples: E2E pipeline with env provisioning/teardown, multi-env deploy, microservices
-   - Shows `if: always()` for cleanup, test aggregation, approval gates
 
 ### Phase 9: Tooling (Milestone E) - Remaining
 3. **WI-039: Add diagnostics display to VS Code extension** - P2-Medium
@@ -236,6 +220,30 @@ jobs:
 ---
 
 ## Completed
+
+### Examples & Documentation - RECENT
+- ✅ **WI-058: Add Inline Schema Example to agent-task** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+  - Updated `examples/agent-task/agent-task.workpipe` with inline output_schema
+  - Schema demonstrates object properties, arrays, string literal unions
+  - Updated README with inline schema syntax documentation
+  - Regenerated expected.yml
+  - 394 tests passing
+
+- ✅ **WI-057: Real-World Enterprise Examples** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+  - Created `examples/enterprise-e2e-pipeline/` with workpipe, README, expected.yml
+  - Created `examples/multi-environment-deploy/` with workpipe, README
+  - Created `examples/microservices-build/` with workpipe, README, expected.yml
+  - Updated `examples/README.md` with enterprise patterns section and learning path
+  - 394 tests passing
+
+### Phase 7: Agent Tasks - RECENT
+- ✅ **WI-056: JSON Schema Type Definitions for Agent Tasks** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**
+  - Grammar: Inline schema syntax with objects, arrays, unions, string literals
+  - AST: SchemaTypeNode hierarchy for structured schema representation
+  - Codegen: Transform to JSON Schema (required props, additionalProperties: false)
+  - Documentation: Added inline schema syntax to language-reference.md
+  - 394 tests passing (27 new tests)
+  - **NOTE: New DSL syntax - end-user review required per CLAUDE.md rules**
 
 ### Phase 9: Tooling - RECENT
 - ✅ **WI-055: VS Code Extension Troubleshooting Documentation** - 2025-12-31 **[USER FEEDBACK ADDRESSED]**

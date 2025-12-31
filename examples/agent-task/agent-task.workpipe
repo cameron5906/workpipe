@@ -11,6 +11,12 @@ workflow agent_demo {
         tools: {
           allowed: ["Read", "Glob", "Grep"]
         }
+        output_schema: {
+          overall_rating: int
+          summary: string
+          issues: [{ filepath: string line_number: int severity: "error" | "warning" | "info" description: string }]
+          recommendations: [string]
+        }
         output_artifact: "review_result"
       }
     ]
