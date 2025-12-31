@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "@workpipe/lang";
-import { buildAST } from "../ast/index.js";
+import { buildAST, buildFileAST } from "../ast/index.js";
 import type {
   WorkflowNode,
+  WorkPipeFileNode,
   JobNode,
   AgentJobNode,
   AgentTaskNode,
@@ -21,6 +22,15 @@ import type {
   SchemaUnionNode,
   SchemaNullNode,
   SchemaStringLiteralNode,
+  TypeDeclarationNode,
+  TypeFieldNode,
+  PrimitiveTypeNode,
+  TypeReferenceNode,
+  ArrayTypeNode,
+  ObjectTypeNode,
+  UnionTypeNode,
+  StringLiteralTypeNode,
+  NullTypeNode,
 } from "../ast/index.js";
 
 function loadExample(name: string): string {
@@ -1725,6 +1735,403 @@ describe("AST Builder", () => {
       const job = ast!.jobs[0] as import("../ast/index.js").MatrixJobNode;
       expect(job.include).toHaveLength(1);
       expect(job.include![0].experimental).toBe(false);
+    });
+  });
+
+  describe("type declaration parsing", () => {
+    it("parses simple type declaration", () => {
+      const source = `type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow test {
+  on: push
+  job build {
+    steps: []
+  }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst).not.toBeNull();
+      expect(fileAst!.kind).toBe("file");
+      expect(fileAst!.types).toHaveLength(1);
+      expect(fileAst!.workflows).toHaveLength(1);
+
+      const typeDecl = fileAst!.types[0] as TypeDeclarationNode;
+      expect(typeDecl.kind).toBe("type_declaration");
+      expect(typeDecl.name).toBe("BuildInfo");
+      expect(typeDecl.fields).toHaveLength(2);
+      expect(typeDecl.fields[0].name).toBe("version");
+      expect(typeDecl.fields[1].name).toBe("commit");
+    });
+
+    it("parses type with multiple fields and various primitive types", () => {
+      const source = `type Config {
+  name: string
+  count: int
+  score: float
+  enabled: bool
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.fields).toHaveLength(4);
+
+      expect(typeDecl.fields[0].name).toBe("name");
+      expect((typeDecl.fields[0].type as PrimitiveTypeNode).kind).toBe("primitive_type");
+      expect((typeDecl.fields[0].type as PrimitiveTypeNode).type).toBe("string");
+
+      expect(typeDecl.fields[1].name).toBe("count");
+      expect((typeDecl.fields[1].type as PrimitiveTypeNode).type).toBe("int");
+
+      expect(typeDecl.fields[2].name).toBe("score");
+      expect((typeDecl.fields[2].type as PrimitiveTypeNode).type).toBe("float");
+
+      expect(typeDecl.fields[3].name).toBe("enabled");
+      expect((typeDecl.fields[3].type as PrimitiveTypeNode).type).toBe("bool");
+    });
+
+    it("parses type with nested object field", () => {
+      const source = `type User {
+  name: string
+  address: {
+    street: string
+    city: string
+    zip: int
+  }
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.fields).toHaveLength(2);
+
+      const addressField = typeDecl.fields[1];
+      expect(addressField.name).toBe("address");
+      expect((addressField.type as ObjectTypeNode).kind).toBe("object_type");
+
+      const nestedObject = addressField.type as ObjectTypeNode;
+      expect(nestedObject.fields).toHaveLength(3);
+      expect(nestedObject.fields[0].name).toBe("street");
+      expect(nestedObject.fields[1].name).toBe("city");
+      expect(nestedObject.fields[2].name).toBe("zip");
+    });
+
+    it("parses type with array field", () => {
+      const source = `type Project {
+  name: string
+  tags: [string]
+  scores: [int]
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.fields).toHaveLength(3);
+
+      const tagsField = typeDecl.fields[1];
+      expect(tagsField.name).toBe("tags");
+      expect((tagsField.type as ArrayTypeNode).kind).toBe("array_type");
+      expect(((tagsField.type as ArrayTypeNode).elementType as PrimitiveTypeNode).type).toBe("string");
+
+      const scoresField = typeDecl.fields[2];
+      expect((scoresField.type as ArrayTypeNode).kind).toBe("array_type");
+      expect(((scoresField.type as ArrayTypeNode).elementType as PrimitiveTypeNode).type).toBe("int");
+    });
+
+    it("parses type with union field", () => {
+      const source = `type Result {
+  value: string | int
+  status: "success" | "error"
+  optional: string | null
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.fields).toHaveLength(3);
+
+      const valueField = typeDecl.fields[0];
+      expect(valueField.name).toBe("value");
+      expect((valueField.type as UnionTypeNode).kind).toBe("union_type");
+      expect((valueField.type as UnionTypeNode).members).toHaveLength(2);
+      expect(((valueField.type as UnionTypeNode).members[0] as PrimitiveTypeNode).type).toBe("string");
+      expect(((valueField.type as UnionTypeNode).members[1] as PrimitiveTypeNode).type).toBe("int");
+
+      const statusField = typeDecl.fields[1];
+      expect((statusField.type as UnionTypeNode).kind).toBe("union_type");
+      expect(((statusField.type as UnionTypeNode).members[0] as StringLiteralTypeNode).kind).toBe("string_literal_type");
+      expect(((statusField.type as UnionTypeNode).members[0] as StringLiteralTypeNode).value).toBe("success");
+      expect(((statusField.type as UnionTypeNode).members[1] as StringLiteralTypeNode).value).toBe("error");
+
+      const optionalField = typeDecl.fields[2];
+      expect(((optionalField.type as UnionTypeNode).members[1] as NullTypeNode).kind).toBe("null_type");
+    });
+
+    it("parses type reference in field (non-primitive type name)", () => {
+      const source = `type Address {
+  street: string
+  city: string
+}
+
+type User {
+  name: string
+  address: Address
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.types).toHaveLength(2);
+
+      const userType = fileAst!.types[1];
+      expect(userType.name).toBe("User");
+
+      const addressField = userType.fields[1];
+      expect(addressField.name).toBe("address");
+      expect((addressField.type as TypeReferenceNode).kind).toBe("type_reference");
+      expect((addressField.type as TypeReferenceNode).name).toBe("Address");
+    });
+
+    it("parses multiple type declarations", () => {
+      const source = `type Point {
+  x: int
+  y: int
+}
+
+type Line {
+  start: Point
+  end: Point
+}
+
+type Shape {
+  name: string
+  points: [Point]
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.types).toHaveLength(3);
+      expect(fileAst!.types[0].name).toBe("Point");
+      expect(fileAst!.types[1].name).toBe("Line");
+      expect(fileAst!.types[2].name).toBe("Shape");
+    });
+
+    it("parses type with array of objects", () => {
+      const source = `type ReviewResult {
+  approved: bool
+  comments: [{
+    filename: string
+    line: int
+    message: string
+  }]
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      const commentsField = typeDecl.fields[1];
+      expect(commentsField.name).toBe("comments");
+      expect((commentsField.type as ArrayTypeNode).kind).toBe("array_type");
+
+      const elementType = (commentsField.type as ArrayTypeNode).elementType as ObjectTypeNode;
+      expect(elementType.kind).toBe("object_type");
+      expect(elementType.fields).toHaveLength(3);
+      expect(elementType.fields[0].name).toBe("filename");
+      expect(elementType.fields[1].name).toBe("line");
+      expect(elementType.fields[2].name).toBe("message");
+    });
+
+    it("parses empty file with no types", () => {
+      const source = `workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst).not.toBeNull();
+      expect(fileAst!.types).toHaveLength(0);
+      expect(fileAst!.workflows).toHaveLength(1);
+    });
+
+    it("parses file with only types and no workflow", () => {
+      const source = `type Config {
+  name: string
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst).not.toBeNull();
+      expect(fileAst!.types).toHaveLength(1);
+      expect(fileAst!.workflows).toHaveLength(0);
+    });
+
+    it("preserves type declaration span", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.span.start).toBe(0);
+      expect(typeDecl.span.end).toBeGreaterThan(typeDecl.span.start);
+    });
+
+    it("preserves type field span", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const field = fileAst!.types[0].fields[0];
+      expect(field.span.start).toBeGreaterThan(0);
+      expect(field.span.end).toBeGreaterThan(field.span.start);
+    });
+
+    it("buildAST still works (returns first workflow, ignoring types)", () => {
+      const source = `type BuildInfo {
+  version: string
+}
+
+workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [run("echo hello")]
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.kind).toBe("workflow");
+      expect(ast!.name).toBe("test");
+      expect(ast!.jobs).toHaveLength(1);
+    });
+
+    it("parses type with complex nested structure", () => {
+      const source = `type DeploymentResult {
+  success: bool
+  environment: "dev" | "staging" | "prod"
+  metadata: {
+    timestamp: int
+    version: string
+    author: {
+      name: string
+      email: string
+    }
+  }
+  artifacts: [{
+    name: string
+    size: int
+    checksum: string | null
+  }]
+}
+
+workflow test {
+  on: push
+  job build { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      const typeDecl = fileAst!.types[0];
+      expect(typeDecl.name).toBe("DeploymentResult");
+      expect(typeDecl.fields).toHaveLength(4);
+
+      const successField = typeDecl.fields[0];
+      expect((successField.type as PrimitiveTypeNode).type).toBe("bool");
+
+      const envField = typeDecl.fields[1];
+      expect((envField.type as UnionTypeNode).kind).toBe("union_type");
+      expect((envField.type as UnionTypeNode).members).toHaveLength(3);
+
+      const metadataField = typeDecl.fields[2];
+      expect((metadataField.type as ObjectTypeNode).kind).toBe("object_type");
+      const metadataObj = metadataField.type as ObjectTypeNode;
+      expect(metadataObj.fields).toHaveLength(3);
+      const authorField = metadataObj.fields[2];
+      expect((authorField.type as ObjectTypeNode).kind).toBe("object_type");
+
+      const artifactsField = typeDecl.fields[3];
+      expect((artifactsField.type as ArrayTypeNode).kind).toBe("array_type");
+      const artifactElement = (artifactsField.type as ArrayTypeNode).elementType as ObjectTypeNode;
+      expect(artifactElement.fields).toHaveLength(3);
+      const checksumField = artifactElement.fields[2];
+      expect((checksumField.type as UnionTypeNode).kind).toBe("union_type");
+    });
+
+    it("parses multiple workflows in file", () => {
+      const source = `type Config {
+  name: string
+}
+
+workflow ci {
+  on: push
+  job build { steps: [] }
+}
+
+workflow cd {
+  on: push
+  job deploy { steps: [] }
+}`;
+      const tree = parse(source);
+      const fileAst = buildFileAST(tree, source);
+
+      expect(fileAst!.types).toHaveLength(1);
+      expect(fileAst!.workflows).toHaveLength(2);
+      expect(fileAst!.workflows[0].name).toBe("ci");
+      expect(fileAst!.workflows[1].name).toBe("cd");
     });
   });
 });

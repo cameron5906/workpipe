@@ -3,6 +3,7 @@ export type {
   OutputType,
   OutputDeclaration,
   WorkflowNode,
+  WorkPipeFileNode,
   TriggerNode,
   JobNode,
   AnyJobNode,
@@ -33,6 +34,16 @@ export type {
   SchemaUnionNode,
   SchemaStringLiteralNode,
   SchemaNullNode,
+  TypeDeclarationNode,
+  TypeFieldNode,
+  TypeExpressionNode,
+  PrimitiveTypeNode,
+  TypeReferenceNode,
+  ArrayTypeNode,
+  ObjectTypeNode,
+  UnionTypeNode,
+  StringLiteralTypeNode,
+  NullTypeNode,
 } from "./types.js";
 
-export { buildAST } from "./builder.js";
+export { buildAST, buildFileAST } from "./builder.js";

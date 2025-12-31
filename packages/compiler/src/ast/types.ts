@@ -20,6 +20,13 @@ export interface WorkflowNode {
   readonly span: Span;
 }
 
+export interface WorkPipeFileNode {
+  readonly kind: "file";
+  readonly types: readonly TypeDeclarationNode[];
+  readonly workflows: readonly WorkflowNode[];
+  readonly span: Span;
+}
+
 export interface TriggerNode {
   readonly kind: "trigger";
   readonly events: readonly string[];
@@ -250,5 +257,69 @@ export interface SchemaStringLiteralNode {
 
 export interface SchemaNullNode {
   readonly kind: "null";
+  readonly span: Span;
+}
+
+export interface TypeDeclarationNode {
+  readonly kind: "type_declaration";
+  readonly name: string;
+  readonly fields: readonly TypeFieldNode[];
+  readonly span: Span;
+}
+
+export interface TypeFieldNode {
+  readonly kind: "type_field";
+  readonly name: string;
+  readonly type: TypeExpressionNode;
+  readonly span: Span;
+}
+
+export type TypeExpressionNode =
+  | PrimitiveTypeNode
+  | TypeReferenceNode
+  | ArrayTypeNode
+  | ObjectTypeNode
+  | UnionTypeNode
+  | StringLiteralTypeNode
+  | NullTypeNode;
+
+export interface PrimitiveTypeNode {
+  readonly kind: "primitive_type";
+  readonly type: "string" | "int" | "float" | "bool" | "json" | "path";
+  readonly span: Span;
+}
+
+export interface TypeReferenceNode {
+  readonly kind: "type_reference";
+  readonly name: string;
+  readonly span: Span;
+}
+
+export interface ArrayTypeNode {
+  readonly kind: "array_type";
+  readonly elementType: TypeExpressionNode;
+  readonly span: Span;
+}
+
+export interface ObjectTypeNode {
+  readonly kind: "object_type";
+  readonly fields: readonly TypeFieldNode[];
+  readonly span: Span;
+}
+
+export interface UnionTypeNode {
+  readonly kind: "union_type";
+  readonly members: readonly TypeExpressionNode[];
+  readonly span: Span;
+}
+
+export interface StringLiteralTypeNode {
+  readonly kind: "string_literal_type";
+  readonly value: string;
+  readonly span: Span;
+}
+
+export interface NullTypeNode {
+  readonly kind: "null_type";
   readonly span: Span;
 }

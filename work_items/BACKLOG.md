@@ -29,7 +29,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-066: AST Representation for Type Declarations** - P0-Critical
+- **WI-067: Type Registry and Resolver** - P0-Critical
 
 ---
 
@@ -45,34 +45,27 @@ This is a user directive - takes priority over all other work.
    - Allows type references in job outputs and agent task schemas
    - Compile-time property validation
 
-2. **WI-067: Type Registry and Resolver** - P0-Critical
-   - Create type registry to store declarations
-   - Implement type reference resolution
-   - Diagnostics: WP5001 (duplicate type), WP5002 (undefined type)
-   - **NEEDS ARCHITECT REVIEW**: Type compatibility model
-   - Depends on: WI-066
-
-3. **WI-068: Type References in Job Outputs** - P0-Critical
+2. **WI-068: Type References in Job Outputs** - P0-Critical
    - Allow `outputs: { info: MyType }` syntax
    - Resolve type references via registry
    - Depends on: WI-067
 
-4. **WI-069: Type References in Agent Task Schemas** - P0-Critical
+3. **WI-069: Type References in Agent Task Schemas** - P0-Critical
    - Allow `output_schema = MyType` syntax
    - Generate JSON Schema from type definition
    - Depends on: WI-067, WI-056 (complete)
 
-5. **WI-070: Property Access Validation in Expressions** - P1-High
+4. **WI-070: Property Access Validation in Expressions** - P1-High
    - Validate `${{ needs.job.outputs.typed.property }}` expressions
    - Diagnostic: WP5003 (property not found on type)
    - Depends on: WI-067, WI-068
 
-6. **WI-071: VS Code Diagnostics for Type Errors** - P1-High
+5. **WI-071: VS Code Diagnostics for Type Errors** - P1-High
    - Surface WP5001, WP5002, WP5003 in VS Code
    - Quick fixes for typos
    - Depends on: WI-070
 
-7. **WI-072: User-Defined Types Documentation and Examples** - P1-High
+6. **WI-072: User-Defined Types Documentation and Examples** - P1-High
    - Update language reference
    - Create examples/user-defined-types/
    - Document new error codes
@@ -106,10 +99,10 @@ This is a user directive - takes priority over all other work.
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 514 tests (71 lang + 443 compiler)
-**Work Items Completed:** 49
-**Work Items In Progress:** 1 (WI-066)
-**Work Items In Backlog:** 8 (User-Defined Type System)
+**Test Count:** 607 tests (71 lang + 536 compiler)
+**Work Items Completed:** 50
+**Work Items In Progress:** 1 (WI-067)
+**Work Items In Backlog:** 6 (User-Defined Type System)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -280,7 +273,16 @@ The following issues were identified by the documentation steward during WI-062 
 
 ## Completed
 
-### Type System Documentation - MOST RECENT
+### Type System - MOST RECENT
+- **WI-066: AST Representation for Type Declarations** - Completed 2025-12-31
+  - Added `TypeDeclarationNode` and `TypeReferenceNode` AST node types
+  - Updated `WorkflowNode` to include `types: TypeDeclarationNode[]` array
+  - AST builder constructs type declarations from CST
+  - Source spans preserved for error reporting
+  - 93 new tests (607 total - 71 lang + 536 compiler)
+  - Ready for type registry implementation in WI-067
+
+### Type System Documentation
 - **WI-062: Document `json` Type Usage Pattern** - Completed 2025-12-31
   - Example and documentation merged into `examples/job-outputs/`
   - Shows JSON serialization in shell steps and consumption via `fromJSON()` expressions

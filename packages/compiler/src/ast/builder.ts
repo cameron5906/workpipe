@@ -28,6 +28,8 @@ const {
   OutputsProperty,
   OutputsBlock,
   OutputDecl,
+  OutputType: OutputTypeTerm,
+  TypeReference: TypeReferenceTerm,
   TypeName,
   StepsProperty,
   StepList,
@@ -100,10 +102,14 @@ const {
   MatrixCombinationEntryList,
   MatrixCombinationEntry,
   MatrixCombinationValue,
+  TypeDecl,
+  TypeDeclName,
+  TypeField,
 } = terms;
 
 import type {
   WorkflowNode,
+  WorkPipeFileNode,
   TriggerNode,
   JobNode,
   AnyJobNode,
@@ -138,6 +144,16 @@ import type {
   SchemaUnionNode,
   SchemaStringLiteralNode,
   SchemaNullNode,
+  TypeDeclarationNode,
+  TypeFieldNode,
+  TypeExpressionNode,
+  PrimitiveTypeNode,
+  TypeReferenceNode,
+  ArrayTypeNode,
+  ObjectTypeNode,
+  UnionTypeNode,
+  StringLiteralTypeNode,
+  NullTypeNode,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -668,6 +684,15 @@ function buildOutputs(cursor: TreeCursor, source: string): OutputDeclaration[] {
               do {
                 if (cursor.type.id === Identifier) {
                   name = getText(cursor, source);
+                } else if (cursor.type.id === OutputTypeTerm) {
+                  if (cursor.firstChild()) {
+                    const typeText = getText(cursor, source);
+                    if (typeText === "string" || typeText === "int" || typeText === "float" ||
+                        typeText === "bool" || typeText === "json" || typeText === "path") {
+                      outputType = typeText;
+                    }
+                    cursor.parent();
+                  }
                 } else if (cursor.name === "TypeName") {
                   const typeText = getText(cursor, source);
                   if (typeText === "string" || typeText === "int" || typeText === "float" ||
@@ -1585,6 +1610,270 @@ function buildTrigger(cursor: TreeCursor, source: string): TriggerNode | null {
     span: triggerSpan,
   };
   return triggerNode;
+}
+
+function buildTypeExpression(cursor: TreeCursor, source: string): TypeExpressionNode | null {
+  const nodeType = cursor.type.id;
+  const nodeSpan = span(cursor);
+
+  if (nodeType === SchemaType || nodeType === NonUnionSchemaType) {
+    if (cursor.firstChild()) {
+      const result = buildTypeExpression(cursor, source);
+      cursor.parent();
+      return result;
+    }
+    return null;
+  }
+
+  if (nodeType === UnionType) {
+    const members: TypeExpressionNode[] = [];
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === NonUnionSchemaType) {
+          const t = buildTypeExpression(cursor, source);
+          if (t) members.push(t);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    if (members.length === 0) return null;
+    const unionNode: UnionTypeNode = {
+      kind: "union_type",
+      members,
+      span: nodeSpan,
+    };
+    return unionNode;
+  }
+
+  if (nodeType === ArrayType) {
+    if (cursor.firstChild()) {
+      let elementType: TypeExpressionNode | null = null;
+      do {
+        if (cursor.type.id === SchemaType || cursor.type.id === NonUnionSchemaType ||
+            cursor.type.id === UnionType || cursor.type.id === ArrayType ||
+            cursor.type.id === ObjectType || cursor.type.id === SchemaPrimitiveType ||
+            cursor.type.id === NullType || cursor.type.id === StringLiteralType) {
+          elementType = buildTypeExpression(cursor, source);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+      if (elementType) {
+        const arrayNode: ArrayTypeNode = {
+          kind: "array_type",
+          elementType,
+          span: nodeSpan,
+        };
+        return arrayNode;
+      }
+    }
+    return null;
+  }
+
+  if (nodeType === ObjectType) {
+    const fields: TypeFieldNode[] = [];
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === SchemaField) {
+          const field = buildTypeField(cursor, source);
+          if (field) fields.push(field);
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    const objectNode: ObjectTypeNode = {
+      kind: "object_type",
+      fields,
+      span: nodeSpan,
+    };
+    return objectNode;
+  }
+
+  if (nodeType === SchemaPrimitiveType) {
+    const typeText = getText(cursor, source);
+    if (typeText === "string" || typeText === "int" || typeText === "float" ||
+        typeText === "bool" || typeText === "json" || typeText === "path") {
+      const primitiveNode: PrimitiveTypeNode = {
+        kind: "primitive_type",
+        type: typeText,
+        span: nodeSpan,
+      };
+      return primitiveNode;
+    }
+    const typeRefNode: TypeReferenceNode = {
+      kind: "type_reference",
+      name: typeText,
+      span: nodeSpan,
+    };
+    return typeRefNode;
+  }
+
+  if (nodeType === NullType || cursor.name === "NullType") {
+    const nullNode: NullTypeNode = {
+      kind: "null_type",
+      span: nodeSpan,
+    };
+    return nullNode;
+  }
+
+  if (nodeType === StringLiteralType) {
+    if (cursor.firstChild()) {
+      let value = "";
+      do {
+        if (cursor.type.id === StringTerm) {
+          value = unquoteString(getText(cursor, source));
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+      const stringLiteralNode: StringLiteralTypeNode = {
+        kind: "string_literal_type",
+        value,
+        span: nodeSpan,
+      };
+      return stringLiteralNode;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function buildTypeField(cursor: TreeCursor, source: string): TypeFieldNode | null {
+  if (cursor.type.id !== SchemaField && cursor.type.id !== TypeField) return null;
+
+  const fieldSpan = span(cursor);
+  let name = "";
+  let type: TypeExpressionNode | null = null;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === Identifier) {
+      name = getText(cursor, source);
+    } else if (cursor.type.id === SchemaType || cursor.type.id === NonUnionSchemaType ||
+               cursor.type.id === UnionType || cursor.type.id === ArrayType ||
+               cursor.type.id === ObjectType || cursor.type.id === SchemaPrimitiveType ||
+               cursor.type.id === NullType || cursor.type.id === StringLiteralType) {
+      type = buildTypeExpression(cursor, source);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name || !type) return null;
+
+  return {
+    kind: "type_field",
+    name,
+    type,
+    span: fieldSpan,
+  };
+}
+
+function buildTypeDeclaration(cursor: TreeCursor, source: string): TypeDeclarationNode | null {
+  if (cursor.type.id !== TypeDecl) return null;
+
+  const declSpan = span(cursor);
+  let name = "";
+  const fields: TypeFieldNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === TypeDeclName) {
+      name = getText(cursor, source);
+    } else if (cursor.type.id === TypeField) {
+      const field = buildTypeField(cursor, source);
+      if (field) fields.push(field);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name) return null;
+
+  return {
+    kind: "type_declaration",
+    name,
+    fields,
+    span: declSpan,
+  };
+}
+
+function buildWorkflow(cursor: TreeCursor, source: string): WorkflowNode | null {
+  if (cursor.type.id !== WorkflowDecl) return null;
+
+  const workflowSpan = span(cursor);
+  let name = "";
+  let trigger: TriggerNode | null = null;
+  const jobs: AnyJobNode[] = [];
+  const cycles: CycleNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === WorkflowBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === OnClause) {
+            trigger = buildTrigger(cursor, source);
+          } else if (cursor.type.id === JobDecl) {
+            const job = buildJob(cursor, source);
+            if (job) jobs.push(job);
+          } else if (cursor.type.id === AgentJobDecl) {
+            const agentJob = buildAgentJob(cursor, source);
+            if (agentJob) jobs.push(agentJob);
+          } else if (cursor.type.id === CycleDecl) {
+            const cycle = buildCycle(cursor, source);
+            if (cycle) cycles.push(cycle);
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "workflow",
+    name,
+    trigger,
+    jobs,
+    cycles,
+    span: workflowSpan,
+  };
+}
+
+export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | null {
+  const cursor = tree.cursor();
+  const types: TypeDeclarationNode[] = [];
+  const workflows: WorkflowNode[] = [];
+  const fileSpan = span(cursor);
+
+  if (!cursor.firstChild()) {
+    return { kind: "file", types: [], workflows: [], span: fileSpan };
+  }
+
+  do {
+    if (cursor.type.id === TypeDecl) {
+      const typeDecl = buildTypeDeclaration(cursor, source);
+      if (typeDecl) types.push(typeDecl);
+    } else if (cursor.type.id === WorkflowDecl) {
+      const workflow = buildWorkflow(cursor, source);
+      if (workflow) workflows.push(workflow);
+    }
+  } while (cursor.nextSibling());
+
+  return {
+    kind: "file",
+    types,
+    workflows,
+    span: fileSpan,
+  };
 }
 
 export function buildAST(tree: Tree, source: string): WorkflowNode | null {
