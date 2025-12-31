@@ -9,6 +9,7 @@ WorkPipe uses diagnostic codes in the format `WPxxxx` to identify specific issue
 | WP0xxx | Parse/AST errors |
 | WP2xxx | Output validation |
 | WP3xxx | Schema validation |
+| WP4xxx | Matrix validation |
 | WP6xxx | Cycle validation |
 | WP7xxx | Semantic validation (required fields) |
 
@@ -296,6 +297,116 @@ agent_job analyzer {
   }
 }
 ```
+
+---
+
+## WP4xxx - Matrix Validation
+
+### WP4001: Matrix Exceeds Job Limit
+
+**Severity:** Error
+
+**Description:** A matrix job's configuration would generate more than 256 jobs, which exceeds GitHub Actions' limit. GitHub Actions enforces a maximum of 256 jobs per matrix expansion.
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  matrix_job test {
+    matrix: {
+      os: [ubuntu-latest, windows-latest, macos-latest]
+      node: [14, 16, 18, 20]
+      browser: [chrome, firefox, safari, edge]
+      arch: [x64, arm64]
+      mode: [development, production, test]
+    }
+    runs_on: ${{ matrix.os }}
+    steps: [
+      run("npm test")
+    ]
+  }
+}
+```
+
+In this example: 3 x 4 x 4 x 2 x 3 = 288 jobs, which exceeds the 256 limit.
+
+**Solution:** Reduce the matrix dimensions by:
+
+1. **Combining related axes:**
+```workpipe
+matrix_job test {
+  matrix: {
+    os: [ubuntu-latest, windows-latest]
+    node: [16, 18, 20]
+    browser: [chrome, firefox]
+  }
+  # 2 x 3 x 2 = 12 jobs
+}
+```
+
+2. **Using exclude to filter out unnecessary combinations:**
+```workpipe
+matrix_job test {
+  matrix: {
+    os: [ubuntu-latest, windows-latest, macos-latest]
+    node: [14, 16, 18, 20]
+    browser: [chrome, firefox, safari, edge]
+  }
+  exclude: [
+    { os: windows-latest, browser: safari },
+    { os: ubuntu-latest, browser: safari },
+    { os: macos-latest, browser: edge }
+  ]
+}
+```
+
+3. **Splitting into multiple matrix jobs:**
+```workpipe
+matrix_job test_linux {
+  matrix: { node: [14, 16, 18, 20], browser: [chrome, firefox] }
+  runs_on: ubuntu-latest
+}
+
+matrix_job test_windows {
+  matrix: { node: [16, 18], browser: [chrome, edge] }
+  runs_on: windows-latest
+}
+```
+
+---
+
+### WP4002: Matrix Approaching Job Limit
+
+**Severity:** Warning
+
+**Description:** A matrix job would generate more than 200 jobs, which is approaching GitHub Actions' 256-job limit. While currently valid, adding more matrix dimensions could cause the workflow to fail.
+
+**Example:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  matrix_job test {
+    matrix: {
+      os: [ubuntu-latest, windows-latest, macos-latest]
+      node: [14, 16, 18, 20]
+      browser: [chrome, firefox, safari, edge]
+      mode: [development, production, test]
+    }
+    runs_on: ${{ matrix.os }}
+    steps: [
+      run("npm test")
+    ]
+  }
+}
+```
+
+In this example: 3 x 4 x 4 x 3 = 144 jobs. Adding one more 2-value axis would push it to 288 jobs.
+
+**Solution:** Consider reducing matrix dimensions now to leave room for future expansion. See the solutions for WP4001 above.
 
 ---
 

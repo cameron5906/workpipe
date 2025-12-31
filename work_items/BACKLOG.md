@@ -27,7 +27,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None - ready to pick up next item)
+(None)
 
 ---
 
@@ -35,9 +35,8 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### Existing Backlog
 1. WI-024: Add matrix fingerprint to artifact naming - P2-Medium (unblocked - WI-023 complete)
-2. WI-025: Enforce 256-job matrix limit with diagnostics - P2-Medium (unblocked - WI-022 complete)
-3. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
-4. WI-021: Create guard helper library - P3-Low
+2. WI-020: Generate guard job outputs with GITHUB_OUTPUT - P2-Medium
+3. WI-021: Create guard helper library - P3-Low
 
 ---
 
@@ -65,10 +64,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | IN PROGRESS | VS Code extension, bootstrap workflow |
 
-**Test Count:** 385+ tests (71 lang + 314 compiler)
-**Work Items Completed:** 40
+**Test Count:** 430+ tests (71 lang + 359 compiler)
+**Work Items Completed:** 41
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 4 (WI-020, WI-021, WI-024, WI-025)
+**Work Items In Backlog:** 3 (WI-020, WI-021, WI-024)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -209,6 +208,13 @@ jobs:
 ## Completed
 
 ### Phase 6: Matrices - MOST RECENT
+- **WI-025: Enforce 256-job matrix limit with diagnostics** - Completed 2025-12-31
+  - Created `matrix-validation.ts` with `calculateMatrixJobCount` and `validateMatrixJobs`
+  - WP4001 error for >256 jobs, WP4002 warning for >200 jobs
+  - Wired into compile pipeline
+  - 33 new tests (359 total in compiler)
+  - Updated `docs/errors.md` with WP4xxx section
+
 - **WI-023: Generate strategy.matrix with include/exclude** - Completed 2025-12-31
   - Extended grammar with IncludeProperty, ExcludeProperty, MatrixCombination
   - Extended MatrixJobNode with include/exclude arrays
