@@ -30,7 +30,7 @@ export interface WorkflowNode {
   readonly kind: "workflow";
   readonly name: string;
   readonly trigger: TriggerNode | null;
-  readonly jobs: readonly AnyJobNode[];
+  readonly jobs: readonly AnyJobDeclNode[];
   readonly cycles: readonly CycleNode[];
   readonly span: Span;
 }
@@ -39,6 +39,8 @@ export interface WorkPipeFileNode {
   readonly kind: "file";
   readonly imports: readonly ImportDeclarationNode[];
   readonly types: readonly TypeDeclarationNode[];
+  readonly jobFragments: readonly JobFragmentNode[];
+  readonly stepsFragments: readonly StepsFragmentNode[];
   readonly workflows: readonly WorkflowNode[];
   readonly span: Span;
 }
@@ -66,7 +68,8 @@ export type StepNode =
   | UsesStepNode
   | UsesBlockStepNode
   | AgentTaskNode
-  | GuardJsStepNode;
+  | GuardJsStepNode
+  | StepsFragmentSpreadNode;
 
 export interface RunStepNode {
   readonly kind: "run";
@@ -161,8 +164,11 @@ export interface MatrixJobNode {
   readonly span: Span;
 }
 
-// Union for all job types
+// Union for all concrete job types (jobs with steps, not fragment instantiations)
 export type AnyJobNode = JobNode | AgentJobNode | MatrixJobNode;
+
+// Union for all job declarations including fragment instantiations (used during parsing)
+export type AnyJobDeclNode = AnyJobNode | JobFragmentInstantiationNode;
 
 // Agent job node
 export interface AgentJobNode {
@@ -235,7 +241,7 @@ export interface CycleNode {
 // Cycle body node
 export interface CycleBodyNode {
   readonly kind: "cycle_body";
-  readonly jobs: readonly AnyJobNode[];
+  readonly jobs: readonly AnyJobDeclNode[];
   readonly span: Span;
 }
 
@@ -358,4 +364,62 @@ export interface StringLiteralTypeNode {
 export interface NullTypeNode {
   readonly kind: "null_type";
   readonly span: Span;
+}
+
+export interface ParamDeclarationNode {
+  readonly kind: "param_declaration";
+  readonly name: string;
+  readonly type: TypeExpressionNode;
+  readonly defaultValue: ExpressionNode | null;
+  readonly span: Span;
+}
+
+export interface JobFragmentNode {
+  readonly kind: "job_fragment";
+  readonly name: string;
+  readonly params: readonly ParamDeclarationNode[];
+  readonly runsOn: string | null;
+  readonly needs: readonly string[];
+  readonly condition: ExpressionNode | null;
+  readonly outputs: readonly OutputDeclaration[];
+  readonly steps: readonly StepNode[];
+  readonly span: Span;
+}
+
+export interface StepsFragmentNode {
+  readonly kind: "steps_fragment";
+  readonly name: string;
+  readonly params: readonly ParamDeclarationNode[];
+  readonly steps: readonly StepNode[];
+  readonly span: Span;
+}
+
+export interface ParamArgumentNode {
+  readonly kind: "param_argument";
+  readonly name: string;
+  readonly value: ExpressionNode;
+  readonly span: Span;
+}
+
+export interface JobFragmentInstantiationNode {
+  readonly kind: "job_fragment_instantiation";
+  readonly name: string;
+  readonly fragmentName: string;
+  readonly arguments: readonly ParamArgumentNode[];
+  readonly span: Span;
+}
+
+export interface StepsFragmentSpreadNode {
+  readonly kind: "steps_fragment_spread";
+  readonly fragmentName: string;
+  readonly arguments: readonly ParamArgumentNode[];
+  readonly span: Span;
+}
+
+export function isConcreteJob(job: AnyJobDeclNode): job is AnyJobNode {
+  return job.kind !== "job_fragment_instantiation";
+}
+
+export function isFragmentInstantiation(job: AnyJobDeclNode): job is JobFragmentInstantiationNode {
+  return job.kind === "job_fragment_instantiation";
 }

@@ -6,6 +6,7 @@ import type {
   OutputDeclaration,
   Span,
 } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 import { extractInterpolations } from "./expression-parser.js";
 import {
   checkExpressionTypes,
@@ -88,26 +89,34 @@ export function validateExpressionTypes(
   const jobOutputsMap = new Map<string, JobOutputs>();
 
   for (const job of ast.jobs) {
-    jobOutputsMap.set(job.name, collectJobOutputs(job));
+    if (isConcreteJob(job)) {
+      jobOutputsMap.set(job.name, collectJobOutputs(job));
+    }
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
-      const prefixedName = `${cycle.name}_body_${job.name}`;
-      jobOutputsMap.set(prefixedName, collectJobOutputs(job));
-      jobOutputsMap.set(job.name, collectJobOutputs(job));
+      if (isConcreteJob(job)) {
+        const prefixedName = `${cycle.name}_body_${job.name}`;
+        jobOutputsMap.set(prefixedName, collectJobOutputs(job));
+        jobOutputsMap.set(job.name, collectJobOutputs(job));
+      }
     }
   }
 
   const context = buildTypeContext(jobOutputsMap, typeRegistry);
 
   for (const job of ast.jobs) {
-    diagnostics.push(...validateExpressionsInJob(job, context));
+    if (isConcreteJob(job)) {
+      diagnostics.push(...validateExpressionsInJob(job, context));
+    }
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
-      diagnostics.push(...validateExpressionsInJob(job, context));
+      if (isConcreteJob(job)) {
+        diagnostics.push(...validateExpressionsInJob(job, context));
+      }
     }
   }
 

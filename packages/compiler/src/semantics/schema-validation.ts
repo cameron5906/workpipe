@@ -8,6 +8,7 @@ import type {
   SchemaFieldNode,
   Span,
 } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 
 const VALID_PRIMITIVE_TYPES = new Set(["string", "int", "float", "bool"]);
 
@@ -214,12 +215,16 @@ export function validateSchemas(ast: WorkflowNode): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
   for (const job of ast.jobs) {
-    diagnostics.push(...validateJobSchemas(job));
+    if (isConcreteJob(job)) {
+      diagnostics.push(...validateJobSchemas(job));
+    }
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
-      diagnostics.push(...validateJobSchemas(job, cycle.name));
+      if (isConcreteJob(job)) {
+        diagnostics.push(...validateJobSchemas(job, cycle.name));
+      }
     }
   }
 

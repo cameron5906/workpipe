@@ -81,6 +81,8 @@ function createFile(
     kind: "file",
     imports: [],
     types,
+    jobFragments: [],
+    stepsFragments: [],
     workflows,
     span: createSpan(0, 200),
   };

@@ -2,12 +2,14 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "@workpipe/lang";
-import { buildAST, buildFileAST } from "../ast/index.js";
+import { buildAST, buildFileAST, isConcreteJob } from "../ast/index.js";
 import type {
   WorkflowNode,
   WorkPipeFileNode,
   JobNode,
   AgentJobNode,
+  AnyJobNode,
+  AnyJobDeclNode,
   AgentTaskNode,
   RunStepNode,
   ShellStepNode,
@@ -36,6 +38,14 @@ import type {
   ImportDeclarationNode,
   ImportItemNode,
 } from "../ast/index.js";
+
+function getConcreteJob(ast: WorkflowNode, index: number): AnyJobNode {
+  const job = ast.jobs[index];
+  if (!isConcreteJob(job)) {
+    throw new Error(`Job at index ${index} is not a concrete job`);
+  }
+  return job;
+}
 
 function loadExample(name: string): string {
   const examplesRoot = resolve(__dirname, "../../../../examples");
@@ -140,7 +150,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const deployJob = ast!.jobs[1];
+      const deployJob = ast!.jobs[1] as JobNode;
       expect(deployJob.needs).toEqual(["build"]);
     });
 
@@ -190,7 +200,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const job = ast!.jobs[0];
+      const job = ast!.jobs[0] as JobNode;
       expect(job.span.start).toBeGreaterThan(0);
       expect(job.span.end).toBeGreaterThan(job.span.start);
     });
@@ -200,7 +210,8 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0];
+      const job = ast!.jobs[0] as JobNode;
+      const step = job.steps[0];
       expect(step.span.start).toBeGreaterThan(0);
       expect(step.span.end).toBeGreaterThan(step.span.start);
     });
@@ -268,7 +279,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as RunStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as RunStepNode;
       expect(step.command).toBe("simple string");
     });
 
@@ -284,7 +295,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as RunStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as RunStepNode;
       expect(step.command).toBe('say "hello"');
     });
 
@@ -300,7 +311,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as RunStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as RunStepNode;
       expect(step.command).toBe("path\\to\\file");
     });
 
@@ -316,7 +327,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as RunStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as RunStepNode;
       expect(step.command).toBe("line1\nline2");
     });
 
@@ -332,7 +343,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as RunStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as RunStepNode;
       expect(step.command).toBe("col1\tcol2");
     });
   });
@@ -422,9 +433,9 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      expect(ast!.jobs[0].steps).toHaveLength(1);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(1);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.kind).toBe("agent_task");
       expect(step.taskDescription).toBe("Analyze the code");
       expect(step.model).toBe("claude-3-opus");
@@ -444,7 +455,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.maxTurns).toBe(10);
     });
 
@@ -466,7 +477,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.tools).toBeDefined();
       expect(step.tools!.allowed).toEqual(["read", "write"]);
       expect(step.tools!.disallowed).toEqual(["delete"]);
@@ -489,7 +500,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.tools).toBeDefined();
       expect(step.tools!.allowed).toEqual(["*"]);
     });
@@ -511,7 +522,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.mcp).toBeDefined();
       expect(step.mcp!.configFile).toBe("./mcp.json");
       expect(step.mcp!.allowed).toEqual(["server1", "server2"]);
@@ -531,7 +542,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.systemPrompt).toBeDefined();
       expect(step.systemPrompt!.kind).toBe("literal");
       expect((step.systemPrompt as { kind: "literal"; value: string }).value).toBe("You are a helpful assistant");
@@ -551,7 +562,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.systemPrompt).toBeDefined();
       expect(step.systemPrompt!.kind).toBe("file");
       expect((step.systemPrompt as { kind: "file"; path: string }).path).toBe("./prompts/system.md");
@@ -571,7 +582,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.prompt).toBeDefined();
       expect(step.prompt!.kind).toBe("template");
       expect((step.prompt as { kind: "template"; content: string }).content).toBe("analyze-{{type}}");
@@ -592,7 +603,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.outputSchema).toBe("AnalysisResult");
       expect(step.outputArtifact).toBe("analysis.json");
     });
@@ -614,7 +625,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.consumes).toHaveLength(2);
       expect(step.consumes[0].name).toBe("data");
       expect(step.consumes[0].source).toBe("previous_job.output");
@@ -645,7 +656,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.kind).toBe("agent_task");
       expect(step.taskDescription).toBe("Full analysis task");
       expect(step.model).toBe("claude-3-opus");
@@ -991,7 +1002,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.outputSchema).toBeDefined();
       expect(typeof step.outputSchema).toBe("object");
 
@@ -1030,7 +1041,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.fields).toHaveLength(2);
@@ -1063,7 +1074,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.fields).toHaveLength(2);
@@ -1097,7 +1108,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.fields).toHaveLength(1);
@@ -1129,7 +1140,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.fields).toHaveLength(1);
@@ -1163,7 +1174,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.fields).toHaveLength(1);
@@ -1193,7 +1204,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       expect(step.outputSchema).toBe("AnalysisResult");
       expect(typeof step.outputSchema).toBe("string");
     });
@@ -1214,7 +1225,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as AgentTaskNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as AgentTaskNode;
       const schema = step.outputSchema as SchemaObjectNode;
 
       expect(schema.span.start).toBeGreaterThan(0);
@@ -1242,9 +1253,9 @@ describe("AST Builder", () => {
 
       expect(ast).not.toBeNull();
       expect(ast!.jobs).toHaveLength(1);
-      expect(ast!.jobs[0].steps).toHaveLength(1);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(1);
 
-      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as GuardJsStepNode;
       expect(step.kind).toBe("guard_js_step");
       expect(step.id).toBe("decide");
       expect(step.code).toContain("return context.event.issue?.labels?.some");
@@ -1264,7 +1275,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as GuardJsStepNode;
       expect(step.kind).toBe("guard_js_step");
       expect(step.id).toBe("check_branch");
       expect(step.code).toContain("refs/heads/main");
@@ -1287,7 +1298,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as GuardJsStepNode;
       expect(step.kind).toBe("guard_js_step");
       expect(step.id).toBe("complex_guard");
       expect(step.code).toContain("const labels = context.event.issue?.labels");
@@ -1310,10 +1321,10 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      expect(ast!.jobs[0].steps).toHaveLength(3);
-      expect(ast!.jobs[0].steps[0].kind).toBe("uses");
-      expect(ast!.jobs[0].steps[1].kind).toBe("guard_js_step");
-      expect(ast!.jobs[0].steps[2].kind).toBe("run");
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(3);
+      expect((ast!.jobs[0] as JobNode).steps[0].kind).toBe("uses");
+      expect((ast!.jobs[0] as JobNode).steps[1].kind).toBe("guard_js_step");
+      expect((ast!.jobs[0] as JobNode).steps[2].kind).toBe("run");
     });
 
     it("preserves guard_js step span", () => {
@@ -1330,7 +1341,7 @@ describe("AST Builder", () => {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as GuardJsStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as GuardJsStepNode;
       expect(step.span.start).toBeGreaterThan(0);
       expect(step.span.end).toBeGreaterThan(step.span.start);
     });
@@ -2359,9 +2370,9 @@ workflow test {
 
       expect(ast).not.toBeNull();
       expect(ast!.jobs).toHaveLength(1);
-      expect(ast!.jobs[0].steps).toHaveLength(1);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(1);
 
-      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(step.kind).toBe("shell");
       expect(step.content).toBe("echo hello");
       expect(step.multiline).toBe(false);
@@ -2384,7 +2395,7 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(step.kind).toBe("shell");
       expect(step.multiline).toBe(true);
       expect(step.content).toContain("npm install");
@@ -2405,7 +2416,7 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(step.kind).toBe("shell");
       expect(step.content).toContain("if [ -d dist ]");
       expect(step.content).toContain("rm -rf dist");
@@ -2423,7 +2434,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(step.span.start).toBeGreaterThan(0);
       expect(step.span.end).toBeGreaterThan(step.span.start);
     });
@@ -2444,9 +2455,9 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      expect(ast!.jobs[0].steps).toHaveLength(1);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(1);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.kind).toBe("uses_block");
       expect(step.action).toBe("actions/checkout@v4");
       expect(step.with).toBeUndefined();
@@ -2469,7 +2480,7 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.kind).toBe("uses_block");
       expect(step.action).toBe("actions/setup-node@v4");
       expect(step.with).toBeDefined();
@@ -2494,7 +2505,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.with).toBeDefined();
       expect(step.with!.version).toBe("20");
       expect(step.with!.cache).toBe("npm");
@@ -2517,7 +2528,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.with).toBeDefined();
       expect(step.with!.restore_keys).toBe(3);
     });
@@ -2541,7 +2552,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.with).toBeDefined();
       expect(step.with!.config).toBeDefined();
       const config = step.with!.config as Record<string, unknown>;
@@ -2565,7 +2576,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.with).toBeDefined();
       expect(step.with!.paths).toEqual(["src", "lib", "dist"]);
     });
@@ -2583,7 +2594,7 @@ workflow test {
       const tree = parse(source);
       const ast = buildAST(tree, source);
 
-      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      const step = (ast!.jobs[0] as JobNode).steps[0] as UsesBlockStepNode;
       expect(step.span.start).toBeGreaterThan(0);
       expect(step.span.end).toBeGreaterThan(step.span.start);
     });
@@ -2608,15 +2619,15 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      expect(ast!.jobs[0].steps).toHaveLength(3);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(3);
 
-      const shellStep = ast!.jobs[0].steps[0] as ShellStepNode;
+      const shellStep = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(shellStep.kind).toBe("shell");
 
-      const usesStep = ast!.jobs[0].steps[1] as UsesBlockStepNode;
+      const usesStep = (ast!.jobs[0] as JobNode).steps[1] as UsesBlockStepNode;
       expect(usesStep.kind).toBe("uses_block");
 
-      const agentStep = ast!.jobs[0].steps[2] as AgentTaskNode;
+      const agentStep = (ast!.jobs[0] as JobNode).steps[2] as AgentTaskNode;
       expect(agentStep.kind).toBe("agent_task");
     });
 
@@ -2636,12 +2647,12 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      expect(ast!.jobs[0].steps).toHaveLength(2);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(2);
 
-      const shellStep = ast!.jobs[0].steps[0] as ShellStepNode;
+      const shellStep = (ast!.jobs[0] as JobNode).steps[0] as ShellStepNode;
       expect(shellStep.kind).toBe("shell");
 
-      const guardStep = ast!.jobs[0].steps[1] as GuardJsStepNode;
+      const guardStep = (ast!.jobs[0] as JobNode).steps[1] as GuardJsStepNode;
       expect(guardStep.kind).toBe("guard_js_step");
       expect(guardStep.id).toBe("check");
     });
@@ -2688,7 +2699,185 @@ workflow test {
       const ast = buildAST(tree, source);
 
       expect(ast).not.toBeNull();
-      expect(ast!.jobs[0].steps).toHaveLength(0);
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(0);
+    });
+  });
+
+  describe("fragment parsing", () => {
+    it("builds job_fragment AST node", () => {
+      const source = `job_fragment deploy_steps {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploying..." }
+  }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobFragments).toHaveLength(1);
+      expect(ast!.jobFragments[0].kind).toBe("job_fragment");
+      expect(ast!.jobFragments[0].name).toBe("deploy_steps");
+      expect(ast!.jobFragments[0].runsOn).toBe("ubuntu-latest");
+      expect(ast!.jobFragments[0].steps).toHaveLength(1);
+    });
+
+    it("builds job_fragment with params", () => {
+      const source = `job_fragment deploy {
+  params {
+    env: string
+    port: int
+  }
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploy" }
+  }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobFragments).toHaveLength(1);
+      expect(ast!.jobFragments[0].params).toHaveLength(2);
+      expect(ast!.jobFragments[0].params[0].name).toBe("env");
+      expect(ast!.jobFragments[0].params[0].type.kind).toBe("primitive_type");
+      expect(ast!.jobFragments[0].params[0].defaultValue).toBeNull();
+      expect(ast!.jobFragments[0].params[1].name).toBe("port");
+    });
+
+    it("builds steps_fragment AST node", () => {
+      const source = `steps_fragment common_setup {
+  shell { npm install }
+  shell { npm run build }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.stepsFragments).toHaveLength(1);
+      expect(ast!.stepsFragments[0].kind).toBe("steps_fragment");
+      expect(ast!.stepsFragments[0].name).toBe("common_setup");
+      expect(ast!.stepsFragments[0].steps).toHaveLength(2);
+    });
+
+    it("builds steps_fragment with params", () => {
+      const source = `steps_fragment setup {
+  params {
+    node_version: string = "18"
+  }
+  shell { echo "Using node" }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.stepsFragments).toHaveLength(1);
+      expect(ast!.stepsFragments[0].params).toHaveLength(1);
+      expect(ast!.stepsFragments[0].params[0].name).toBe("node_version");
+      expect(ast!.stepsFragments[0].params[0].defaultValue).not.toBeNull();
+    });
+
+    it("builds job fragment instantiation", () => {
+      const source = `job_fragment deploy_template {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploying" }
+  }
+}
+
+workflow ci {
+  on: push
+  job deploy_staging = deploy_template {
+    env: "staging"
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.workflows).toHaveLength(1);
+      const job = ast!.workflows[0].jobs[0];
+      expect(job.kind).toBe("job_fragment_instantiation");
+      if (job.kind === "job_fragment_instantiation") {
+        expect(job.name).toBe("deploy_staging");
+        expect(job.fragmentName).toBe("deploy_template");
+        expect(job.arguments).toHaveLength(1);
+        expect(job.arguments[0].name).toBe("env");
+      }
+    });
+
+    it("builds steps fragment spread", () => {
+      const source = `steps_fragment common {
+  shell { npm install }
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...common {}
+      shell { npm test }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const job = ast!.workflows[0].jobs[0] as JobNode;
+      expect(job.steps).toHaveLength(2);
+      expect(job.steps[0].kind).toBe("steps_fragment_spread");
+      if (job.steps[0].kind === "steps_fragment_spread") {
+        expect(job.steps[0].fragmentName).toBe("common");
+      }
+    });
+
+    it("builds steps fragment spread with arguments", () => {
+      const source = `steps_fragment setup {
+  params {
+    version: string
+  }
+  shell { echo "Setup" }
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...setup { version: "1.0.0" }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildFileAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const job = ast!.workflows[0].jobs[0] as JobNode;
+      expect(job.steps).toHaveLength(1);
+      expect(job.steps[0].kind).toBe("steps_fragment_spread");
+      if (job.steps[0].kind === "steps_fragment_spread") {
+        expect(job.steps[0].fragmentName).toBe("setup");
+        expect(job.steps[0].arguments).toHaveLength(1);
+        expect(job.steps[0].arguments[0].name).toBe("version");
+      }
     });
   });
 });

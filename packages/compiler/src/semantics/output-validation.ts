@@ -7,6 +7,7 @@ import type {
   StepNode,
   Span,
 } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 import type { TypeRegistry } from "./type-registry.js";
 
 interface JobOutputs {
@@ -211,34 +212,42 @@ export function validateOutputs(ast: WorkflowNode, registry?: TypeRegistry): Dia
   const jobOutputsMap = new Map<string, JobOutputs>();
 
   for (const job of ast.jobs) {
-    diagnostics.push(...validateDuplicateOutputsInJob(job));
-    if (registry) {
-      diagnostics.push(...validateOutputTypeReferencesInJob(job, registry));
-    }
-    jobOutputsMap.set(job.name, collectJobOutputs(job));
-  }
-
-  for (const cycle of ast.cycles) {
-    for (const job of cycle.body.jobs) {
-      diagnostics.push(...validateDuplicateOutputsInJob(job, cycle.name));
+    if (isConcreteJob(job)) {
+      diagnostics.push(...validateDuplicateOutputsInJob(job));
       if (registry) {
-        diagnostics.push(...validateOutputTypeReferencesInJob(job, registry, cycle.name));
+        diagnostics.push(...validateOutputTypeReferencesInJob(job, registry));
       }
-      const prefixedName = `${cycle.name}_body_${job.name}`;
-      jobOutputsMap.set(prefixedName, collectJobOutputs(job));
       jobOutputsMap.set(job.name, collectJobOutputs(job));
     }
   }
 
+  for (const cycle of ast.cycles) {
+    for (const job of cycle.body.jobs) {
+      if (isConcreteJob(job)) {
+        diagnostics.push(...validateDuplicateOutputsInJob(job, cycle.name));
+        if (registry) {
+          diagnostics.push(...validateOutputTypeReferencesInJob(job, registry, cycle.name));
+        }
+        const prefixedName = `${cycle.name}_body_${job.name}`;
+        jobOutputsMap.set(prefixedName, collectJobOutputs(job));
+        jobOutputsMap.set(job.name, collectJobOutputs(job));
+      }
+    }
+  }
+
   for (const job of ast.jobs) {
-    diagnostics.push(...validateOutputReferencesInJob(job, jobOutputsMap));
+    if (isConcreteJob(job)) {
+      diagnostics.push(...validateOutputReferencesInJob(job, jobOutputsMap));
+    }
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
-      diagnostics.push(
-        ...validateOutputReferencesInJob(job, jobOutputsMap, cycle.name)
-      );
+      if (isConcreteJob(job)) {
+        diagnostics.push(
+          ...validateOutputReferencesInJob(job, jobOutputsMap, cycle.name)
+        );
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 import type { WorkflowNode, AnyJobNode } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 import type { JobGraph, JobVertex } from "./types.js";
 
 /**
@@ -24,12 +25,16 @@ export function buildJobGraph(workflow: WorkflowNode): JobGraph {
   }
 
   for (const job of workflow.jobs) {
-    addJob(job);
+    if (isConcreteJob(job)) {
+      addJob(job);
+    }
   }
 
   for (const cycle of workflow.cycles) {
     for (const job of cycle.body.jobs) {
-      addJob(job);
+      if (isConcreteJob(job)) {
+        addJob(job);
+      }
     }
   }
 

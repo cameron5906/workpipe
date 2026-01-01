@@ -2884,4 +2884,187 @@ workflow ci {
       expect(foundArrayLiteral).toBe(true);
     });
   });
+
+  describe("fragments", () => {
+    it("parses a basic job_fragment declaration", () => {
+      const source = `job_fragment deploy_steps {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploying..." }
+  }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundJobFragment = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "JobFragmentDecl") foundJobFragment = true;
+      });
+
+      expect(foundJobFragment).toBe(true);
+    });
+
+    it("parses job_fragment with params block", () => {
+      const source = `job_fragment deploy {
+  params {
+    env: string
+    port: int = 3000
+  }
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploy to \${env}" }
+  }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundParamsBlock = false;
+      let paramDeclCount = 0;
+      tree.cursor().iterate((node) => {
+        if (node.name === "ParamsBlock") foundParamsBlock = true;
+        if (node.name === "ParamDecl") paramDeclCount++;
+      });
+
+      expect(foundParamsBlock).toBe(true);
+      expect(paramDeclCount).toBe(2);
+    });
+
+    it("parses steps_fragment declaration", () => {
+      const source = `steps_fragment common_setup {
+  shell { npm install }
+  shell { npm run build }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsFragment = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsFragmentDecl") foundStepsFragment = true;
+      });
+
+      expect(foundStepsFragment).toBe(true);
+    });
+
+    it("parses steps_fragment with params", () => {
+      const source = `steps_fragment setup {
+  params {
+    node_version: string = "18"
+  }
+  shell { echo "Using node \${node_version}" }
+}
+
+workflow test {
+  on: push
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsFragment = false;
+      let foundParamsBlock = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsFragmentDecl") foundStepsFragment = true;
+        if (node.name === "ParamsBlock") foundParamsBlock = true;
+      });
+
+      expect(foundStepsFragment).toBe(true);
+      expect(foundParamsBlock).toBe(true);
+    });
+
+    it("parses job instantiation from fragment", () => {
+      const source = `job_fragment deploy_template {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploying" }
+  }
+}
+
+workflow ci {
+  on: push
+  job deploy_staging = deploy_template {
+    env: "staging"
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundFragmentInstantiation = false;
+      let foundParamAssignment = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "FragmentInstantiation") foundFragmentInstantiation = true;
+        if (node.name === "ParamAssignment") foundParamAssignment = true;
+      });
+
+      expect(foundFragmentInstantiation).toBe(true);
+      expect(foundParamAssignment).toBe(true);
+    });
+
+    it("parses steps fragment spread", () => {
+      const source = `steps_fragment common {
+  shell { npm install }
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...common {}
+      shell { npm test }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsFragmentSpread = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsFragmentSpread") foundStepsFragmentSpread = true;
+      });
+
+      expect(foundStepsFragmentSpread).toBe(true);
+    });
+
+    it("parses steps fragment spread with params", () => {
+      const source = `steps_fragment setup {
+  params {
+    version: string
+  }
+  shell { echo "Using version \${version}" }
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...setup { version: "1.0.0" }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsFragmentSpread = false;
+      let foundParamAssignment = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsFragmentSpread") foundStepsFragmentSpread = true;
+        if (node.name === "ParamAssignment") foundParamAssignment = true;
+      });
+
+      expect(foundStepsFragmentSpread).toBe(true);
+      expect(foundParamAssignment).toBe(true);
+    });
+  });
 });

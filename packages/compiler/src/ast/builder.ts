@@ -125,6 +125,14 @@ const {
   ObjectValue,
   ArrayLiteral,
   ArrayItems,
+  FragmentDecl,
+  JobFragmentDecl,
+  StepsFragmentDecl,
+  ParamsBlock,
+  ParamDecl,
+  FragmentInstantiation,
+  ParamAssignment,
+  StepsFragmentSpread,
 } = terms;
 
 import type {
@@ -132,7 +140,7 @@ import type {
   WorkPipeFileNode,
   TriggerNode,
   JobNode,
-  AnyJobNode,
+  AnyJobDeclNode,
   AgentJobNode,
   MatrixJobNode,
   MatrixCombination,
@@ -178,6 +186,12 @@ import type {
   NullTypeNode,
   ImportDeclarationNode,
   ImportItemNode,
+  ParamDeclarationNode,
+  JobFragmentNode,
+  StepsFragmentNode,
+  ParamArgumentNode,
+  JobFragmentInstantiationNode,
+  StepsFragmentSpreadNode,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -1290,6 +1304,10 @@ function buildBlockStep(cursor: TreeCursor, source: string): StepNode | null {
     return buildGuardJsStep(cursor, source);
   }
 
+  if (nodeType === StepsFragmentSpread) {
+    return buildStepsFragmentSpread(cursor, source);
+  }
+
   return null;
 }
 
@@ -1457,7 +1475,7 @@ function buildMatrixCombinations(cursor: TreeCursor, source: string): MatrixComb
   return combinations;
 }
 
-function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode | null {
+function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode | JobFragmentInstantiationNode | null {
   if (cursor.type.id !== JobDecl) return null;
 
   const jobSpan = span(cursor);
@@ -1473,6 +1491,7 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
   let exclude: MatrixCombination[] | undefined;
   let maxParallel: number | undefined;
   let failFast: boolean | undefined;
+  let fragmentInstantiation: { fragmentName: string; arguments: ParamArgumentNode[] } | null = null;
 
   if (!cursor.firstChild()) return null;
 
@@ -1483,6 +1502,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
       name = getText(cursor, source);
     } else if (nodeType === MatrixModifier) {
       isMatrix = true;
+    } else if (nodeType === FragmentInstantiation) {
+      fragmentInstantiation = buildFragmentInstantiation(cursor, source);
     } else if (nodeType === JobBody) {
       if (cursor.firstChild()) {
         do {
@@ -1587,6 +1608,17 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
   } while (cursor.nextSibling());
 
   cursor.parent();
+
+  if (fragmentInstantiation) {
+    const fragmentInstNode: JobFragmentInstantiationNode = {
+      kind: "job_fragment_instantiation",
+      name,
+      fragmentName: fragmentInstantiation.fragmentName,
+      arguments: fragmentInstantiation.arguments,
+      span: jobSpan,
+    };
+    return fragmentInstNode;
+  }
 
   if (isMatrix) {
     const matrixJobNode: MatrixJobNode = {
@@ -1761,7 +1793,7 @@ function buildGuardJs(cursor: TreeCursor, source: string): GuardJsNode | null {
 
 function buildCycleBody(cursor: TreeCursor, source: string): CycleBodyNode {
   const bodySpan = span(cursor);
-  const jobs: AnyJobNode[] = [];
+  const jobs: AnyJobDeclNode[] = [];
 
   if (!cursor.firstChild()) {
     return { kind: "cycle_body", jobs, span: bodySpan };
@@ -2097,7 +2129,7 @@ function buildWorkflow(cursor: TreeCursor, source: string): WorkflowNode | null 
   const workflowSpan = span(cursor);
   let name = "";
   let trigger: TriggerNode | null = null;
-  const jobs: AnyJobNode[] = [];
+  const jobs: AnyJobDeclNode[] = [];
   const cycles: CycleNode[] = [];
 
   if (!cursor.firstChild()) return null;
@@ -2217,15 +2249,355 @@ function buildImportDeclaration(cursor: TreeCursor, source: string): ImportDecla
   };
 }
 
+function buildParamsBlock(cursor: TreeCursor, source: string): ParamDeclarationNode[] {
+  const params: ParamDeclarationNode[] = [];
+
+  if (!cursor.firstChild()) return params;
+
+  do {
+    if (cursor.type.id === ParamDecl) {
+      const param = buildParamDeclaration(cursor, source);
+      if (param) params.push(param);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return params;
+}
+
+function buildParamDeclaration(cursor: TreeCursor, source: string): ParamDeclarationNode | null {
+  const declSpan = span(cursor);
+  let name = "";
+  let type: TypeExpressionNode | null = null;
+  let defaultValue: ExpressionNode | null = null;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === SchemaType) {
+      const schemaType = buildSchemaType(cursor, source);
+      if (schemaType) {
+        type = schemaTypeToPrimitiveType(schemaType);
+      }
+    } else if (nodeType === Expression || nodeType === ComparisonExpr || nodeType === PrimaryExpr) {
+      defaultValue = buildExpression(cursor, source);
+    } else if (cursor.type.name === "Number") {
+      defaultValue = buildExpression(cursor, source);
+    } else if (cursor.type.name === "String") {
+      defaultValue = buildExpression(cursor, source);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name || !type) return null;
+
+  return {
+    kind: "param_declaration",
+    name,
+    type,
+    defaultValue,
+    span: declSpan,
+  };
+}
+
+function schemaTypeToPrimitiveType(schemaType: SchemaTypeNode): TypeExpressionNode {
+  switch (schemaType.kind) {
+    case "primitive":
+      return {
+        kind: "primitive_type",
+        type: schemaType.type,
+        span: schemaType.span,
+      };
+    case "array":
+      return {
+        kind: "array_type",
+        elementType: schemaTypeToPrimitiveType(schemaType.elementType),
+        span: schemaType.span,
+      };
+    case "object":
+      return {
+        kind: "object_type",
+        fields: schemaType.fields.map(f => ({
+          kind: "type_field" as const,
+          name: f.name,
+          type: schemaTypeToPrimitiveType(f.type),
+          span: f.span,
+        })),
+        span: schemaType.span,
+      };
+    case "union":
+      return {
+        kind: "union_type",
+        members: schemaType.types.map(t => schemaTypeToPrimitiveType(t)),
+        span: schemaType.span,
+      };
+    case "stringLiteral":
+      return {
+        kind: "string_literal_type",
+        value: schemaType.value,
+        span: schemaType.span,
+      };
+    case "null":
+      return {
+        kind: "null_type",
+        span: schemaType.span,
+      };
+  }
+}
+
+function buildFragmentInstantiation(cursor: TreeCursor, source: string): { fragmentName: string; arguments: ParamArgumentNode[] } | null {
+  let fragmentName = "";
+  const args: ParamArgumentNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      fragmentName = getText(cursor, source);
+    } else if (nodeType === ParamAssignment) {
+      const arg = buildParamAssignment(cursor, source);
+      if (arg) args.push(arg);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!fragmentName) return null;
+
+  return {
+    fragmentName,
+    arguments: args,
+  };
+}
+
+function buildParamAssignment(cursor: TreeCursor, source: string): ParamArgumentNode | null {
+  const argSpan = span(cursor);
+  let name = "";
+  let value: ExpressionNode | null = null;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === Expression || nodeType === ComparisonExpr || nodeType === PrimaryExpr) {
+      value = buildExpression(cursor, source);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name || !value) return null;
+
+  return {
+    kind: "param_argument",
+    name,
+    value,
+    span: argSpan,
+  };
+}
+
+function buildStepsFragmentSpread(cursor: TreeCursor, source: string): StepsFragmentSpreadNode | null {
+  const spreadSpan = span(cursor);
+  let fragmentName = "";
+  const args: ParamArgumentNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      fragmentName = getText(cursor, source);
+    } else if (nodeType === ParamAssignment) {
+      const arg = buildParamAssignment(cursor, source);
+      if (arg) args.push(arg);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!fragmentName) return null;
+
+  return {
+    kind: "steps_fragment_spread",
+    fragmentName,
+    arguments: args,
+    span: spreadSpan,
+  };
+}
+
+function buildJobFragment(cursor: TreeCursor, source: string): JobFragmentNode | null {
+  const fragmentSpan = span(cursor);
+  let name = "";
+  let params: ParamDeclarationNode[] = [];
+  let runsOn: string | null = null;
+  const needs: string[] = [];
+  let condition: ExpressionNode | null = null;
+  const outputs: OutputDeclaration[] = [];
+  const steps: StepNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === ParamsBlock) {
+      params = buildParamsBlock(cursor, source);
+    } else if (nodeType === JobBody) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === JobProperty) {
+            if (cursor.firstChild()) {
+              const propType = cursor.type.id;
+
+              if (propType === RunsOnProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === RunnerSpec) {
+                      runsOn = getText(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === NeedsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === NeedsSpec) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Identifier) {
+                            needs.push(getText(cursor, source));
+                          } else if (cursor.type.id === IdentifierList) {
+                            if (cursor.firstChild()) {
+                              do {
+                                if (cursor.type.id === Identifier) {
+                                  needs.push(getText(cursor, source));
+                                }
+                              } while (cursor.nextSibling());
+                              cursor.parent();
+                            }
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === IfProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === Expression || cursor.type.id === ComparisonExpr) {
+                      condition = buildExpression(cursor, source);
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === OutputsProperty) {
+                outputs.push(...buildOutputs(cursor, source));
+              } else if (propType === StepsProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === StepList) {
+                      if (cursor.firstChild()) {
+                        do {
+                          if (cursor.type.id === Step) {
+                            const step = buildStep(cursor, source);
+                            if (step) steps.push(step);
+                          }
+                        } while (cursor.nextSibling());
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              } else if (propType === StepsBlock) {
+                steps.push(...buildStepsBlock(cursor, source));
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name) return null;
+
+  return {
+    kind: "job_fragment",
+    name,
+    params,
+    runsOn,
+    needs,
+    condition,
+    outputs,
+    steps,
+    span: fragmentSpan,
+  };
+}
+
+function buildStepsFragment(cursor: TreeCursor, source: string): StepsFragmentNode | null {
+  const fragmentSpan = span(cursor);
+  let name = "";
+  let params: ParamDeclarationNode[] = [];
+  const steps: StepNode[] = [];
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    const nodeType = cursor.type.id;
+
+    if (nodeType === Identifier) {
+      name = getText(cursor, source);
+    } else if (nodeType === ParamsBlock) {
+      params = buildParamsBlock(cursor, source);
+    } else if (nodeType === BlockStep) {
+      const step = buildBlockStep(cursor, source);
+      if (step) steps.push(step);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  if (!name) return null;
+
+  return {
+    kind: "steps_fragment",
+    name,
+    params,
+    steps,
+    span: fragmentSpan,
+  };
+}
+
 export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | null {
   const cursor = tree.cursor();
   const imports: ImportDeclarationNode[] = [];
   const types: TypeDeclarationNode[] = [];
+  const jobFragments: JobFragmentNode[] = [];
+  const stepsFragments: StepsFragmentNode[] = [];
   const workflows: WorkflowNode[] = [];
   const fileSpan = span(cursor);
 
   if (!cursor.firstChild()) {
-    return { kind: "file", imports: [], types: [], workflows: [], span: fileSpan };
+    return { kind: "file", imports: [], types: [], jobFragments: [], stepsFragments: [], workflows: [], span: fileSpan };
   }
 
   do {
@@ -2235,6 +2607,17 @@ export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | nul
     } else if (cursor.type.id === TypeDecl) {
       const typeDecl = buildTypeDeclaration(cursor, source);
       if (typeDecl) types.push(typeDecl);
+    } else if (cursor.type.id === FragmentDecl) {
+      if (cursor.firstChild()) {
+        if (cursor.type.id === JobFragmentDecl) {
+          const fragment = buildJobFragment(cursor, source);
+          if (fragment) jobFragments.push(fragment);
+        } else if (cursor.type.id === StepsFragmentDecl) {
+          const fragment = buildStepsFragment(cursor, source);
+          if (fragment) stepsFragments.push(fragment);
+        }
+        cursor.parent();
+      }
     } else if (cursor.type.id === WorkflowDecl) {
       const workflow = buildWorkflow(cursor, source);
       if (workflow) workflows.push(workflow);
@@ -2245,6 +2628,8 @@ export function buildFileAST(tree: Tree, source: string): WorkPipeFileNode | nul
     kind: "file",
     imports,
     types,
+    jobFragments,
+    stepsFragments,
     workflows,
     span: fileSpan,
   };
@@ -2262,7 +2647,7 @@ export function buildAST(tree: Tree, source: string): WorkflowNode | null {
   const workflowSpan = span(cursor);
   let name = "";
   let trigger: TriggerNode | null = null;
-  const jobs: AnyJobNode[] = [];
+  const jobs: AnyJobDeclNode[] = [];
   const cycles: CycleNode[] = [];
 
   if (!cursor.firstChild()) return null;

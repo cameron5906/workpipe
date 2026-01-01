@@ -9,6 +9,7 @@ export type {
   TriggerNode,
   JobNode,
   AnyJobNode,
+  AnyJobDeclNode,
   AgentJobNode,
   MatrixJobNode,
   StepNode,
@@ -48,6 +49,14 @@ export type {
   UnionTypeNode,
   StringLiteralTypeNode,
   NullTypeNode,
+  ParamDeclarationNode,
+  JobFragmentNode,
+  StepsFragmentNode,
+  ParamArgumentNode,
+  JobFragmentInstantiationNode,
+  StepsFragmentSpreadNode,
 } from "./types.js";
+
+export { isConcreteJob, isFragmentInstantiation } from "./types.js";
 
 export { buildAST, buildFileAST } from "./builder.js";

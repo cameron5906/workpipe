@@ -9,6 +9,7 @@ import type {
   AgentTaskNode,
   Span,
 } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 
 export interface ImportItem {
   name: string;
@@ -298,12 +299,16 @@ export function validateTypeReferences(
 
   for (const workflow of file.workflows) {
     for (const job of workflow.jobs) {
-      diagnostics.push(...validateTypeReferencesInJob(job, registry));
+      if (isConcreteJob(job)) {
+        diagnostics.push(...validateTypeReferencesInJob(job, registry));
+      }
     }
 
     for (const cycle of workflow.cycles) {
       for (const job of cycle.body.jobs) {
-        diagnostics.push(...validateTypeReferencesInJob(job, registry));
+        if (isConcreteJob(job)) {
+          diagnostics.push(...validateTypeReferencesInJob(job, registry));
+        }
       }
     }
   }

@@ -7,6 +7,19 @@
 **Created**: 2026-01-01
 **Updated**: 2026-01-01
 
+## Current Phase: Phase 1 COMPLETE - Ready for Phase 2
+
+Phase 1 (Grammar and AST) completed successfully on 2026-01-01:
+- Grammar extended with `job_fragment`, `steps_fragment`, `params` productions
+- Job instantiation syntax: `job x = fragment { params }`
+- Steps spread syntax: `...fragment { params }`
+- All AST types implemented (ParamDeclarationNode, JobFragmentNode, StepsFragmentNode, etc.)
+- All builder functions implemented
+- 14 new tests added
+- All 990 tests passing
+
+**Next**: Phase 2 (Same-file resolution and basic codegen)
+
 ## ADR Status
 
 ADR-0014 (Fragment System Design) has been created and is **Proposed**. The ADR documents:
@@ -25,26 +38,43 @@ ADR-0014 (Fragment System Design) has been created and is **Proposed**. The ADR 
 ### Phase 0: ADR Creation
 - [x] Create ADR-0014 documenting fragment system design decisions (2026-01-01)
 
-### Phase 1: Grammar and AST (In Progress)
-- [ ] Grammar: Add `JobFragmentDecl` and `StepsFragmentDecl` productions
-- [ ] Grammar: Add `ParamsBlock` and `ParamDecl` productions
-- [ ] Grammar: Add `FragmentInstantiation` syntax (`job x = fragment {}`)
-- [ ] Grammar: Add `StepsFragmentSpread` syntax (`...fragment {}`)
-- [ ] Grammar: Reserve `job_fragment`, `steps_fragment`, `params` keywords
-- [ ] AST: Add `JobFragmentNode` and `StepsFragmentNode` types
-- [ ] AST: Add `ParamDeclarationNode` type
-- [ ] AST: Add `JobFragmentInstantiationNode` type
-- [ ] AST: Add `StepsFragmentSpreadNode` type
-- [ ] AST: Add `ParamArgumentNode` type
-- [ ] AST: Update `WorkPipeFileNode` with `jobFragments` and `stepsFragments` arrays
-- [ ] Builder: Implement `buildJobFragment()` function
-- [ ] Builder: Implement `buildStepsFragment()` function
-- [ ] Builder: Implement `buildParamsBlock()` function
-- [ ] Builder: Implement `buildFragmentInstantiation()` function
-- [ ] Builder: Implement `buildStepsFragmentSpread()` function
-- [ ] Tests: Grammar tests for fragment declarations
-- [ ] Tests: Grammar tests for fragment instantiation
-- [ ] Tests: AST builder tests for all new node types
+### Phase 1: Grammar and AST (COMPLETE - 2026-01-01)
+- [x] Grammar: Add `JobFragmentDecl` and `StepsFragmentDecl` productions
+- [x] Grammar: Add `ParamsBlock` and `ParamDecl` productions
+- [x] Grammar: Add `FragmentInstantiation` syntax (`job x = fragment {}`)
+- [x] Grammar: Add `StepsFragmentSpread` syntax (`...fragment {}`)
+- [x] Grammar: Reserve `job_fragment`, `steps_fragment`, `params` keywords
+- [x] AST: Add `JobFragmentNode` and `StepsFragmentNode` types
+- [x] AST: Add `ParamDeclarationNode` type
+- [x] AST: Add `JobFragmentInstantiationNode` type
+- [x] AST: Add `StepsFragmentSpreadNode` type
+- [x] AST: Add `ParamArgumentNode` type
+- [x] AST: Update `WorkPipeFileNode` with `jobFragments` and `stepsFragments` arrays
+- [x] Builder: Implement `buildJobFragment()` function
+- [x] Builder: Implement `buildStepsFragment()` function
+- [x] Builder: Implement `buildParamsBlock()` function
+- [x] Builder: Implement `buildFragmentInstantiation()` function
+- [x] Builder: Implement `buildStepsFragmentSpread()` function
+- [x] Tests: Grammar tests for fragment declarations
+- [x] Tests: Grammar tests for fragment instantiation
+- [x] Tests: AST builder tests for all new node types
+
+### Phase 2: Same-File Resolution (Up Next)
+- [ ] Create FragmentRegistry class for tracking fragment definitions
+- [ ] Implement same-file fragment lookup
+- [ ] Wire fragment registry into compile pipeline
+- [ ] Implement job fragment instantiation codegen (inline expansion)
+- [ ] Implement steps fragment spread codegen (inline expansion)
+- [ ] Parameter substitution in expanded content
+- [ ] Tests: Same-file fragment resolution
+- [ ] Tests: Codegen for job fragment instantiation
+- [ ] Tests: Codegen for steps fragment spread
+
+### Phase 3: Import Integration (Future)
+- [ ] Extend import system to resolve fragment symbols
+- [ ] Cross-file fragment imports
+- [ ] Fragment visibility and export semantics
+- [ ] Circular dependency detection for fragments
 
 ## Description
 
@@ -139,29 +169,35 @@ workflow ci {
 
 ## Implementation Phases
 
-### Phase 1: Core Fragment Support
-- [ ] Extend grammar with `job_fragment` and `steps_fragment` productions
-- [ ] Add `JobFragmentNode` and `StepsFragmentNode` to AST
-- [ ] Implement `params { }` block parsing with typed parameters
-- [ ] Add fragment registry for same-file resolution
-- [ ] Implement job fragment instantiation (`job x = fragment {}`)
-- [ ] Implement steps fragment spread (`...fragment {}`)
-- [ ] Basic parameter substitution in codegen
+### Phase 1: Grammar and AST - COMPLETE
+- [x] Extend grammar with `job_fragment` and `steps_fragment` productions
+- [x] Add `JobFragmentNode` and `StepsFragmentNode` to AST
+- [x] Implement `params { }` block parsing with typed parameters
+- [x] Implement job fragment instantiation (`job x = fragment {}`) syntax
+- [x] Implement steps fragment spread (`...fragment {}`) syntax
+- [x] 14 new tests added, all 990 tests passing
 
-### Phase 2: Import Integration
+### Phase 2: Same-File Resolution - UP NEXT
+- [ ] Add FragmentRegistry for same-file fragment lookup
+- [ ] Wire fragment registry into compile pipeline
+- [ ] Implement job fragment instantiation codegen (inline expansion)
+- [ ] Implement steps fragment spread codegen (inline expansion)
+- [ ] Basic parameter substitution in expanded content
+
+### Phase 3: Import Integration
 - [ ] Extend import system to resolve fragment symbols
 - [ ] Cross-file fragment imports
 - [ ] Fragment visibility and export semantics
 - [ ] Circular dependency detection for fragments
 
-### Phase 3: Advanced Features
+### Phase 4: Advanced Features
 - [ ] Default parameter values
 - [ ] Typed parameter validation (WP diagnostics)
 - [ ] Parameter type inference from usage
 - [ ] Fragment composition (fragment using another fragment)
 - [ ] Override semantics for job fragments (e.g., override runs_on)
 
-### Phase 4: Polish
+### Phase 5: Polish
 - [ ] Comprehensive diagnostics (undefined fragment, missing required param, etc.)
 - [ ] VS Code extension support (hover, go-to-definition, completions)
 - [ ] Documentation and examples

@@ -18,6 +18,7 @@ import type {
   TypeExpressionNode,
   TypeFieldNode,
 } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 import type { TypeRegistry } from "../semantics/type-registry.js";
 import type {
   WorkflowIR,
@@ -469,6 +470,8 @@ function transformStep(
       return transformAgentTask(step, workflowName, jobName, matrixContext, registry);
     case "guard_js_step":
       return transformGuardJsStep(step);
+    case "steps_fragment_spread":
+      return [];
   }
 }
 
@@ -679,6 +682,8 @@ export function transformCycle(
 
   const bodyJobNames: string[] = [];
   for (const bodyJob of cycle.body.jobs) {
+    if (!isConcreteJob(bodyJob)) continue;
+
     const jobName = `${cycleName}_body_${bodyJob.name}`;
     bodyJobNames.push(jobName);
 
@@ -690,7 +695,7 @@ export function transformCycle(
       registry
     );
 
-    const needsWithCyclePrefix = (bodyJob.needs ?? []).map((need) => {
+    const needsWithCyclePrefix = (bodyJob.needs ?? []).map((need: string) => {
       const isInCycleBody = cycle.body.jobs.some((j) => j.name === need);
       return isInCycleBody ? `${cycleName}_body_${need}` : need;
     });
@@ -939,7 +944,9 @@ export function transform(ast: WorkflowNode, registry?: TypeRegistry): WorkflowI
   const jobs = new Map<string, JobIR>();
 
   for (const job of ast.jobs) {
-    jobs.set(job.name, transformJob(job, ast.name, registry));
+    if (isConcreteJob(job)) {
+      jobs.set(job.name, transformJob(job, ast.name, registry));
+    }
   }
 
   for (const cycle of ast.cycles) {

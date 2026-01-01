@@ -1,5 +1,6 @@
 import { semanticError, warning, type Diagnostic } from "../diagnostic/index.js";
 import type { WorkflowNode, MatrixJobNode, AnyJobNode } from "../ast/types.js";
+import { isConcreteJob } from "../ast/types.js";
 
 const MATRIX_JOB_LIMIT = 256;
 const MATRIX_WARNING_THRESHOLD = 200;
@@ -77,14 +78,14 @@ export function validateMatrixJobs(ast: WorkflowNode): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
   for (const job of ast.jobs) {
-    if (isMatrixJob(job)) {
+    if (isConcreteJob(job) && isMatrixJob(job)) {
       diagnostics.push(...validateMatrixJob(job));
     }
   }
 
   for (const cycle of ast.cycles) {
     for (const job of cycle.body.jobs) {
-      if (isMatrixJob(job)) {
+      if (isConcreteJob(job) && isMatrixJob(job)) {
         diagnostics.push(...validateMatrixJob(job, cycle.name));
       }
     }

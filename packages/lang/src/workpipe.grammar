@@ -1,4 +1,4 @@
-@top Workflow { ImportDecl* TypeDecl* WorkflowDecl* }
+@top Workflow { ImportDecl* TypeDecl* FragmentDecl* WorkflowDecl* }
 
 @external tokens shellTokenizer from "./shell-tokenizer.js" { shellContent }
 
@@ -28,6 +28,26 @@ TypeDeclName {
 
 TypeField {
   Identifier ":" SchemaType
+}
+
+FragmentDecl {
+  JobFragmentDecl | StepsFragmentDecl
+}
+
+JobFragmentDecl {
+  kw<"job_fragment"> Identifier "{" ParamsBlock? JobBody "}"
+}
+
+StepsFragmentDecl {
+  kw<"steps_fragment"> Identifier "{" ParamsBlock? BlockStep* "}"
+}
+
+ParamsBlock {
+  kw<"params"> "{" ParamDecl* "}"
+}
+
+ParamDecl {
+  Identifier ":" SchemaType ("=" Expression)?
 }
 
 @skip { whitespace | LineComment | BlockComment }
@@ -61,7 +81,15 @@ EventName {
 }
 
 JobDecl {
-  kw<"job"> Identifier MatrixModifier? "{" JobBody "}"
+  kw<"job"> Identifier MatrixModifier? ("{" JobBody "}" | "=" FragmentInstantiation)
+}
+
+FragmentInstantiation {
+  Identifier "{" ParamAssignment* "}"
+}
+
+ParamAssignment {
+  Identifier ":" Expression
 }
 
 MatrixModifier {
@@ -258,7 +286,12 @@ BlockStep {
   ShellStep |
   UsesBlockStep |
   AgentTaskStep |
-  GuardJsStep
+  GuardJsStep |
+  StepsFragmentSpread
+}
+
+StepsFragmentSpread {
+  "..." Identifier "{" ParamAssignment* "}"
 }
 
 ShellStep {
@@ -558,6 +591,7 @@ Number {
   ":"
   ","
   "."
+  "..."
   "-"
   "*"
   "="
@@ -565,7 +599,7 @@ Number {
   "!="
   "|"
 
-  @precedence { "==", "!=", "=", "-", ".", tripleString, number, identifier }
+  @precedence { "...", "==", "!=", "=", "-", ".", tripleString, number, identifier }
 }
 
 kw<term> { @specialize[@name={term}]<identifier, term> }
