@@ -31,15 +31,13 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-095: Documentation and Examples** - P2-Medium
+(No items in progress - all work complete)
 
 ---
 
 ## Up Next (Priority Order)
 
-### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
-
-(All items completed - see Completed section)
+(No items in queue - all backlog complete)
 
 ---
 
@@ -68,7 +66,7 @@ The entire feature is production-ready with:
 | **D** | COMPLETE | Matrices |
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
-| **G** | IN PROGRESS | Step Syntax Improvements (ADR-0013 Accepted) |
+| **G** | COMPLETE | Step Syntax Improvements (ADR-0013 Accepted) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -85,8 +83,8 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 1052 tests (71 lang + 904 compiler + 80 VS Code)
-**Work Items Completed:** 94 (WI-001 through WI-094)
-**Work Items In Progress:** 1 (WI-095)
+**Work Items Completed:** 95 (WI-001 through WI-095)
+**Work Items In Progress:** 0
 **Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
@@ -259,6 +257,16 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-095: Documentation and Examples for Step Syntax** - Completed 2025-12-31
+  - Updated docs/language-reference.md with comprehensive Steps section
+  - Updated docs/getting-started.md with block syntax examples
+  - Updated docs/quick-reference.md with new syntax
+  - Updated examples/minimal/, examples/simple-job/, examples/ci-pipeline/ to block syntax
+  - Regenerated all expected.yml files
+  - Added migration section with before/after examples
+  - Updated examples/README.md with Step Syntax introduction
+  - All examples compile successfully
 
 - **WI-094: VS Code Extension Updates** - Completed 2025-12-31
   - Updated TextMate grammar with shell-block, steps-block, uses-block patterns

@@ -6,6 +6,40 @@ Every example compiles and generates valid GitHub Actions YAML.
 
 ---
 
+## Step Syntax
+
+WorkPipe supports two step syntaxes. The examples in this directory use **block syntax** (recommended):
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    shell {
+      npm ci
+      npm run build
+    }
+  }
+}
+```
+
+The original **array syntax** is also supported for backward compatibility:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps: [
+    uses("actions/checkout@v4"),
+    run("npm ci"),
+    run("npm run build")
+  ]
+}
+```
+
+Both produce identical YAML output. See the [Language Reference](../docs/language-reference.md#steps) for details.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -26,9 +60,9 @@ Start here to learn WorkPipe basics.
 
 | Example | Difficulty | Key Features | Description |
 |---------|------------|--------------|-------------|
-| [minimal](./minimal/) | Beginner | `workflow`, `job`, `run()` | The simplest possible WorkPipe specification |
-| [simple-job](./simple-job/) | Beginner | `needs`, `if`, `uses()` | Multiple jobs with dependencies and conditionals |
-| [ci-pipeline](./ci-pipeline/) | Beginner | parallel jobs, dependency chains | Standard lint/test/build/deploy pipeline |
+| [minimal](./minimal/) | Beginner | `workflow`, `job`, `shell { }` | The simplest possible WorkPipe specification |
+| [simple-job](./simple-job/) | Beginner | `needs`, `if`, `uses() {}`, `shell { }` | Multiple jobs with dependencies and conditionals |
+| [ci-pipeline](./ci-pipeline/) | Beginner | parallel jobs, dependency chains, block syntax | Standard lint/test/build/deploy pipeline |
 
 ### Data Flow
 
@@ -148,6 +182,7 @@ Quick reference for which examples demonstrate each feature.
 
 | Feature | Examples |
 |---------|----------|
+| Block syntax (`steps { }`, `shell { }`) | [minimal](./minimal/), [simple-job](./simple-job/), [ci-pipeline](./ci-pipeline/) |
 | Basic job syntax | [minimal](./minimal/), [simple-job](./simple-job/) |
 | Job dependencies (`needs`) | [simple-job](./simple-job/), [ci-pipeline](./ci-pipeline/) |
 | Conditionals (`if`) | [simple-job](./simple-job/), [ci-pipeline](./ci-pipeline/) |

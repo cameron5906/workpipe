@@ -3,42 +3,48 @@ workflow ci {
 
   job lint {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4"),
-      run("npm ci"),
-      run("npm run lint")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/setup-node@v4") {}
+      shell {
+        npm ci
+        npm run lint
+      }
+    }
   }
 
   job test {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4"),
-      run("npm ci"),
-      run("npm test")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/setup-node@v4") {}
+      shell {
+        npm ci
+        npm test
+      }
+    }
   }
 
   job build {
     runs_on: ubuntu-latest
     needs: [lint, test]
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4"),
-      run("npm ci"),
-      run("npm run build")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/setup-node@v4") {}
+      shell {
+        npm ci
+        npm run build
+      }
+    }
   }
 
   job deploy {
     runs_on: ubuntu-latest
     needs: [build]
     if: github.ref == "refs/heads/main"
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo Deploying to production...")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo "Deploying to production..." }
+    }
   }
 }

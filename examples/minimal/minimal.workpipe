@@ -3,8 +3,8 @@ workflow minimal {
 
   job hello {
     runs_on: ubuntu-latest
-    steps: [
-      run("echo Hello, WorkPipe!")
-    ]
+    steps {
+      shell { echo "Hello, WorkPipe!" }
+    }
   }
 }

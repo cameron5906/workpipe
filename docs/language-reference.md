@@ -453,11 +453,115 @@ For a complete example, see [examples/agent-task/](../examples/agent-task/).
 
 ## Steps
 
-Steps are individual commands or actions within a job.
+Steps are individual commands or actions within a job. WorkPipe provides two syntax forms for defining steps: **block syntax** (recommended) and **array syntax** (also supported).
 
-### Run Step
+### Block Syntax (Recommended)
 
-Execute a shell command:
+The block syntax uses `steps { }` with `shell { }` blocks for shell commands. This is the recommended approach for new workflows:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+
+    shell {
+      npm ci
+      npm run build
+      npm test
+    }
+  }
+}
+```
+
+Note: In block syntax, `uses()` requires a trailing block. Use `{}` for actions with no configuration.
+
+**Benefits of block syntax:**
+- No string quoting needed for shell commands
+- Multi-line scripts are natural and readable
+- Nested braces in shell code work transparently
+- Cleaner visual separation between steps
+
+### Array Syntax (Also Supported)
+
+The original array syntax with `run()` steps remains fully supported for backward compatibility:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps: [
+    uses("actions/checkout@v4"),
+    run("npm ci"),
+    run("npm run build"),
+    run("npm test")
+  ]
+}
+```
+
+Both syntaxes produce identical YAML output. You can use whichever style you prefer, and you can mix styles across different jobs in the same project.
+
+---
+
+### Shell Blocks
+
+The `shell { }` block allows you to write shell commands directly without string quoting:
+
+```workpipe
+shell {
+  echo "Building project..."
+  npm ci
+  npm run build
+}
+```
+
+**Single-line form:**
+
+```workpipe
+shell { echo "Hello, WorkPipe!" }
+```
+
+**Nested braces:** Braces inside shell code are handled transparently. The compiler counts brace depth to determine block boundaries:
+
+```workpipe
+shell {
+  if [ -f package.json ]; then
+    npm ci
+  fi
+
+  for file in *.js; do
+    echo "Found: $file"
+  done
+}
+```
+
+**Indentation handling:** Leading whitespace common to all lines is automatically stripped when generating YAML. This means your shell blocks can be indented to match the surrounding WorkPipe code, and the output will be clean:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    shell {
+      npm ci
+      npm run build
+    }
+  }
+}
+```
+
+Generates:
+
+```yaml
+steps:
+  - run: |-
+      npm ci
+      npm run build
+```
+
+---
+
+### Run Step (Array Syntax)
+
+When using array syntax, execute shell commands with `run()`:
 
 ```workpipe
 run("echo Hello, World!")
@@ -469,9 +573,7 @@ With a name:
 step "greet" run("echo Hello, World!")
 ```
 
-### Multi-line Commands
-
-For multi-line shell commands, use multiple `run()` steps or combine commands with `&&`:
+For multi-line commands in array syntax, use multiple `run()` steps or chain with `&&`:
 
 ```workpipe
 steps: [
@@ -481,31 +583,47 @@ steps: [
 ]
 ```
 
-Or chain commands:
+Or:
 
 ```workpipe
 run("npm ci && npm run build && npm test")
 ```
 
-**Note:** Triple-quoted strings (`"""..."""`) are only supported in `guard_js` blocks, not in `run()` steps.
+---
 
 ### Uses Step
 
-Use a GitHub Action:
+Invoke a GitHub Action with `uses()`.
+
+**In array syntax:**
 
 ```workpipe
-uses("actions/checkout@v4")
+steps: [
+  uses("actions/checkout@v4"),
+  uses("actions/setup-node@v4") {
+    with: { node-version: "20" }
+  },
+  run("npm test")
+]
 ```
 
-With configuration:
+**In block syntax:**
+
+When using block syntax, `uses()` requires a trailing block (use `{}` for actions with no configuration):
 
 ```workpipe
-uses("actions/setup-node@v4") {
-  with: {
-    node-version: "20"
+steps {
+  uses("actions/checkout@v4") {}
+
+  uses("actions/setup-node@v4") {
+    with: { node-version: "20" }
   }
+
+  shell { npm test }
 }
 ```
+
+---
 
 ### Step with Environment Variables
 
@@ -518,6 +636,8 @@ step "deploy" run("./deploy.sh") {
 }
 ```
 
+---
+
 ### Step with Condition
 
 ```workpipe
@@ -525,6 +645,72 @@ step "notify" run("./notify.sh") {
   if: success()
 }
 ```
+
+---
+
+### Choosing Between Block and Array Syntax
+
+| Use Block Syntax When... | Use Array Syntax When... |
+|--------------------------|--------------------------|
+| Writing multi-line shell scripts | You have simple one-liner commands |
+| You want cleaner, more readable code | Migrating existing workflows gradually |
+| Starting a new project | You prefer explicit string delimiters |
+| Shell code contains quotes or escapes | Matching team style conventions |
+
+**Recommendation:** For new workflows, prefer block syntax with `shell { }` blocks. It reduces noise and makes shell scripts more readable. The array syntax remains available and is not deprecated.
+
+---
+
+### Migrating from Array to Block Syntax
+
+Both syntaxes are fully supported and produce identical output. You can migrate files incrementally or mix styles across different jobs.
+
+**Before (array syntax):**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps: [
+    uses("actions/checkout@v4"),
+    run("npm ci"),
+    run("npm run build"),
+    run("npm test")
+  ]
+}
+```
+
+**After (block syntax):**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    shell {
+      npm ci
+      npm run build
+      npm test
+    }
+  }
+}
+```
+
+**Key differences:**
+
+| Array Syntax | Block Syntax |
+|--------------|--------------|
+| `steps: [ ]` | `steps { }` |
+| `run("...")` | `shell { ... }` |
+| `uses("...")` | `uses("...") {}` (requires trailing block) |
+| Commands need quotes | Commands are written directly |
+| Commands separated by commas | No commas needed |
+
+**Migration tips:**
+
+1. **No forced migration**: Existing files continue to work unchanged
+2. **Mix and match**: Different jobs can use different styles in the same project
+3. **Gradual adoption**: Convert one file or one job at a time
+4. **uses() requires block**: In block syntax, `uses()` needs a trailing `{}` even with no configuration
 
 ---
 

@@ -69,9 +69,9 @@ triggers {
 ```workpipe
 job build {
   runs_on: ubuntu-latest
-  steps: [
-    run("npm run build")
-  ]
+  steps {
+    shell { npm run build }
+  }
 }
 ```
 
@@ -90,13 +90,13 @@ job build {
 job test {
   runs_on: ubuntu-latest
   needs: [build]
-  steps: [ ... ]
+  steps { ... }
 }
 
 job deploy {
   runs_on: ubuntu-latest
   needs: [lint, test, build]
-  steps: [ ... ]
+  steps { ... }
 }
 ```
 
@@ -106,7 +106,7 @@ job deploy {
 job deploy {
   runs_on: ubuntu-latest
   if: github.ref == "refs/heads/main"
-  steps: [ ... ]
+  steps { ... }
 }
 ```
 
@@ -114,12 +114,45 @@ job deploy {
 
 ## Steps
 
-### Run Commands
+WorkPipe supports two step syntaxes: **block syntax** (recommended) and **array syntax**.
+
+### Block Syntax (Recommended)
 
 ```workpipe
-run("npm install")
+steps {
+  uses("actions/checkout@v4") {}
 
-run("npm ci && npm run build && npm test")
+  shell {
+    npm ci
+    npm run build
+    npm test
+  }
+}
+```
+
+Note: In block syntax, `uses()` requires a trailing `{}` block.
+
+### Shell Blocks
+
+Write shell commands without quotes:
+
+```workpipe
+shell { echo "Hello, WorkPipe!" }
+
+shell {
+  npm ci
+  npm run build
+}
+```
+
+### Array Syntax (Also Supported)
+
+```workpipe
+steps: [
+  uses("actions/checkout@v4"),
+  run("npm install"),
+  run("npm test")
+]
 ```
 
 ### Use Actions
@@ -128,9 +161,7 @@ run("npm ci && npm run build && npm test")
 uses("actions/checkout@v4")
 
 uses("actions/setup-node@v4") {
-  with: {
-    node-version: "20"
-  }
+  with: { node-version: "20" }
 }
 ```
 

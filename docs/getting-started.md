@@ -63,12 +63,14 @@ workflow ci {
 
   job hello {
     runs_on: ubuntu-latest
-    steps: [
-      run("echo Hello, WorkPipe!")
-    ]
+    steps {
+      shell { echo "Hello, WorkPipe!" }
+    }
   }
 }
 ```
+
+The `steps { }` block contains your job's actions. The `shell { }` block lets you write shell commands directly without quotes.
 
 ### Step 2: Validate Your Syntax (Optional)
 
@@ -136,49 +138,53 @@ workflow build_and_test {
 
   job lint {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       uses("actions/setup-node@v4") {
-        with: {
-          node-version: "20"
-        }
-      },
-      run("npm ci"),
-      run("npm run lint")
-    ]
+        with: { node-version: "20" }
+      }
+      shell {
+        npm ci
+        npm run lint
+      }
+    }
   }
 
   job test {
     runs_on: ubuntu-latest
     needs: [lint]
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       uses("actions/setup-node@v4") {
-        with: {
-          node-version: "20"
-        }
-      },
-      run("npm ci"),
-      run("npm test")
-    ]
+        with: { node-version: "20" }
+      }
+      shell {
+        npm ci
+        npm test
+      }
+    }
   }
 
   job build {
     runs_on: ubuntu-latest
     needs: [test]
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       uses("actions/setup-node@v4") {
-        with: {
-          node-version: "20"
-        }
-      },
-      run("npm ci"),
-      run("npm run build")
-    ]
+        with: { node-version: "20" }
+      }
+      shell {
+        npm ci
+        npm run build
+      }
+    }
   }
 }
 ```
+
+Notice how shell commands inside `shell { }` blocks don't need quotes or commas. Multi-line scripts are natural and readable.
+
+**Note:** In block syntax, `uses()` requires a trailing block. Use `{}` for actions with no configuration, or `{ with: {...} }` to pass inputs.
 
 ---
 

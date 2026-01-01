@@ -3,20 +3,22 @@ workflow simple_job {
 
   job build {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm install"),
-      run("npm test")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        npm install
+        npm test
+      }
+    }
   }
 
   job deploy {
     runs_on: ubuntu-latest
     needs: [build]
     if: github.ref == "refs/heads/main"
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm run deploy")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { npm run deploy }
+    }
   }
 }
