@@ -411,4 +411,124 @@ workflow ci {
       expect(parseError).toBeUndefined();
     });
   });
+
+  describe("new step syntax (shell/uses blocks)", () => {
+    it("should compile workflow with shell block step", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo hello }
+    }
+  }
+}`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+
+    it("should compile workflow with multi-line shell block", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell {
+        npm install
+        npm test
+        npm build
+      }
+    }
+  }
+}`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+
+    it("should compile workflow with uses block step", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {
+      }
+    }
+  }
+}`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+
+    it("should compile workflow with uses block and with parameters", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {
+        with: { fetch_depth: 0 }
+      }
+    }
+  }
+}`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+
+    it("should compile workflow with mixed shell and uses blocks", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Starting build..." }
+      uses("actions/checkout@v4") {
+      }
+      shell {
+        npm install
+        npm build
+      }
+    }
+  }
+}`;
+      const result = compile(source);
+      expect(result.success).toBe(true);
+      expect(result.diagnostics.length).toBe(0);
+    });
+
+    it("should surface diagnostics in VS Code DiagnosticsProvider for shell blocks", () => {
+      const source = `workflow ci {
+  on: push
+  job build {
+    steps {
+      shell { echo hello }
+    }
+  }
+}`;
+      const provider = new DiagnosticsProvider();
+      const mockUri = vscode.Uri.parse("file:///test-shell.workpipe");
+      const mockDocument = {
+        getText: () => source,
+        uri: mockUri,
+      } as unknown as vscode.TextDocument;
+
+      provider.updateDiagnosticsImmediate(mockDocument);
+
+      const diagnostics = (provider as any).collection.get(mockUri);
+      expect(diagnostics).toBeDefined();
+      expect(diagnostics.length).toBeGreaterThan(0);
+
+      const missingRunsOn = diagnostics.find(
+        (d: vscode.Diagnostic) => d.message.includes("runs_on")
+      );
+      expect(missingRunsOn).toBeDefined();
+
+      provider.dispose();
+    });
+  });
 });

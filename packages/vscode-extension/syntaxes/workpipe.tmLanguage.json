@@ -4,6 +4,9 @@
   "scopeName": "source.workpipe",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#shell-block" },
+    { "include": "#steps-block" },
+    { "include": "#uses-block" },
     { "include": "#keywords" },
     { "include": "#types" },
     { "include": "#strings" },
@@ -46,11 +49,11 @@
         },
         {
           "name": "keyword.other.property.workpipe",
-          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes|outputs|axes|max_parallel|fail_fast|include|exclude|matrix)\\b"
+          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes|outputs|axes|max_parallel|fail_fast|include|exclude|matrix|with)\\b"
         },
         {
           "name": "keyword.other.step.workpipe",
-          "match": "\\b(run|uses|agent_task|step)\\b"
+          "match": "\\b(run|uses|agent_task|step|shell)\\b"
         },
         {
           "name": "keyword.other.tools.workpipe",
@@ -170,6 +173,73 @@
           "name": "variable.other.workpipe",
           "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
         }
+      ]
+    },
+    "shell-block": {
+      "name": "meta.step.shell.workpipe",
+      "begin": "\\b(shell)\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.shell.workpipe" },
+        "2": { "name": "punctuation.definition.block.begin.workpipe" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.block.end.workpipe" }
+      },
+      "contentName": "source.shell.embedded.workpipe",
+      "patterns": [
+        { "include": "source.shell" }
+      ]
+    },
+    "steps-block": {
+      "name": "meta.block.steps.workpipe",
+      "begin": "\\b(steps)\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.property.workpipe" },
+        "2": { "name": "punctuation.definition.block.begin.workpipe" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.block.end.workpipe" }
+      },
+      "patterns": [
+        { "include": "#shell-block" },
+        { "include": "#uses-block" },
+        { "include": "#comments" },
+        { "include": "#keywords" },
+        { "include": "#types" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#booleans" },
+        { "include": "#operators" },
+        { "include": "#punctuation" },
+        { "include": "#identifiers" }
+      ]
+    },
+    "uses-block": {
+      "name": "meta.step.uses.workpipe",
+      "begin": "\\b(uses)\\s*(\\()\\s*([\"'][^\"']+[\"'])\\s*(\\))\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.step.workpipe" },
+        "2": { "name": "punctuation.definition.parameters.begin.workpipe" },
+        "3": { "name": "string.quoted.double.workpipe" },
+        "4": { "name": "punctuation.definition.parameters.end.workpipe" },
+        "5": { "name": "punctuation.definition.block.begin.workpipe" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.block.end.workpipe" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#keywords" },
+        { "include": "#types" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#booleans" },
+        { "include": "#operators" },
+        { "include": "#punctuation" },
+        { "include": "#identifiers" }
       ]
     }
   }

@@ -31,7 +31,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-094: VS Code Extension Updates** - P2-Medium
+- **WI-095: Documentation and Examples** - P2-Medium
 
 ---
 
@@ -39,11 +39,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
 
-1. **WI-095: Documentation and Examples** - P2-Medium
-   - Update language-reference.md
-   - Update all examples to new syntax
-   - Migration guide from old to new syntax
-   - **Depends on**: WI-091, WI-092, WI-093
+(All items completed - see Completed section)
 
 ---
 
@@ -72,7 +68,7 @@ The entire feature is production-ready with:
 | **D** | COMPLETE | Matrices |
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
-| **G** | UP NEXT | Step Syntax Improvements (ADR-0013 Accepted) |
+| **G** | IN PROGRESS | Step Syntax Improvements (ADR-0013 Accepted) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -88,10 +84,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 972 tests (71 lang + 904 compiler + 57 VS Code)
-**Work Items Completed:** 93 (WI-001 through WI-093)
-**Work Items In Progress:** 1 (WI-094)
-**Work Items In Backlog:** 1 (WI-095)
+**Test Count:** 1052 tests (71 lang + 904 compiler + 80 VS Code)
+**Work Items Completed:** 94 (WI-001 through WI-094)
+**Work Items In Progress:** 1 (WI-095)
+**Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -262,7 +258,13 @@ The following issues were identified by the documentation steward during WI-062 
 
 ## Completed
 
-### Step Syntax Improvements (Milestone G - In Progress)
+### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-094: VS Code Extension Updates** - Completed 2025-12-31
+  - Updated TextMate grammar with shell-block, steps-block, uses-block patterns
+  - Added shell and with keyword hover documentation
+  - Added 8 new diagnostic tests and 3 hover tests
+  - All 80 VS Code tests passing
 
 - **WI-093: Codegen - Indentation Stripping** - Completed 2025-12-31
   - Added stripCommonIndent() utility function

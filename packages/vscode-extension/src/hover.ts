@@ -12,6 +12,17 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   }
 }`,
   },
+  shell: {
+    description:
+      "Execute shell commands directly without string quoting. The shell block allows multi-line shell scripts with proper syntax highlighting.",
+    example: `steps {
+  shell {
+    npm install
+    npm run build
+    npm test
+  }
+}`,
+  },
   job: {
     description:
       "Defines a job that runs on a specified runner. Jobs can have steps, outputs, and dependencies on other jobs.",
@@ -77,12 +88,26 @@ const PROPERTY_DOCS: Record<string, { description: string; example: string }> = 
   },
   steps: {
     description:
-      "An array of commands or actions to execute in sequence within a job.",
-    example: `steps: [
-  run("npm install"),
-  run("npm test"),
-  run("npm run build")
-]`,
+      "A block or array of commands or actions to execute in sequence within a job. Can use array syntax or block syntax with shell and uses blocks.",
+    example: `steps {
+  shell {
+    npm install
+    npm test
+  }
+  uses("actions/checkout@v4") {
+    with: { fetch-depth: 0 }
+  }
+}`,
+  },
+  with: {
+    description:
+      "Provides input parameters to a uses action. Used inside uses() blocks to pass configuration to GitHub Actions.",
+    example: `uses("actions/checkout@v4") {
+  with: {
+    fetch-depth: 0
+    ref: "main"
+  }
+}`,
   },
   outputs: {
     description:

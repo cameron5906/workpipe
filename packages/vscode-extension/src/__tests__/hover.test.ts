@@ -105,6 +105,18 @@ describe("HoverProvider", () => {
       expect(markdown.value).toContain("**agent_task**");
       expect(markdown.value).toContain("reusable");
     });
+
+    it("should provide hover for 'shell' keyword", () => {
+      const document = createMockDocument("  shell {\n    npm install\n  }");
+      const position = new vscode.Position(0, 4);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**shell**");
+      expect(markdown.value).toContain("shell commands directly");
+    });
   });
 
   describe("property hover", () => {
@@ -155,6 +167,18 @@ describe("HoverProvider", () => {
       expect(markdown.value).toContain("**outputs**");
       expect(markdown.value).toContain("passed to dependent jobs");
     });
+
+    it("should provide hover for 'with' property", () => {
+      const document = createMockDocument("    with: { fetch-depth: 0 }");
+      const position = new vscode.Position(0, 5);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**with**");
+      expect(markdown.value).toContain("input parameters");
+    });
   });
 
   describe("no hover", () => {
@@ -183,6 +207,7 @@ describe("HoverProvider", () => {
       expect(keywords).toHaveProperty("agent_job");
       expect(keywords).toHaveProperty("cycle");
       expect(keywords).toHaveProperty("agent_task");
+      expect(keywords).toHaveProperty("shell");
     });
 
     it("should export property documentation", () => {
@@ -191,6 +216,7 @@ describe("HoverProvider", () => {
       expect(properties).toHaveProperty("needs");
       expect(properties).toHaveProperty("steps");
       expect(properties).toHaveProperty("outputs");
+      expect(properties).toHaveProperty("with");
     });
   });
 

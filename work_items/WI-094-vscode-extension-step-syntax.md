@@ -1,7 +1,7 @@
 # WI-094: VS Code Extension Updates for Step Syntax
 
 **ID**: WI-094
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P2-Medium
 **Milestone**: Step Syntax Improvements (ADR-0013)
 **Created**: 2025-12-31
@@ -38,35 +38,35 @@ steps {
 
 ### TextMate Grammar
 
-- [ ] Add `shell` keyword highlighting
-- [ ] Add `steps` block pattern (not just `steps:` property)
-- [ ] Add embedded shell highlighting inside `shell { }` blocks
-- [ ] Add `uses() { }` block pattern with proper scoping
+- [x] Add `shell` keyword highlighting
+- [x] Add `steps` block pattern (not just `steps:` property)
+- [x] Add embedded shell highlighting inside `shell { }` blocks
+- [x] Add `uses() { }` block pattern with proper scoping
 
 ### Syntax Highlighting
 
-- [ ] `shell` keyword highlighted as keyword.control
-- [ ] Content inside `shell { }` highlighted as embedded shell (source.shell)
-- [ ] Braces of shell blocks highlighted appropriately
-- [ ] `with:` inside `uses() { }` highlighted as property
+- [x] `shell` keyword highlighted as keyword.control
+- [x] Content inside `shell { }` highlighted as embedded shell (source.shell)
+- [x] Braces of shell blocks highlighted appropriately
+- [x] `with:` inside `uses() { }` highlighted as property
 
 ### Diagnostics
 
-- [ ] Diagnostics correctly report errors in new syntax
-- [ ] Source spans point to correct locations in shell blocks
-- [ ] Error messages are clear for malformed shell blocks
+- [x] Diagnostics correctly report errors in new syntax
+- [x] Source spans point to correct locations in shell blocks
+- [x] Error messages are clear for malformed shell blocks
 
 ### Hover Provider
 
-- [ ] Hover on `shell` keyword shows documentation
-- [ ] Hover on `steps` block shows step count and types
+- [x] Hover on `shell` keyword shows documentation
+- [x] Hover on `steps` block shows step count and types
 
 ### Tests
 
-- [ ] TextMate grammar tests for shell block highlighting
-- [ ] TextMate grammar tests for uses block highlighting
-- [ ] Diagnostic display tests for new syntax
-- [ ] Hover tests for new keywords
+- [x] TextMate grammar tests for shell block highlighting
+- [x] TextMate grammar tests for uses block highlighting
+- [x] Diagnostic display tests for new syntax
+- [x] Hover tests for new keywords
 
 ## Technical Context
 
