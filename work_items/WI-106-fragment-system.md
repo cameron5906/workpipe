@@ -1,11 +1,50 @@
 # Fragment System - Importable Jobs/Step Sequences
 
 **ID**: WI-106
-**Status**: Backlog
+**Status**: In Progress
 **Priority**: P1-High
 **Milestone**: H (Fragment System)
 **Created**: 2026-01-01
 **Updated**: 2026-01-01
+
+## ADR Status
+
+ADR-0014 (Fragment System Design) has been created and is **Proposed**. The ADR documents:
+- Two fragment types: `job_fragment` and `steps_fragment`
+- Parameter syntax with typed parameters and defaults
+- Instantiation syntax (`job x = fragment {}` and `...fragment {}`)
+- Import integration with existing system (ADR-0012)
+- 8 implementation phases
+- Diagnostic codes WP9001-WP9009
+- Alternatives considered and rejected
+
+**Note**: ADR should be marked as **Accepted** after tech lead review.
+
+## Current Progress
+
+### Phase 0: ADR Creation
+- [x] Create ADR-0014 documenting fragment system design decisions (2026-01-01)
+
+### Phase 1: Grammar and AST (In Progress)
+- [ ] Grammar: Add `JobFragmentDecl` and `StepsFragmentDecl` productions
+- [ ] Grammar: Add `ParamsBlock` and `ParamDecl` productions
+- [ ] Grammar: Add `FragmentInstantiation` syntax (`job x = fragment {}`)
+- [ ] Grammar: Add `StepsFragmentSpread` syntax (`...fragment {}`)
+- [ ] Grammar: Reserve `job_fragment`, `steps_fragment`, `params` keywords
+- [ ] AST: Add `JobFragmentNode` and `StepsFragmentNode` types
+- [ ] AST: Add `ParamDeclarationNode` type
+- [ ] AST: Add `JobFragmentInstantiationNode` type
+- [ ] AST: Add `StepsFragmentSpreadNode` type
+- [ ] AST: Add `ParamArgumentNode` type
+- [ ] AST: Update `WorkPipeFileNode` with `jobFragments` and `stepsFragments` arrays
+- [ ] Builder: Implement `buildJobFragment()` function
+- [ ] Builder: Implement `buildStepsFragment()` function
+- [ ] Builder: Implement `buildParamsBlock()` function
+- [ ] Builder: Implement `buildFragmentInstantiation()` function
+- [ ] Builder: Implement `buildStepsFragmentSpread()` function
+- [ ] Tests: Grammar tests for fragment declarations
+- [ ] Tests: Grammar tests for fragment instantiation
+- [ ] Tests: AST builder tests for all new node types
 
 ## Description
 

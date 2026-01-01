@@ -32,7 +32,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+1. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
+   - ADR-0014 created (Proposed status, pending tech lead acceptance)
+   - Current: Phase 1 - Grammar and AST implementation
+   - Milestone H (Fragment System)
 
 ---
 
@@ -40,13 +43,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### P1-High (Major Feature)
 
-1. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
-   - Implement `job_fragment` and `steps_fragment` constructs
-   - Parameterized, composable workflow components
-   - Import integration for cross-file fragments
-   - Requires ADR-0014 before implementation
-   - Milestone H (Fragment System)
-   - **Blocks**: WI-105 (fragments enable impressive examples)
+(WI-106 moved to In Progress)
 
 ### P2-Medium (Marketing/Showcase)
 
@@ -86,7 +83,7 @@ The entire feature is production-ready with:
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
 | **G** | COMPLETE | Step Syntax Improvements (ADR-0013 Accepted) |
-| **H** | NOT STARTED | Fragment System - Importable jobs/step sequences (ADR-0014 Pending) |
+| **H** | IN PROGRESS | Fragment System - Importable jobs/step sequences (ADR-0014 Proposed) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -104,7 +101,7 @@ The entire feature is production-ready with:
 
 **Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
 **Work Items Completed:** 104 (WI-001 through WI-104)
-**Work Items In Progress:** 0
+**Work Items In Progress:** 1
 **Work Items In Backlog:** 2 (WI-105, WI-106)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
