@@ -31,7 +31,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-093: Codegen - Indentation Stripping** - P1-High
+- **WI-094: VS Code Extension Updates** - P2-Medium
 
 ---
 
@@ -39,13 +39,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
 
-1. **WI-094: VS Code Extension Updates** - P2-Medium
-   - Update TextMate grammar for shell blocks
-   - Syntax highlighting for shell content
-   - Diagnostics for new syntax
-   - **Depends on**: WI-091, WI-092, WI-093
-
-2. **WI-095: Documentation and Examples** - P2-Medium
+1. **WI-095: Documentation and Examples** - P2-Medium
    - Update language-reference.md
    - Update all examples to new syntax
    - Migration guide from old to new syntax
@@ -94,10 +88,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 953 tests (71 lang + 885+ compiler + 57 VS Code)
-**Work Items Completed:** 92 (WI-001 through WI-092)
-**Work Items In Progress:** 1 (WI-093)
-**Work Items In Backlog:** 2 (WI-094 through WI-095)
+**Test Count:** 972 tests (71 lang + 904 compiler + 57 VS Code)
+**Work Items Completed:** 93 (WI-001 through WI-093)
+**Work Items In Progress:** 1 (WI-094)
+**Work Items In Backlog:** 1 (WI-095)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -269,6 +263,14 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - In Progress)
+
+- **WI-093: Codegen - Indentation Stripping** - Completed 2025-12-31
+  - Added stripCommonIndent() utility function
+  - Added ShellStepIR and UsesWithStepIR types
+  - Added transformShellStep() and transformUsesBlockStep()
+  - Updated emit.ts for new step types
+  - Added 19 tests for codegen
+  - All 972 tests passing
 
 - **WI-091: Grammar - Steps Block and Shell Keyword** - Completed 2025-12-31
   - Extended workpipe.grammar with StepsBlock, ShellStep, UsesBlockStep productions

@@ -1,7 +1,7 @@
 # WI-093: Codegen - Indentation Stripping for Shell Blocks
 
 **ID**: WI-093
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: Step Syntax Improvements (ADR-0013)
 **Created**: 2025-12-31
@@ -49,43 +49,43 @@ NOT:
 
 ### Indentation Stripping
 
-- [ ] Implement `stripCommonIndent(content: string): string` utility function
-- [ ] Find minimum leading whitespace across all non-empty lines
-- [ ] Strip that common prefix from each line
-- [ ] Handle mixed tabs/spaces gracefully (treat tab as single character)
-- [ ] Preserve intentional relative indentation within shell content
-- [ ] Handle empty lines (don't count their "indentation")
+- [x] Implement `stripCommonIndent(content: string): string` utility function
+- [x] Find minimum leading whitespace across all non-empty lines
+- [x] Strip that common prefix from each line
+- [x] Handle mixed tabs/spaces gracefully (treat tab as single character)
+- [x] Preserve intentional relative indentation within shell content
+- [x] Handle empty lines (don't count their "indentation")
 
 ### Shell Step Codegen
 
-- [ ] Transform `ShellStepNode` to `RunStepIR`
-- [ ] Single-line: Generate `run: echo hello` (no literal block)
-- [ ] Multi-line: Generate `run: |` with indented content
-- [ ] Apply indentation stripping before YAML emission
+- [x] Transform `ShellStepNode` to `RunStepIR`
+- [x] Single-line: Generate `run: echo hello` (no literal block)
+- [x] Multi-line: Generate `run: |` with indented content
+- [x] Apply indentation stripping before YAML emission
 
 ### Uses Block Step Codegen
 
-- [ ] Transform `UsesBlockStepNode` to `UsesStepIR`
-- [ ] Generate `uses:` with action reference
-- [ ] Generate `with:` section from block properties
-- [ ] Merge/validate with any inline parameters
+- [x] Transform `UsesBlockStepNode` to `UsesStepIR`
+- [x] Generate `uses:` with action reference
+- [x] Generate `with:` section from block properties
+- [x] Merge/validate with any inline parameters
 
 ### YAML Emission
 
-- [ ] Extend emitter to handle `ShellStepNode` appropriately
-- [ ] Ensure multi-line run blocks use YAML literal style (`|`)
-- [ ] Proper indentation in generated YAML (2-space or 4-space as configured)
+- [x] Extend emitter to handle `ShellStepNode` appropriately
+- [x] Ensure multi-line run blocks use YAML literal style (`|`)
+- [x] Proper indentation in generated YAML (2-space or 4-space as configured)
 
 ### Tests
 
-- [ ] Unit tests for `stripCommonIndent()` function
-- [ ] Test: consistent indentation (all lines same prefix)
-- [ ] Test: varying indentation (nested code blocks)
-- [ ] Test: empty lines in shell content
-- [ ] Test: tabs vs spaces
-- [ ] Test: single-line shell blocks
-- [ ] Integration tests for full codegen pipeline
-- [ ] Golden tests for new syntax examples
+- [x] Unit tests for `stripCommonIndent()` function
+- [x] Test: consistent indentation (all lines same prefix)
+- [x] Test: varying indentation (nested code blocks)
+- [x] Test: empty lines in shell content
+- [x] Test: tabs vs spaces
+- [x] Test: single-line shell blocks
+- [x] Integration tests for full codegen pipeline
+- [x] Golden tests for new syntax examples
 
 ## Technical Context
 

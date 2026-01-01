@@ -45,7 +45,9 @@ export interface JobIR {
 
 export type StepIR =
   | RunStepIR
+  | ShellStepIR
   | UsesStepIR
+  | UsesWithStepIR
   | ClaudeCodeStepIR
   | UploadArtifactStepIR
   | DownloadArtifactStepIR
@@ -56,9 +58,21 @@ export interface RunStepIR {
   readonly command: string;
 }
 
+export interface ShellStepIR {
+  readonly kind: "shell";
+  readonly run: string;
+  readonly multiline: boolean;
+}
+
 export interface UsesStepIR {
   readonly kind: "uses";
   readonly action: string;
+}
+
+export interface UsesWithStepIR {
+  readonly kind: "uses_with";
+  readonly action: string;
+  readonly with: Record<string, unknown>;
 }
 
 export interface ClaudeCodeStepIR {

@@ -7,6 +7,8 @@ import type {
   StepNode,
   AgentTaskNode,
   GuardJsStepNode,
+  ShellStepNode,
+  UsesBlockStepNode,
   ExpressionNode,
   PromptValue,
   CycleNode,
@@ -22,6 +24,8 @@ import type {
   TriggerIR,
   JobIR,
   StepIR,
+  ShellStepIR,
+  UsesWithStepIR,
   ClaudeCodeStepIR,
   UploadArtifactStepIR,
   DownloadArtifactStepIR,
@@ -375,6 +379,46 @@ const guards = {
 };
 `.trim();
 
+export function stripCommonIndent(content: string): string {
+  const lines = content.split('\n');
+  const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+  if (nonEmptyLines.length === 0) return content.trim();
+
+  const minIndent = Math.min(
+    ...nonEmptyLines.map(line => {
+      const match = line.match(/^(\s*)/);
+      return match ? match[1].length : 0;
+    })
+  );
+
+  return lines.map(line => line.slice(minIndent)).join('\n').trim();
+}
+
+function transformShellStep(step: ShellStepNode): StepIR[] {
+  const strippedContent = stripCommonIndent(step.content);
+
+  const shellStep: ShellStepIR = {
+    kind: "shell",
+    run: strippedContent,
+    multiline: step.multiline,
+  };
+
+  return [shellStep];
+}
+
+function transformUsesBlockStep(step: UsesBlockStepNode): StepIR[] {
+  if (step.with && Object.keys(step.with).length > 0) {
+    const usesWithStep: UsesWithStepIR = {
+      kind: "uses_with",
+      action: step.action,
+      with: step.with,
+    };
+    return [usesWithStep];
+  }
+
+  return [{ kind: "uses", action: step.action }];
+}
+
 function transformGuardJsStep(step: GuardJsStepNode): StepIR[] {
   const guardCode = step.code;
 
@@ -417,6 +461,10 @@ function transformStep(
       return [{ kind: "run", command: step.command }];
     case "uses":
       return [{ kind: "uses", action: step.action }];
+    case "shell":
+      return transformShellStep(step);
+    case "uses_block":
+      return transformUsesBlockStep(step);
     case "agent_task":
       return transformAgentTask(step, workflowName, jobName, matrixContext, registry);
     case "guard_js_step":

@@ -4,7 +4,9 @@ export type {
   JobIR,
   StepIR,
   RunStepIR,
+  ShellStepIR,
   UsesStepIR,
+  UsesWithStepIR,
   ClaudeCodeStepIR,
   UploadArtifactStepIR,
   DownloadArtifactStepIR,
@@ -12,6 +14,6 @@ export type {
   WorkflowDispatchInputIR,
 } from "./yaml-ir.js";
 
-export { transform, transformCycle, serializeExpression, inlineSchemaToJsonSchema, typeDeclarationToJsonSchema, generateMatrixFingerprint } from "./transform.js";
+export { transform, transformCycle, serializeExpression, inlineSchemaToJsonSchema, typeDeclarationToJsonSchema, generateMatrixFingerprint, stripCommonIndent } from "./transform.js";
 export type { JsonSchema } from "./transform.js";
 export { emit } from "./emit.js";

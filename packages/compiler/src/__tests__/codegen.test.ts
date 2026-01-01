@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "@workpipe/lang";
 import { buildAST } from "../ast/index.js";
-import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema, generateMatrixFingerprint } from "../codegen/index.js";
+import { transform, transformCycle, emit, serializeExpression, inlineSchemaToJsonSchema, generateMatrixFingerprint, stripCommonIndent } from "../codegen/index.js";
 import { compile } from "../index.js";
-import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode, GuardJsStepNode, JobNode, MatrixJobNode } from "../ast/types.js";
+import type { ExpressionNode, AgentJobNode, AgentTaskNode, CycleNode, SchemaObjectNode, GuardJsStepNode, JobNode, MatrixJobNode, ShellStepNode, UsesBlockStepNode } from "../ast/types.js";
 import type { WorkflowNode } from "../ast/types.js";
 
 describe("serializeExpression", () => {
@@ -2579,5 +2579,408 @@ describe("matrix job with agent task artifact fingerprinting", () => {
         path: "report.json",
       },
     });
+  });
+});
+
+describe("stripCommonIndent", () => {
+  it("strips consistent indentation from all lines", () => {
+    const input = `    echo hello
+    echo world`;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`echo hello
+echo world`);
+  });
+
+  it("strips varying indentation preserving relative differences", () => {
+    const input = `    echo start
+      echo indented
+    echo back`;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`echo start
+  echo indented
+echo back`);
+  });
+
+  it("handles empty lines by ignoring them for indent calculation", () => {
+    const input = `    echo first
+
+    echo second`;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`echo first
+
+echo second`);
+  });
+
+  it("handles tabs as indentation", () => {
+    const input = `\t\techo hello
+\t\techo world`;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`echo hello
+echo world`);
+  });
+
+  it("handles single line content", () => {
+    const input = "    echo hello";
+    const result = stripCommonIndent(input);
+    expect(result).toBe("echo hello");
+  });
+
+  it("handles content with no indentation", () => {
+    const input = `echo hello
+echo world`;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`echo hello
+echo world`);
+  });
+
+  it("returns trimmed empty string for empty content", () => {
+    const input = "   ";
+    const result = stripCommonIndent(input);
+    expect(result).toBe("");
+  });
+
+  it("handles mixed empty and non-empty lines", () => {
+    const input = `
+        npm install
+        npm test
+    `;
+    const result = stripCommonIndent(input);
+    expect(result).toBe(`npm install
+npm test`);
+  });
+});
+
+describe("shell step transforms", () => {
+  it("transforms single-line shell step to ShellStepIR", () => {
+    const shellStep: ShellStepNode = {
+      kind: "shell",
+      content: "echo hello",
+      multiline: false,
+      span: { start: 0, end: 20 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "build",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [shellStep],
+      span: { start: 0, end: 100 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("build")!;
+
+    expect(irJob.steps).toHaveLength(1);
+    expect(irJob.steps[0]).toMatchObject({
+      kind: "shell",
+      run: "echo hello",
+      multiline: false,
+    });
+  });
+
+  it("transforms multi-line shell step with indentation stripping", () => {
+    const shellStep: ShellStepNode = {
+      kind: "shell",
+      content: `
+        npm install
+        npm test
+        npm build
+      `,
+      multiline: true,
+      span: { start: 0, end: 50 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "build",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [shellStep],
+      span: { start: 0, end: 100 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("build")!;
+
+    expect(irJob.steps[0]).toMatchObject({
+      kind: "shell",
+      multiline: true,
+    });
+
+    const step = irJob.steps[0] as { kind: "shell"; run: string };
+    expect(step.run).toContain("npm install");
+    expect(step.run).toContain("npm test");
+    expect(step.run).toContain("npm build");
+    expect(step.run.startsWith("npm install")).toBe(true);
+  });
+
+  it("emits shell step as run command in YAML", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo hello }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("run: echo hello");
+    }
+  });
+
+  it("emits multi-line shell step correctly", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell {
+        npm install
+        npm test
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("run:");
+      expect(result.value).toContain("npm install");
+      expect(result.value).toContain("npm test");
+    }
+  });
+
+  it("compiles workflow with multiple shell steps", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Building..." }
+      shell {
+        pnpm install
+        pnpm build
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("run: echo \"Building...\"");
+      expect(result.value).toContain("pnpm install");
+      expect(result.value).toContain("pnpm build");
+    }
+  });
+});
+
+describe("uses block step transforms", () => {
+  it("transforms uses block step without with to UsesStepIR", () => {
+    const usesStep: UsesBlockStepNode = {
+      kind: "uses_block",
+      action: "actions/checkout@v4",
+      span: { start: 0, end: 30 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "build",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [usesStep],
+      span: { start: 0, end: 100 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("build")!;
+
+    expect(irJob.steps).toHaveLength(1);
+    expect(irJob.steps[0]).toMatchObject({
+      kind: "uses",
+      action: "actions/checkout@v4",
+    });
+  });
+
+  it("transforms uses block step with with to UsesWithStepIR", () => {
+    const usesStep: UsesBlockStepNode = {
+      kind: "uses_block",
+      action: "actions/setup-node@v4",
+      with: { "node-version": "20" },
+      span: { start: 0, end: 50 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "build",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [usesStep],
+      span: { start: 0, end: 100 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 200 },
+    };
+
+    const ir = transform(workflow);
+    const irJob = ir.jobs.get("build")!;
+
+    expect(irJob.steps).toHaveLength(1);
+    expect(irJob.steps[0]).toMatchObject({
+      kind: "uses_with",
+      action: "actions/setup-node@v4",
+      with: { "node-version": "20" },
+    });
+  });
+
+  it("emits uses block step without with in YAML", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+    }
+  });
+
+  it("emits uses block step with with properties in YAML", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/setup-node@v4") {
+        with: { version: "20" }
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/setup-node@v4");
+      expect(result.value).toContain("with:");
+      expect(result.value).toContain("version:");
+    }
+  });
+
+  it("emits uses block with multiple with properties", () => {
+    const usesStep: UsesBlockStepNode = {
+      kind: "uses_block",
+      action: "actions/cache@v4",
+      with: {
+        path: "node_modules",
+        key: "${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}",
+      },
+      span: { start: 0, end: 100 },
+    };
+
+    const job: JobNode = {
+      kind: "job",
+      name: "cache",
+      runsOn: "ubuntu-latest",
+      needs: [],
+      condition: null,
+      outputs: [],
+      steps: [usesStep],
+      span: { start: 0, end: 200 },
+    };
+
+    const workflow: WorkflowNode = {
+      kind: "workflow",
+      name: "test-workflow",
+      trigger: { kind: "trigger", events: ["push"], span: { start: 0, end: 10 } },
+      jobs: [job],
+      cycles: [],
+      span: { start: 0, end: 300 },
+    };
+
+    const ir = transform(workflow);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("uses: actions/cache@v4");
+    expect(yaml).toContain("with:");
+    expect(yaml).toContain("path: node_modules");
+    expect(yaml).toContain("key:");
+  });
+});
+
+describe("mixed step types in steps block", () => {
+  it("compiles workflow with shell and uses block steps", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Starting build..." }
+      uses("actions/checkout@v4") {
+      }
+      shell {
+        npm install
+        npm build
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("run: echo \"Starting build...\"");
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).toContain("npm install");
+      expect(result.value).toContain("npm build");
+    }
   });
 });

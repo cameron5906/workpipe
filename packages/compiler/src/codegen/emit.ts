@@ -11,8 +11,15 @@ function serializeStep(step: StepIR): Record<string, unknown> {
   switch (step.kind) {
     case "run":
       return { run: step.command };
+    case "shell":
+      return { run: step.run };
     case "uses":
       return { uses: step.action };
+    case "uses_with":
+      return {
+        uses: step.action,
+        with: { ...step.with },
+      };
     case "claude_code": {
       const result: Record<string, unknown> = {
         name: step.name,
