@@ -12,7 +12,8 @@ WorkPipe uses diagnostic codes in the format `WPxxxx` to identify specific issue
 | WP4xxx | Matrix validation |
 | WP5xxx | Type validation |
 | WP6xxx | Cycle validation |
-| WP7xxx | Semantic validation (required fields) |
+| WP7xxx | Import validation |
+| WP8xxx | Semantic validation (required fields) |
 
 ---
 
@@ -759,9 +760,213 @@ This ensures the cycle will terminate even if the guard condition never evaluate
 
 ---
 
-## WP7xxx - Semantic Validation
+## WP7xxx - Import Validation
 
-### WP7001: Job Missing runs_on
+### WP7001: Circular Import Detected
+
+**Severity:** Error
+
+**Description:** The import system detected a circular dependency between files. Circular imports occur when file A imports from file B, and file B (directly or indirectly) imports from file A.
+
+**Example:**
+
+```workpipe
+// a.workpipe
+import { TypeB } from "./b.workpipe"
+
+type TypeA {
+  ref: TypeB
+}
+```
+
+```workpipe
+// b.workpipe
+import { TypeA } from "./a.workpipe"  // Error: Creates circular import
+
+type TypeB {
+  ref: TypeA
+}
+```
+
+**Solution:** Extract shared types to a third file that both can import:
+
+```workpipe
+// shared.workpipe
+type TypeA {
+  value: string
+}
+
+type TypeB {
+  value: string
+}
+```
+
+```workpipe
+// a.workpipe
+import { TypeA, TypeB } from "./shared.workpipe"
+```
+
+```workpipe
+// b.workpipe
+import { TypeA, TypeB } from "./shared.workpipe"
+```
+
+---
+
+### WP7002: Import File Not Found
+
+**Severity:** Error
+
+**Description:** The specified import path does not resolve to an existing file. This occurs when the file path is incorrect or the file has been moved/deleted.
+
+**Example:**
+
+```workpipe
+import { Config } from "./missing.workpipe"  // Error: File does not exist
+```
+
+**Solution:** Check that:
+1. The file path is spelled correctly
+2. The file exists at the specified location
+3. The path is relative (starts with `./` or `../`)
+4. The `.workpipe` extension is included
+
+---
+
+### WP7003: Type Not Exported
+
+**Severity:** Error
+
+**Description:** The requested type does not exist in the source file, or the type was imported from another file and cannot be re-exported (types are not transitive).
+
+**Example:**
+
+```workpipe
+// types.workpipe
+type BuildInfo {
+  version: string
+}
+```
+
+```workpipe
+// main.workpipe
+import { BuildInof } from "./types.workpipe"  // Error: Typo - "BuildInof" instead of "BuildInfo"
+```
+
+**Solution:** The error message will suggest similar type names if a typo is detected:
+
+```
+error[WP7003]: Type 'BuildInof' does not exist in './types.workpipe'
+  --> main.workpipe:1:10
+   |
+   = hint: Did you mean 'BuildInfo'? Available types: BuildInfo
+```
+
+If the type was imported from another file, import directly from the original source:
+
+```workpipe
+// Instead of importing through an intermediate file:
+import { SharedType } from "./middle.workpipe"  // Error if SharedType was imported into middle.workpipe
+
+// Import directly from the original source:
+import { SharedType } from "./original.workpipe"
+```
+
+---
+
+### WP7004: Duplicate Import
+
+**Severity:** Error
+
+**Description:** The same type is imported more than once in a file. This usually indicates a copy-paste error.
+
+**Example:**
+
+```workpipe
+import { Config, Config } from "./types.workpipe"  // Error: Duplicate import
+```
+
+**Solution:** Remove the duplicate import:
+
+```workpipe
+import { Config } from "./types.workpipe"
+```
+
+---
+
+### WP7005: Name Collision
+
+**Severity:** Error
+
+**Description:** An imported type name conflicts with a locally defined type or another import. Each type name must be unique within a file.
+
+**Example:**
+
+```workpipe
+type Config {
+  local: string
+}
+
+import { Config } from "./external.workpipe"  // Error: 'Config' already exists
+```
+
+**Solution:** Use an alias to rename the imported type:
+
+```workpipe
+type Config {
+  local: string
+}
+
+import { Config as ExternalConfig } from "./external.workpipe"
+```
+
+---
+
+### WP7006: Invalid Import Path
+
+**Severity:** Error
+
+**Description:** The import path is malformed. WorkPipe only allows relative import paths that start with `./` or `../`. Absolute paths and bare module names are not allowed.
+
+**Example:**
+
+```workpipe
+import { Type } from "/absolute/path.workpipe"  // Error: Absolute path
+import { Type } from "types.workpipe"           // Error: Missing ./
+```
+
+**Solution:** Use a relative path:
+
+```workpipe
+import { Type } from "./types.workpipe"
+import { Type } from "../shared/types.workpipe"
+```
+
+---
+
+### WP7007: Import Path Escapes Project Root
+
+**Severity:** Error
+
+**Description:** The resolved import path is outside the project directory. For security and portability, all imported files must be within the project root.
+
+**Example:**
+
+```workpipe
+// In /project/src/main.workpipe
+import { Secret } from "../../outside-project/secrets.workpipe"  // Error
+```
+
+**Solution:** Keep all imported files within the project directory. If you need to share types across projects, consider:
+1. Creating a shared package
+2. Copying the types into each project
+3. Restructuring your project layout
+
+---
+
+## WP8xxx - Semantic Validation
+
+### WP8001: Job Missing runs_on
 
 **Severity:** Error
 
@@ -800,7 +1005,7 @@ Common runner values:
 
 ---
 
-### WP7002: Agent Job Missing runs_on
+### WP8002: Agent Job Missing runs_on
 
 **Severity:** Error
 
@@ -830,7 +1035,7 @@ agent_job coder {
 
 ---
 
-### WP7004: Empty Workflow
+### WP8004: Empty Workflow
 
 **Severity:** Warning
 

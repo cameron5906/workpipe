@@ -1,7 +1,7 @@
 # WI-084: Import System - Diagnostics
 
 **ID**: WI-084
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -13,18 +13,18 @@ Implement all import-related diagnostic codes (WP7001-WP7007). This is Phase 5 o
 
 ## Acceptance Criteria
 
-- [ ] WP7001: Circular import detected (Error)
-- [ ] WP7002: Import file not found (Error)
-- [ ] WP7003: Type not exported by imported file (Error)
-- [ ] WP7004: Duplicate import of same type (Error)
-- [ ] WP7005: Unused import (Warning)
-- [ ] WP7006: Invalid import path (absolute path warning) (Error)
-- [ ] WP7007: Import path resolves outside project root (Error)
-- [ ] All diagnostics have helpful hints
-- [ ] Diagnostics include file path context for cross-file errors
-- [ ] Update `docs/errors.md` with WP7xxx section
-- [ ] Tests for each diagnostic code
-- [ ] Levenshtein suggestions for WP7003 (type name typos)
+- [x] WP7001: Circular import detected (Error)
+- [x] WP7002: Import file not found (Error)
+- [x] WP7003: Type not exported by imported file (Error)
+- [x] WP7004: Duplicate import of same type (Error)
+- [x] WP7005: Unused import (Warning)
+- [x] WP7006: Invalid import path (absolute path warning) (Error)
+- [x] WP7007: Import path resolves outside project root (Error)
+- [x] All diagnostics have helpful hints
+- [x] Diagnostics include file path context for cross-file errors
+- [x] Update `docs/errors.md` with WP7xxx section
+- [x] Tests for each diagnostic code
+- [x] Levenshtein suggestions for WP7003 (type name typos)
 
 ## Technical Context
 

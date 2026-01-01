@@ -30,7 +30,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- WI-084: Import System - Diagnostics - P0-Critical
+- WI-085: Import System - CLI Integration - P0-Critical
 
 ---
 
@@ -40,16 +40,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementation phases:
 
-1. **WI-084: Import System - Diagnostics** - P0-Critical
-   - WP7001: Circular import detected
-   - WP7002: Import file not found
-   - WP7003: Type not exported by imported file
-   - WP7004: Duplicate import of same type
-   - WP7005: Unused import (warning)
-   - WP7006: Invalid import path
-   - WP7007: Import path resolves outside project root
-
-2. **WI-085: Import System - CLI Integration** - P0-Critical
+1. **WI-085: Import System - CLI Integration** - P0-Critical
    - Update `workpipe build` for multi-file compilation
    - Update `workpipe check` for import validation
    - Files with only types produce no YAML output
@@ -113,10 +104,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 864 tests (71 lang + 793 compiler)
-**Work Items Completed:** 83 (WI-001 through WI-083)
-**Work Items In Progress:** 1 (WI-084)
-**Work Items In Backlog:** 4 (WI-085 through WI-088)
+**Test Count:** 909 tests (71 lang + 838 compiler)
+**Work Items Completed:** 84 (WI-001 through WI-084)
+**Work Items In Progress:** 1 (WI-085)
+**Work Items In Backlog:** 3 (WI-086 through WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -288,6 +279,15 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Import System (Milestone F - In Progress)
+
+- **WI-084: Import System - Diagnostics** - Completed 2025-12-31
+  - Created diagnostic-codes.ts with IMPORT_DIAGNOSTICS (WP7001-WP7007) and SEMANTIC_DIAGNOSTICS (WP8001-WP8004)
+  - Created validation.ts with Levenshtein distance, path validation, cycle detection, duplicate detection
+  - Updated compileWithImports() with cycle detection via ImportGraph
+  - Updated docs/errors.md with WP7xxx section
+  - Migrated required fields diagnostics from WP7xxx to WP8xxx
+  - 45 new tests for import diagnostics
+  - All 909 tests passing
 
 - **WI-083: Import System - Type Registry Merging** - Completed 2025-12-31
   - Extended TypeRegistry with importTypes() method

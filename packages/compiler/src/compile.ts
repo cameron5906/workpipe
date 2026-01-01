@@ -25,6 +25,12 @@ import {
   type ImportItem,
 } from "./semantics/index.js";
 import type { FileResolver } from "./imports/index.js";
+import {
+  ImportGraph,
+  detectCircularImports,
+  createFileNotFoundDiagnostic,
+} from "./imports/index.js";
+import { IMPORT_DIAGNOSTICS } from "./diagnostics/index.js";
 
 /**
  * Context for multi-file compilation with import support.
@@ -38,6 +44,8 @@ export interface ImportContext {
   parsedFiles: Map<string, WorkPipeFileNode>;
   /** Cache of built type registries (keyed by normalized file path) */
   registries: Map<string, TypeRegistry>;
+  /** Dependency graph for cycle detection */
+  dependencyGraph: ImportGraph;
 }
 
 /**
@@ -64,6 +72,7 @@ export function createImportContext(
     projectRoot,
     parsedFiles: new Map(),
     registries: new Map(),
+    dependencyGraph: new ImportGraph(),
   };
 }
 
@@ -151,6 +160,7 @@ function getOrBuildRegistry(
 
 /**
  * Process imports for a file's registry, resolving types from imported files.
+ * Also builds the dependency graph for cycle detection.
  */
 async function processImports(
   fileAST: WorkPipeFileNode,
@@ -159,6 +169,7 @@ async function processImports(
   importContext: ImportContext
 ): Promise<Diagnostic[]> {
   const diagnostics: Diagnostic[] = [];
+  const importEdges: Array<{ from: string; to: string; importedNames: string[] }> = [];
 
   for (const importDecl of fileAST.imports) {
     const resolvedPath = await importContext.fileResolver.resolve(
@@ -168,15 +179,16 @@ async function processImports(
 
     if (!resolvedPath) {
       diagnostics.push(
-        semanticError(
-          "WP7001",
-          `Cannot resolve import path '${importDecl.path}'`,
-          importDecl.span,
-          "Check that the file exists and the path is correct"
-        )
+        createFileNotFoundDiagnostic(importDecl.path, importDecl.span)
       );
       continue;
     }
+
+    importEdges.push({
+      from: filePath,
+      to: resolvedPath,
+      importedNames: importDecl.items.map((item) => item.name),
+    });
 
     let sourceRegistry = importContext.registries.get(resolvedPath);
 
@@ -222,6 +234,17 @@ async function processImports(
       importDecl.span
     );
     diagnostics.push(...importDiags);
+  }
+
+  importContext.dependencyGraph.addFile(filePath, importEdges);
+
+  const cycleDiag = detectCircularImports(
+    importContext.dependencyGraph,
+    filePath,
+    fileAST.imports[0]?.span
+  );
+  if (cycleDiag) {
+    diagnostics.push(cycleDiag);
   }
 
   return diagnostics;

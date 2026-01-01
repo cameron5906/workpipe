@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateRequiredFields } from "../semantics/required-fields.js";
 import { compile } from "../index.js";
+import { SEMANTIC_DIAGNOSTICS } from "../diagnostics/index.js";
 import type { WorkflowNode, JobNode, AgentJobNode, CycleNode } from "../ast/types.js";
 
 function createWorkflow(overrides: Partial<WorkflowNode> = {}): WorkflowNode {
@@ -65,7 +66,7 @@ function createCycle(name: string, jobs: (JobNode | AgentJobNode)[]): CycleNode 
 }
 
 describe("validateRequiredFields", () => {
-  describe("WP7001 - Job missing runs_on", () => {
+  describe("WP8001 - Job missing runs_on", () => {
     it("returns error when job is missing runs_on", () => {
       const workflow = createWorkflow({
         jobs: [createJob("build", null)],
@@ -74,7 +75,7 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(1);
-      expect(diagnostics[0].code).toBe("WP7001");
+      expect(diagnostics[0].code).toBe(SEMANTIC_DIAGNOSTICS.JOB_MISSING_RUNS_ON.code);
       expect(diagnostics[0].severity).toBe("error");
       expect(diagnostics[0].message).toContain("build");
       expect(diagnostics[0].message).toContain("runs_on");
@@ -98,13 +99,13 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(1);
-      expect(diagnostics[0].code).toBe("WP7001");
+      expect(diagnostics[0].code).toBe(SEMANTIC_DIAGNOSTICS.JOB_MISSING_RUNS_ON.code);
       expect(diagnostics[0].message).toContain("work");
       expect(diagnostics[0].message).toContain("cycle 'loop'");
     });
   });
 
-  describe("WP7002 - Agent job missing runs_on", () => {
+  describe("WP8002 - Agent job missing runs_on", () => {
     it("returns error when agent_job is missing runs_on", () => {
       const workflow = createWorkflow({
         jobs: [createAgentJob("agent", null)],
@@ -113,7 +114,7 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(1);
-      expect(diagnostics[0].code).toBe("WP7002");
+      expect(diagnostics[0].code).toBe(SEMANTIC_DIAGNOSTICS.AGENT_JOB_MISSING_RUNS_ON.code);
       expect(diagnostics[0].severity).toBe("error");
       expect(diagnostics[0].message).toContain("agent");
       expect(diagnostics[0].message).toContain("runs_on");
@@ -137,13 +138,13 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(1);
-      expect(diagnostics[0].code).toBe("WP7002");
+      expect(diagnostics[0].code).toBe(SEMANTIC_DIAGNOSTICS.AGENT_JOB_MISSING_RUNS_ON.code);
       expect(diagnostics[0].message).toContain("agent_work");
       expect(diagnostics[0].message).toContain("cycle 'loop'");
     });
   });
 
-  describe("WP7004 - Workflow has no jobs or cycles", () => {
+  describe("WP8004 - Workflow has no jobs or cycles", () => {
     it("returns warning when workflow has no jobs or cycles", () => {
       const workflow = createWorkflow({
         jobs: [],
@@ -153,7 +154,7 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(1);
-      expect(diagnostics[0].code).toBe("WP7004");
+      expect(diagnostics[0].code).toBe(SEMANTIC_DIAGNOSTICS.EMPTY_WORKFLOW.code);
       expect(diagnostics[0].severity).toBe("warning");
       expect(diagnostics[0].message).toContain("test");
       expect(diagnostics[0].message).toContain("no jobs or cycles");
@@ -192,13 +193,16 @@ describe("validateRequiredFields", () => {
       const diagnostics = validateRequiredFields(workflow);
 
       expect(diagnostics).toHaveLength(2);
-      expect(diagnostics.map((d) => d.code).sort()).toEqual(["WP7001", "WP7002"]);
+      expect(diagnostics.map((d) => d.code).sort()).toEqual([
+        SEMANTIC_DIAGNOSTICS.JOB_MISSING_RUNS_ON.code,
+        SEMANTIC_DIAGNOSTICS.AGENT_JOB_MISSING_RUNS_ON.code,
+      ].sort());
     });
   });
 });
 
 describe("compile integration with required field validation", () => {
-  it("returns WP7001 error for job missing runs_on", () => {
+  it("returns WP8001 error for job missing runs_on", () => {
     const source = `workflow test {
       on: push
       job build {
@@ -210,11 +214,11 @@ describe("compile integration with required field validation", () => {
 
     expect(result.success).toBe(false);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
-    expect(errors.some((e) => e.code === "WP7001")).toBe(true);
+    expect(errors.some((e) => e.code === SEMANTIC_DIAGNOSTICS.JOB_MISSING_RUNS_ON.code)).toBe(true);
     expect(errors.some((e) => e.message.includes("build"))).toBe(true);
   });
 
-  it("returns WP7002 error for agent_job missing runs_on", () => {
+  it("returns WP8002 error for agent_job missing runs_on", () => {
     const source = `workflow test {
       on: push
       agent_job agent {
@@ -230,11 +234,11 @@ describe("compile integration with required field validation", () => {
 
     expect(result.success).toBe(false);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
-    expect(errors.some((e) => e.code === "WP7002")).toBe(true);
+    expect(errors.some((e) => e.code === SEMANTIC_DIAGNOSTICS.AGENT_JOB_MISSING_RUNS_ON.code)).toBe(true);
     expect(errors.some((e) => e.message.includes("agent"))).toBe(true);
   });
 
-  it("returns WP7004 warning for empty workflow", () => {
+  it("returns WP8004 warning for empty workflow", () => {
     const source = `workflow empty {
       on: push
     }`;
@@ -243,7 +247,7 @@ describe("compile integration with required field validation", () => {
 
     expect(result.success).toBe(true);
     const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-    expect(warnings.some((w) => w.code === "WP7004")).toBe(true);
+    expect(warnings.some((w) => w.code === SEMANTIC_DIAGNOSTICS.EMPTY_WORKFLOW.code)).toBe(true);
     expect(warnings.some((w) => w.message.includes("empty"))).toBe(true);
   });
 

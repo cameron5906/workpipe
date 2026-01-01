@@ -9,6 +9,7 @@ import {
   createImportContext,
 } from "../compile.js";
 import { createMemoryFileResolver } from "../imports/file-resolver.js";
+import { IMPORT_DIAGNOSTICS } from "../diagnostics/index.js";
 import type {
   TypeDeclarationNode,
   TypeFieldNode,
@@ -648,7 +649,7 @@ workflow build {
     });
 
     expect(result.success).toBe(false);
-    const error = result.diagnostics.find((d) => d.code === "WP7001");
+    const error = result.diagnostics.find((d) => d.code === IMPORT_DIAGNOSTICS.FILE_NOT_FOUND.code);
     expect(error).toBeDefined();
     expect(error?.message).toContain("nonexistent.workpipe");
   });
