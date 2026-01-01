@@ -15,6 +15,7 @@ import type {
   ShellStepNode,
   UsesStepNode,
   UsesBlockStepNode,
+  CheckoutStepNode,
   GuardJsStepNode,
   BinaryExpressionNode,
   PropertyAccessNode,
@@ -2878,6 +2879,139 @@ workflow ci {
         expect(job.steps[0].arguments).toHaveLength(1);
         expect(job.steps[0].arguments[0].name).toBe("version");
       }
+    });
+  });
+
+  describe("checkout step parsing", () => {
+    it("parses checkout step without options", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {}
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(1);
+
+      const step = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(step.kind).toBe("checkout");
+      expect(step.with).toBeUndefined();
+    });
+
+    it("parses checkout step with fetch_depth option", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {
+        with: { fetch_depth: 0 }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const step = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(step.kind).toBe("checkout");
+      expect(step.with).toBeDefined();
+      expect(step.with!.fetch_depth).toBe(0);
+    });
+
+    it("parses checkout step with multiple options", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {
+        with: {
+          fetch_depth: 0,
+          submodules: "recursive",
+          ref: "main"
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.fetch_depth).toBe(0);
+      expect(step.with!.submodules).toBe("recursive");
+      expect(step.with!.ref).toBe("main");
+    });
+
+    it("parses checkout step with token option", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {
+        with: { token: "\${{ secrets.PAT }}" }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.token).toBe("${{ secrets.PAT }}");
+    });
+
+    it("preserves checkout step span", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {}
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(step.span.start).toBeGreaterThan(0);
+      expect(step.span.end).toBeGreaterThan(step.span.start);
+    });
+
+    it("parses checkout step alongside other step types", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      checkout {}
+      shell { npm install }
+      uses("actions/setup-node@v4") {
+        with: { version: "20" }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect((ast!.jobs[0] as JobNode).steps).toHaveLength(3);
+
+      const checkoutStep = (ast!.jobs[0] as JobNode).steps[0] as CheckoutStepNode;
+      expect(checkoutStep.kind).toBe("checkout");
+
+      const shellStep = (ast!.jobs[0] as JobNode).steps[1] as ShellStepNode;
+      expect(shellStep.kind).toBe("shell");
+
+      const usesStep = (ast!.jobs[0] as JobNode).steps[2] as UsesBlockStepNode;
+      expect(usesStep.kind).toBe("uses_block");
     });
   });
 });

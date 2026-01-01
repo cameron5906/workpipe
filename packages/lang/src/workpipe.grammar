@@ -287,7 +287,16 @@ BlockStep {
   UsesBlockStep |
   AgentTaskStep |
   GuardJsStep |
-  StepsFragmentSpread
+  StepsFragmentSpread |
+  CheckoutStep
+}
+
+CheckoutStep {
+  kw<"checkout"> "{" CheckoutProperty* "}"
+}
+
+CheckoutProperty {
+  WithProperty
 }
 
 StepsFragmentSpread {

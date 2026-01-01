@@ -3067,4 +3067,122 @@ workflow ci {
       expect(foundParamAssignment).toBe(true);
     });
   });
+
+  describe("checkout step", () => {
+    it("parses basic checkout step with empty body", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {}
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundCheckoutStep = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "CheckoutStep") foundCheckoutStep = true;
+      });
+
+      expect(foundCheckoutStep).toBe(true);
+    });
+
+    it("parses checkout step with fetch_depth option", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {
+        with: { fetch_depth: 0 }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundCheckoutStep = false;
+      let foundWithProperty = false;
+      let foundObjectLiteral = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "CheckoutStep") foundCheckoutStep = true;
+        if (node.name === "WithProperty") foundWithProperty = true;
+        if (node.name === "ObjectLiteral") foundObjectLiteral = true;
+      });
+
+      expect(foundCheckoutStep).toBe(true);
+      expect(foundWithProperty).toBe(true);
+      expect(foundObjectLiteral).toBe(true);
+    });
+
+    it("parses checkout step with multiple options", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {
+        with: {
+          fetch_depth: 0,
+          submodules: "recursive",
+          ref: "main",
+          token: "\${{ secrets.PAT }}"
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundCheckoutStep = false;
+      let objectPropertyCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "CheckoutStep") foundCheckoutStep = true;
+        if (node.name === "ObjectProperty") objectPropertyCount++;
+      });
+
+      expect(foundCheckoutStep).toBe(true);
+      expect(objectPropertyCount).toBe(4);
+    });
+
+    it("parses mixed checkout and shell steps", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {}
+      shell { npm install }
+      shell { npm test }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let checkoutCount = 0;
+      let shellStepCount = 0;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "CheckoutStep") checkoutCount++;
+        if (node.name === "ShellStep") shellStepCount++;
+      });
+
+      expect(checkoutCount).toBe(1);
+      expect(shellStepCount).toBe(2);
+    });
+
+    it("exports checkout term constants", () => {
+      expect(terms.CheckoutStep).toBeDefined();
+      expect(terms.CheckoutProperty).toBeDefined();
+      expect(terms.checkout).toBeDefined();
+    });
+  });
 });

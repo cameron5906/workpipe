@@ -17,6 +17,7 @@ export type {
   ShellStepNode,
   UsesStepNode,
   UsesBlockStepNode,
+  CheckoutStepNode,
   AgentTaskNode,
   GuardJsStepNode,
   ToolsConfig,

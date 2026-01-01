@@ -10,6 +10,7 @@ import type {
   GuardJsStepNode,
   ShellStepNode,
   UsesBlockStepNode,
+  CheckoutStepNode,
   ExpressionNode,
   PromptValue,
   CycleNode,
@@ -429,6 +430,32 @@ function transformUsesBlockStep(step: UsesBlockStepNode): StepIR[] {
   return [{ kind: "uses", action: step.action }];
 }
 
+const CHECKOUT_PROPERTY_MAP: Record<string, string> = {
+  fetch_depth: "fetch-depth",
+  submodules: "submodules",
+  ref: "ref",
+  token: "token",
+};
+
+function transformCheckoutStep(step: CheckoutStepNode): StepIR[] {
+  if (step.with && Object.keys(step.with).length > 0) {
+    const mappedWith: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(step.with)) {
+      const mappedKey = CHECKOUT_PROPERTY_MAP[key] ?? key;
+      mappedWith[mappedKey] = value;
+    }
+
+    const usesWithStep: UsesWithStepIR = {
+      kind: "uses_with",
+      action: "actions/checkout@v4",
+      with: mappedWith,
+    };
+    return [usesWithStep];
+  }
+
+  return [{ kind: "uses", action: "actions/checkout@v4" }];
+}
+
 function transformGuardJsStep(step: GuardJsStepNode): StepIR[] {
   const guardCode = step.code;
 
@@ -475,6 +502,8 @@ function transformStep(
       return transformShellStep(step);
     case "uses_block":
       return transformUsesBlockStep(step);
+    case "checkout":
+      return transformCheckoutStep(step);
     case "agent_task":
       return transformAgentTask(step, workflowName, jobName, matrixContext, registry);
     case "guard_js_step":
@@ -1083,6 +1112,17 @@ function cloneStepWithParams(step: StepNode, paramMap: Map<string, string>): Ste
         span: step.span,
       };
       return guardStep;
+    }
+    case "checkout": {
+      const withConfig = step.with
+        ? substituteParamsInObject(step.with, paramMap)
+        : undefined;
+      const checkoutStep: CheckoutStepNode = {
+        kind: "checkout",
+        ...(withConfig ? { with: withConfig } : {}),
+        span: step.span,
+      };
+      return checkoutStep;
     }
     case "steps_fragment_spread":
       return step;

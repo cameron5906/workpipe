@@ -3067,3 +3067,111 @@ describe("mixed step types in steps block", () => {
     }
   });
 });
+
+describe("checkout step transforms", () => {
+  it("transforms checkout step without options to uses actions/checkout@v4", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {}
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).not.toContain("with:");
+    }
+  });
+
+  it("transforms checkout step with fetch_depth option", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {
+        with: { fetch_depth: 0 }
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).toContain("with:");
+      expect(result.value).toContain("fetch-depth: 0");
+    }
+  });
+
+  it("transforms checkout step with multiple options", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {
+        with: {
+          fetch_depth: 0,
+          submodules: "recursive",
+          ref: "main"
+        }
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).toContain("fetch-depth: 0");
+      expect(result.value).toContain("submodules: recursive");
+      expect(result.value).toContain("ref: main");
+    }
+  });
+
+  it("transforms checkout step with token option", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {
+        with: { token: "\${{ secrets.PAT }}" }
+      }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).toContain("token: ${{ secrets.PAT }}");
+    }
+  });
+
+  it("transforms checkout followed by shell steps", () => {
+    const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      checkout {}
+      shell { npm install }
+      shell { npm test }
+    }
+  }
+}`;
+    const result = compile(source);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("uses: actions/checkout@v4");
+      expect(result.value).toContain("npm install");
+      expect(result.value).toContain("npm test");
+    }
+  });
+});

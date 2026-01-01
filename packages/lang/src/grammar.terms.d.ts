@@ -183,3 +183,6 @@ export const ObjectPropertyKey: number;
 export const ObjectValue: number;
 export const ArrayLiteral: number;
 export const ArrayItems: number;
+export const CheckoutStep: number;
+export const checkout: number;
+export const CheckoutProperty: number;

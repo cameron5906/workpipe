@@ -69,7 +69,8 @@ export type StepNode =
   | UsesBlockStepNode
   | AgentTaskNode
   | GuardJsStepNode
-  | StepsFragmentSpreadNode;
+  | StepsFragmentSpreadNode
+  | CheckoutStepNode;
 
 export interface RunStepNode {
   readonly kind: "run";
@@ -93,6 +94,12 @@ export interface ShellStepNode {
 export interface UsesBlockStepNode {
   readonly kind: "uses_block";
   readonly action: string;
+  readonly with?: Record<string, unknown>;
+  readonly span: Span;
+}
+
+export interface CheckoutStepNode {
+  readonly kind: "checkout";
   readonly with?: Record<string, unknown>;
   readonly span: Span;
 }

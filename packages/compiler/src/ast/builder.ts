@@ -134,6 +134,8 @@ const {
   FragmentInstantiation,
   ParamAssignment,
   StepsFragmentSpread,
+  CheckoutStep,
+  CheckoutProperty,
 } = terms;
 
 import type {
@@ -193,6 +195,7 @@ import type {
   ParamArgumentNode,
   JobFragmentInstantiationNode,
   StepsFragmentSpreadNode,
+  CheckoutStepNode,
 } from "./types.js";
 
 function span(cursor: TreeCursor): Span {
@@ -1279,6 +1282,51 @@ function buildUsesBlockStep(cursor: TreeCursor, source: string): UsesBlockStepNo
   return node;
 }
 
+function buildCheckoutStep(cursor: TreeCursor, source: string): CheckoutStepNode | null {
+  if (cursor.type.id !== CheckoutStep) return null;
+
+  const stepSpan = span(cursor);
+  let withConfig: Record<string, unknown> | undefined;
+
+  if (!cursor.firstChild()) {
+    return { kind: "checkout", span: stepSpan };
+  }
+
+  do {
+    if (cursor.type.id === CheckoutProperty) {
+      if (cursor.firstChild()) {
+        if (cursor.type.id === WithProperty) {
+          if (cursor.firstChild()) {
+            do {
+              if (cursor.type.id === ObjectLiteral) {
+                const obj = buildObjectValue(cursor, source);
+                if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+                  withConfig = obj as Record<string, unknown>;
+                }
+              }
+            } while (cursor.nextSibling());
+            cursor.parent();
+          }
+        }
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const node: CheckoutStepNode = {
+    kind: "checkout",
+    span: stepSpan,
+  };
+
+  if (withConfig) {
+    return { ...node, with: withConfig };
+  }
+
+  return node;
+}
+
 function buildBlockStep(cursor: TreeCursor, source: string): StepNode | null {
   const nodeType = cursor.type.id;
 
@@ -1309,6 +1357,10 @@ function buildBlockStep(cursor: TreeCursor, source: string): StepNode | null {
 
   if (nodeType === StepsFragmentSpread) {
     return buildStepsFragmentSpread(cursor, source);
+  }
+
+  if (nodeType === CheckoutStep) {
+    return buildCheckoutStep(cursor, source);
   }
 
   return null;
