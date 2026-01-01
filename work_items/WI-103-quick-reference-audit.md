@@ -1,7 +1,7 @@
 # Quick Reference Audit
 
 **ID**: WI-103
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: E (Tooling)
 **Created**: 2026-01-01
@@ -15,16 +15,16 @@ This is especially important after the step syntax changes (ADR-0013) which chan
 
 ## Acceptance Criteria
 
-- [ ] Audit `docs/quick-reference.md` for accuracy
-- [ ] Verify all syntax examples compile successfully
-- [ ] Update any outdated syntax to current form:
-  - [ ] Steps use block syntax (`steps { }` not `steps: [...]`)
-  - [ ] Shell steps use `shell { }` not `run("...")`
-  - [ ] Uses steps have trailing `{}` when no with block
-- [ ] Verify all construct names match current grammar
-- [ ] Verify all property names match current schema
-- [ ] Cross-reference with `docs/language-reference.md` for consistency
-- [ ] Add any missing common patterns
+- [x] Audit `docs/quick-reference.md` for accuracy
+- [x] Verify all syntax examples compile successfully
+- [x] Update any outdated syntax to current form:
+  - [x] Steps use block syntax (`steps { }` not `steps: [...]`)
+  - [x] Shell steps use `shell { }` not `run("...")`
+  - [x] Uses steps have trailing `{}` when no with block
+- [x] Verify all construct names match current grammar
+- [x] Verify all property names match current schema
+- [x] Cross-reference with `docs/language-reference.md` for consistency
+- [x] Add any missing common patterns (added Imports section)
 
 ## Technical Context
 
@@ -52,3 +52,15 @@ Key areas to verify:
 8. Import syntax
 9. Step syntax (most likely to be outdated)
 10. Trigger syntax
+
+## Completion Notes
+
+**Completed**: 2026-01-01
+
+Work completed:
+- Added missing Imports section with syntax examples
+- Converted all step examples from array syntax to block syntax
+- Replaced unimplemented `emit`/`emits`/`consumes` artifact syntax with supported `output_artifact` approach
+- Updated Matrix Builds, Agent Jobs, User-Defined Types, and Escape Hatch examples
+
+**Follow-up Finding**: The documentation-steward found that `docs/language-reference.md` (lines 1436-1463) has the same unimplemented `emit`/`emits`/`consumes` artifact syntax. This needs to be updated to match the corrected quick-reference.md. Added as checklist item to WI-104.

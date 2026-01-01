@@ -24,6 +24,7 @@ A simple verification step like `workpipe --version` should be documented in the
 - [ ] Update `docs/cli-reference.md` with `--version` flag documentation
 - [ ] Update README.md quickstart section with verification step
 - [ ] Consider adding `workpipe doctor` or `workpipe --help` as additional verification
+- [ ] **Carry-over from WI-103**: Update `docs/language-reference.md` (lines 1436-1463) to fix unimplemented `emit`/`emits`/`consumes` artifact syntax (use `output_artifact` approach consistent with quick-reference.md)
 
 ## Technical Context
 

@@ -19,6 +19,27 @@ workflow <name> {
 
 ---
 
+## Imports
+
+Import type definitions from other files:
+
+```workpipe
+import { TypeName } from "./path/to/file.workpipe"
+import { TypeA, TypeB } from "./types.workpipe"
+import { BuildInfo as BI } from "./common.workpipe"  // aliased
+```
+
+| Rule | Example |
+|------|---------|
+| Relative paths only | `"./types.workpipe"` or `"../shared.workpipe"` |
+| Extension required | Must include `.workpipe` |
+| Types only | Only type declarations can be imported |
+| Non-transitive | Each file must import directly from source |
+
+See [Language Reference](language-reference.md#imports) for details.
+
+---
+
 ## Triggers
 
 | Syntax | Description |
@@ -252,12 +273,12 @@ job test matrix {
   fail_fast = false
 
   runs_on: matrix.os
-  steps: [
+  steps {
     uses("actions/setup-node@v4") {
       with: { node-version: matrix.node }
-    },
-    run("npm test")
-  ]
+    }
+    shell { npm test }
+  }
 }
 ```
 
@@ -271,28 +292,37 @@ job test matrix {
 
 ## Artifacts
 
-### Emit Artifact
+Artifacts are currently supported via agent task `output_artifact`:
+
+```workpipe
+agent_job review {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Review the code") {
+      model: "claude-sonnet-4-20250514"
+      output_schema: { rating: int, summary: string }
+      output_artifact: "review_result"
+    }
+  }
+}
+```
+
+The artifact is uploaded to `wp.<workflow>.<job>.<artifact>.${{ github.run_attempt }}`.
+
+For job-to-job data passing, use typed outputs with `json`:
 
 ```workpipe
 job build {
-  emits build_output: json
-
-  steps: [
-    run("npm run build"),
-    emit build_output from_file "build-info.json"
-  ]
+  runs_on: ubuntu-latest
+  outputs: { metadata: json }
+  steps {
+    shell { echo "metadata={\"version\":\"1.0.0\"}" >> $GITHUB_OUTPUT }
+  }
 }
 ```
 
-### Consume Artifact
-
-```workpipe
-job deploy {
-  consumes build_output from build.build_output
-
-  steps: [ ... ]
-}
-```
+See [Language Reference](language-reference.md#the-json-type) for details.
 
 ---
 
@@ -331,8 +361,8 @@ cycle refine {
 ```workpipe
 agent_job review {
   runs_on: ubuntu-latest
-  steps: [
-    uses("actions/checkout@v4"),
+  steps {
+    uses("actions/checkout@v4") {}
     agent_task("Review the codebase") {
       model: "claude-sonnet-4-20250514"
       max_turns: 5
@@ -341,7 +371,7 @@ agent_job review {
       }
       output_artifact: "review_result"
     }
-  ]
+  }
 }
 ```
 
@@ -392,7 +422,13 @@ workflow ci {
     outputs: {
       info: BuildInfo
     }
-    steps: [...]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        VERSION=$(cat package.json | jq -r .version)
+        echo "info={\"version\":\"$VERSION\",\"commit\":\"${{ github.sha }}\",\"timestamp\":$(date +%s)}" >> $GITHUB_OUTPUT
+      }
+    }
   }
 }
 ```
@@ -424,7 +460,9 @@ job deploy {
       cancel-in-progress: false
   }
 
-  steps: [ ... ]
+  steps {
+    shell { ./deploy.sh }
+  }
 }
 ```
 
