@@ -33,11 +33,12 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 ## In Progress
 
 1. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
-   - **Phase 1 Design: COMPLETE** - 8 examples designed by two architects
-   - **Phase 1 Implementation: Ready to start** - Batched approach recommended (4 batches of 2)
-   - Architect A designed: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy
-   - Architect B designed: cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
-   - Phase 2 (10-15 AI examples) pending Phase 1 Batch 2 completion
+   - **Phase 1 Implementation: COMPLETE** - 8 examples created and committed
+   - Examples: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy, cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
+   - Each example has .workpipe, expected.yml, and README.md
+   - All examples compile successfully
+   - **Phase 2 Pending**: 10-15 AI/Agentic workflow examples (creative, impressive)
+   - **Phase 3 Pending**: Fragment system showcase examples
 
 ---
 
@@ -93,8 +94,8 @@ The entire feature is production-ready with:
 
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
 **Work Items Completed:** 105 (WI-001 through WI-104, WI-106)
-**Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-105)
+**Work Items In Progress:** 1 (WI-105 - Phase 1 complete, Phases 2-3 pending)
+**Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
