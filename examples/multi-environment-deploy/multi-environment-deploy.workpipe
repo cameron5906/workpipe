@@ -8,10 +8,10 @@ workflow multi_environment_deploy {
     outputs: {
       image_tag: string
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("""
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell {
         IMAGE_TAG="myapp:${{ github.sha }}"
         echo "Building $IMAGE_TAG"
 
@@ -22,49 +22,49 @@ workflow multi_environment_deploy {
         # docker push $IMAGE_TAG
 
         echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-      """)
-    ]
+      }
+    }
   }
 
   job deploy_staging {
     runs_on: ubuntu-latest
     needs: [build]
     environment: staging
-    steps: [
-      run("""
+    steps {
+      shell {
         echo "Deploying ${{ needs.build.outputs.image_tag }} to staging"
 
         # Deploy to staging cluster
         # kubectl set image deployment/myapp myapp=${{ needs.build.outputs.image_tag }}
 
         echo "Staging deployment complete"
-      """),
-      run("""
+      }
+      shell {
         echo "Running smoke tests against staging..."
         # curl -f https://staging.example.com/health
         echo "Smoke tests passed"
-      """)
-    ]
+      }
+    }
   }
 
   job deploy_production {
     runs_on: ubuntu-latest
     needs: [deploy_staging]
     environment: production
-    steps: [
-      run("""
+    steps {
+      shell {
         echo "Deploying ${{ needs.build.outputs.image_tag }} to production"
 
         # Deploy to production cluster
         # kubectl set image deployment/myapp myapp=${{ needs.build.outputs.image_tag }}
 
         echo "Production deployment complete"
-      """),
-      run("""
+      }
+      shell {
         echo "Running production health checks..."
         # curl -f https://example.com/health
         echo "Production is healthy"
-      """)
-    ]
+      }
+    }
   }
 }

@@ -38,18 +38,10 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-### P1-High (Bug Fix)
-
-1. **WI-107: VS Code Extension Missing Fragment Syntax Support** - P1-High
-   - TextMate grammar out of sync with compiler grammar
-   - Missing keywords: `job_fragment`, `steps_fragment`, `params`
-   - Missing spread operator `...` for fragment spreading
-   - Causes false syntax error diagnostics in VS Code
-   - **Milestone E** (Tooling)
-
-### P2-Medium (Marketing/Showcase)
-
-(WI-105 moved to In Progress)
+1. **WI-108: VS Code Extension - Missing Diagnostic for Unresolved Types** - P1-High
+   - Bug: VS Code extension doesn't warn when `output_schema` references a non-existent type
+   - WP5002 diagnostic exists in compiler but may not be surfacing in extension
+   - Milestone E (Tooling)
 
 ---
 
@@ -96,9 +88,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
-**Work Items Completed:** 106 (WI-001 through WI-106)
+**Work Items Completed:** 107 (WI-001 through WI-107)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-107 - VS Code fragment syntax bug)
+**Work Items In Backlog:** 1 (WI-108)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -271,6 +263,14 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### VS Code Fragment Syntax Fix (Milestone E - Complete)
+
+- **WI-107: VS Code Extension Missing Fragment Syntax Support** - Completed 2026-01-01
+  - TextMate grammar updated with `job_fragment`, `steps_fragment`, `params` keywords
+  - Spread operator `...` pattern added with `keyword.operator.spread.workpipe` scope
+  - Extension rebuilt and new `.vsix` generated
+  - Fixes false syntax error diagnostics for fragment-using files
 
 ### Examples Overhaul (Milestone E - Complete)
 

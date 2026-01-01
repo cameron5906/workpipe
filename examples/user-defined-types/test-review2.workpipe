@@ -13,6 +13,8 @@ workflow test {
   on: push
   job build {
     runs_on: ubuntu-latest
-    steps: [run("echo hello")]
+    steps {
+      shell { echo hello }
+    }
   }
 }

@@ -17,12 +17,14 @@ workflow cross_platform_tests {
     fail_fast = false
     runs_on: ubuntu-latest
     outputs: { result: TestMatrix }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4"),
-      run("npm ci && npm test"),
-      run("echo \"result={\\\"platform\\\":\\\"${{ matrix.os }}\\\",\\\"node_version\\\":${{ matrix.node }},\\\"passed\\\":true,\\\"duration\\\":12.5}\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/setup-node@v4") {}
+      shell {
+        npm ci && npm test
+        echo "result={\"platform\":\"${{ matrix.os }}\",\"node_version\":${{ matrix.node }},\"passed\":true,\"duration\":12.5}" >> $GITHUB_OUTPUT
+      }
+    }
   }
 
   job report {
