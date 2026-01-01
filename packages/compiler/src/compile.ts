@@ -25,6 +25,7 @@ import {
   type TypeRegistry,
   type FragmentRegistry,
   type ImportItem,
+  type FragmentImportItem,
 } from "./semantics/index.js";
 import type { FileResolver } from "./imports/index.js";
 import {
@@ -46,6 +47,8 @@ export interface ImportContext {
   parsedFiles: Map<string, WorkPipeFileNode>;
   /** Cache of built type registries (keyed by normalized file path) */
   registries: Map<string, TypeRegistry>;
+  /** Cache of built fragment registries (keyed by normalized file path) */
+  fragmentRegistries: Map<string, FragmentRegistry>;
   /** Dependency graph for cycle detection */
   dependencyGraph: ImportGraph;
 }
@@ -74,6 +77,7 @@ export function createImportContext(
     projectRoot,
     parsedFiles: new Map(),
     registries: new Map(),
+    fragmentRegistries: new Map(),
     dependencyGraph: new ImportGraph(),
   };
 }
@@ -161,12 +165,35 @@ function getOrBuildRegistry(
 }
 
 /**
- * Process imports for a file's registry, resolving types from imported files.
+ * Build or retrieve a fragment registry for a file.
+ * Uses cache from ImportContext if available.
+ */
+function getOrBuildFragmentRegistry(
+  fileAST: WorkPipeFileNode,
+  filePath: string | undefined,
+  importContext: ImportContext | undefined
+): { registry: FragmentRegistry; diagnostics: Diagnostic[] } {
+  if (filePath && importContext?.fragmentRegistries.has(filePath)) {
+    return { registry: importContext.fragmentRegistries.get(filePath)!, diagnostics: [] };
+  }
+
+  const { registry, diagnostics } = buildFragmentRegistry(fileAST);
+
+  if (filePath && importContext) {
+    importContext.fragmentRegistries.set(filePath, registry);
+  }
+
+  return { registry, diagnostics };
+}
+
+/**
+ * Process imports for a file's registries, resolving types and fragments from imported files.
  * Also builds the dependency graph for cycle detection.
  */
 async function processImports(
   fileAST: WorkPipeFileNode,
   registry: TypeRegistry,
+  fragmentRegistry: FragmentRegistry,
   filePath: string,
   importContext: ImportContext
 ): Promise<Diagnostic[]> {
@@ -193,8 +220,9 @@ async function processImports(
     });
 
     let sourceRegistry = importContext.registries.get(resolvedPath);
+    let sourceFragmentRegistry = importContext.fragmentRegistries.get(resolvedPath);
 
-    if (!sourceRegistry) {
+    if (!sourceRegistry || !sourceFragmentRegistry) {
       const sourceContent = await importContext.fileResolver.read(resolvedPath);
       const { fileAST: sourceAST, diagnostics: parseDiags } = parseFile(
         sourceContent,
@@ -207,17 +235,30 @@ async function processImports(
         continue;
       }
 
-      const { registry: newRegistry, diagnostics: regDiags } = getOrBuildRegistry(
-        sourceAST,
-        resolvedPath,
-        importContext
-      );
-      diagnostics.push(...regDiags);
-      sourceRegistry = newRegistry;
+      if (!sourceRegistry) {
+        const { registry: newRegistry, diagnostics: regDiags } = getOrBuildRegistry(
+          sourceAST,
+          resolvedPath,
+          importContext
+        );
+        diagnostics.push(...regDiags);
+        sourceRegistry = newRegistry;
+      }
+
+      if (!sourceFragmentRegistry) {
+        const { registry: newFragRegistry, diagnostics: fragRegDiags } = getOrBuildFragmentRegistry(
+          sourceAST,
+          resolvedPath,
+          importContext
+        );
+        diagnostics.push(...fragRegDiags);
+        sourceFragmentRegistry = newFragRegistry;
+      }
 
       const nestedImportDiags = await processImports(
         sourceAST,
         sourceRegistry,
+        sourceFragmentRegistry,
         resolvedPath,
         importContext
       );
@@ -233,9 +274,52 @@ async function processImports(
       sourceRegistry,
       importItems,
       importDecl.path,
-      importDecl.span
+      importDecl.span,
+      true
     );
     diagnostics.push(...importDiags);
+
+    const fragmentImportItems: FragmentImportItem[] = importDecl.items.map((item) => ({
+      name: item.name,
+      alias: item.alias,
+    }));
+
+    const fragmentImportDiags = fragmentRegistry.importFragments(
+      sourceFragmentRegistry,
+      fragmentImportItems,
+      importDecl.path,
+      importDecl.span
+    );
+    diagnostics.push(...fragmentImportDiags);
+
+    for (const item of importDecl.items) {
+      const localName = item.alias ?? item.name;
+      const foundAsType = registry.has(localName);
+      const foundAsFragment = fragmentRegistry.hasJobFragment(localName) || fragmentRegistry.hasStepsFragment(localName);
+
+      if (!foundAsType && !foundAsFragment) {
+        const availableTypes = Array.from(sourceRegistry.types.keys())
+          .filter(name => sourceRegistry.isExportable(name));
+        const availableFragments = [
+          ...sourceFragmentRegistry.getJobFragmentNames().filter(name => sourceFragmentRegistry.isExportable(name)),
+          ...sourceFragmentRegistry.getStepsFragmentNames().filter(name => sourceFragmentRegistry.isExportable(name)),
+        ];
+        const allAvailable = [...availableTypes, ...availableFragments];
+
+        const hint = allAvailable.length > 0
+          ? `Available in '${importDecl.path}': ${allAvailable.join(", ")}`
+          : `No exportable types or fragments are available in '${importDecl.path}'`;
+
+        diagnostics.push(
+          semanticError(
+            "WP7003",
+            `'${item.name}' does not exist in '${importDecl.path}'`,
+            importDecl.span,
+            hint
+          )
+        );
+      }
+    }
   }
 
   importContext.dependencyGraph.addFile(filePath, importEdges);
@@ -338,11 +422,15 @@ export async function compileWithImports(
   );
   diagnostics.push(...typeRegistryDiagnostics);
 
-  const { registry: fragmentRegistry, diagnostics: fragmentDiagnostics } = buildFragmentRegistry(fileAST);
+  const { registry: fragmentRegistry, diagnostics: fragmentDiagnostics } = getOrBuildFragmentRegistry(
+    fileAST,
+    filePath,
+    importContext
+  );
   diagnostics.push(...fragmentDiagnostics);
 
   if (filePath && importContext && fileAST.imports.length > 0) {
-    const importDiags = await processImports(fileAST, registry, filePath, importContext);
+    const importDiags = await processImports(fileAST, registry, fragmentRegistry, filePath, importContext);
     diagnostics.push(...importDiags);
   }
 

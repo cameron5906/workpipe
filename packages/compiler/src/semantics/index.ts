@@ -32,4 +32,5 @@ export {
   FRAGMENT_DIAGNOSTICS,
   type FragmentRegistry,
   type FragmentRegistryBuildResult,
+  type FragmentImportItem,
 } from "./fragment-registry.js";

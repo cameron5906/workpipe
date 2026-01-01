@@ -1,5 +1,5 @@
 /**
- * Tests for the Fragment System Phase 2 (Same-file Resolution).
+ * Tests for the Fragment System Phase 2 (Same-file Resolution) and Phase 3 (Cross-file Imports).
  *
  * Tests cover:
  * - Fragment registry operations
@@ -7,6 +7,7 @@
  * - Steps fragment expansion
  * - Parameter substitution
  * - Error diagnostics (WP9001, WP9002, WP9005)
+ * - Cross-file fragment imports
  */
 
 import { describe, it, expect } from "vitest";
@@ -20,7 +21,8 @@ import {
   type FragmentRegistry,
 } from "../semantics/fragment-registry.js";
 import { substituteParams } from "../codegen/transform.js";
-import { compile } from "../compile.js";
+import { compile, compileWithImports, createImportContext } from "../compile.js";
+import { createMemoryFileResolver } from "../imports/file-resolver.js";
 import type {
   JobFragmentNode,
   StepsFragmentNode,
@@ -496,5 +498,437 @@ workflow test {
       expect(result.success).toBe(false);
       expect(result.diagnostics.some((d) => d.code === "WP9005")).toBe(true);
     });
+  });
+});
+
+describe("FragmentRegistry importFragments", () => {
+  it("imports a job fragment from another registry", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+    const fragment = makeJobFragment("shared_job");
+
+    sourceRegistry.registerJobFragment(fragment);
+
+    const diagnostics = targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "shared_job" }],
+      "./fragments.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(targetRegistry.hasJobFragment("shared_job")).toBe(true);
+    expect(targetRegistry.getJobFragment("shared_job")).toBe(fragment);
+  });
+
+  it("imports a steps fragment from another registry", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+    const fragment = makeStepsFragment("shared_steps");
+
+    sourceRegistry.registerStepsFragment(fragment);
+
+    const diagnostics = targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "shared_steps" }],
+      "./fragments.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(targetRegistry.hasStepsFragment("shared_steps")).toBe(true);
+    expect(targetRegistry.getStepsFragment("shared_steps")).toBe(fragment);
+  });
+
+  it("supports alias when importing fragments", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+    const fragment = makeJobFragment("original_name");
+
+    sourceRegistry.registerJobFragment(fragment);
+
+    const diagnostics = targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "original_name", alias: "aliased_name" }],
+      "./fragments.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(targetRegistry.hasJobFragment("aliased_name")).toBe(true);
+    expect(targetRegistry.hasJobFragment("original_name")).toBe(false);
+  });
+
+  it("tracks provenance of imported fragments", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+    const fragment = makeJobFragment("tracked_fragment");
+
+    sourceRegistry.registerJobFragment(fragment);
+    targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "tracked_fragment" }],
+      "./source.workpipe"
+    );
+
+    expect(targetRegistry.getFragmentProvenance("tracked_fragment")).toBe("./source.workpipe");
+    expect(targetRegistry.isExportable("tracked_fragment")).toBe(false);
+  });
+
+  it("marks locally defined fragments as exportable", () => {
+    const registry = createFragmentRegistry();
+    const fragment = makeJobFragment("local_fragment");
+
+    registry.registerJobFragment(fragment);
+
+    expect(registry.isExportable("local_fragment")).toBe(true);
+    expect(registry.getFragmentProvenance("local_fragment")).toBeUndefined();
+  });
+
+  it("returns error for name collision (WP7005)", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+    sourceRegistry.registerJobFragment(makeJobFragment("duplicate"));
+    targetRegistry.registerJobFragment(makeJobFragment("duplicate"));
+
+    const diagnostics = targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "duplicate" }],
+      "./source.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].code).toBe("WP7005");
+    expect(diagnostics[0].message).toContain("Name collision");
+  });
+
+  it("returns error when importing non-exportable fragment (WP7003)", () => {
+    const originalRegistry = createFragmentRegistry();
+    const intermediateRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+
+    originalRegistry.registerJobFragment(makeJobFragment("nested_fragment"));
+    intermediateRegistry.importFragments(
+      originalRegistry,
+      [{ name: "nested_fragment" }],
+      "./original.workpipe"
+    );
+
+    const diagnostics = targetRegistry.importFragments(
+      intermediateRegistry,
+      [{ name: "nested_fragment" }],
+      "./intermediate.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].code).toBe("WP7003");
+    expect(diagnostics[0].message).toContain("not exportable");
+  });
+
+  it("silently ignores imports that do not exist in source registry", () => {
+    const sourceRegistry = createFragmentRegistry();
+    const targetRegistry = createFragmentRegistry();
+
+    const diagnostics = targetRegistry.importFragments(
+      sourceRegistry,
+      [{ name: "nonexistent" }],
+      "./source.workpipe"
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(targetRegistry.hasJobFragment("nonexistent")).toBe(false);
+    expect(targetRegistry.hasStepsFragment("nonexistent")).toBe(false);
+  });
+});
+
+describe("Cross-file fragment imports (compileWithImports)", () => {
+  it("imports job_fragment from another file and uses it", async () => {
+    const files: Record<string, string> = {
+      "/project/fragments.workpipe": `
+job_fragment checkout_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { git checkout }
+  }
+}
+`,
+      "/project/main.workpipe": `
+import { checkout_job } from "./fragments.workpipe"
+
+workflow build {
+  on: push
+
+  job checkout = checkout_job {}
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("checkout:");
+      expect(result.value).toContain("git checkout");
+    }
+  });
+
+  it("imports steps_fragment from another file and uses it", async () => {
+    const files: Record<string, string> = {
+      "/project/fragments.workpipe": `
+steps_fragment setup_steps {
+  shell { npm install }
+  shell { npm run build }
+}
+`,
+      "/project/main.workpipe": `
+import { setup_steps } from "./fragments.workpipe"
+
+workflow build {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...setup_steps {}
+      shell { npm test }
+    }
+  }
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("npm install");
+      expect(result.value).toContain("npm run build");
+      expect(result.value).toContain("npm test");
+    }
+  });
+
+  it("imports fragment with parameters from another file", async () => {
+    const files: Record<string, string> = {
+      "/project/fragments.workpipe": `
+job_fragment greet_job {
+  params {
+    message: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo \${{ params.message }} }
+  }
+}
+`,
+      "/project/main.workpipe": `
+import { greet_job } from "./fragments.workpipe"
+
+workflow build {
+  on: push
+
+  job greet = greet_job {
+    message: "hello from import"
+  }
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("greet:");
+      expect(result.value).toContain("echo hello from import");
+    }
+  });
+
+  it("imports both types and fragments from the same file", async () => {
+    const files: Record<string, string> = {
+      "/project/shared.workpipe": `
+type BuildInfo {
+  version: string
+}
+
+job_fragment build_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { npm run build }
+  }
+}
+`,
+      "/project/main.workpipe": `
+import { BuildInfo, build_job } from "./shared.workpipe"
+
+workflow build {
+  on: push
+
+  job build = build_job {}
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("build:");
+      expect(result.value).toContain("npm run build");
+    }
+  });
+
+  it("reports error when imported fragment conflicts with local fragment (WP7005)", async () => {
+    const files: Record<string, string> = {
+      "/project/fragments.workpipe": `
+job_fragment my_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo from import }
+  }
+}
+`,
+      "/project/main.workpipe": `
+import { my_job } from "./fragments.workpipe"
+
+job_fragment my_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo local }
+  }
+}
+
+workflow build {
+  on: push
+
+  job build = my_job {}
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(false);
+    const collisionError = result.diagnostics.find((d) => d.code === "WP7005");
+    expect(collisionError).toBeDefined();
+    expect(collisionError?.message).toContain("Name collision");
+  });
+
+  it("imports fragment using alias to avoid collision", async () => {
+    const files: Record<string, string> = {
+      "/project/fragments.workpipe": `
+job_fragment build_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo from import }
+  }
+}
+`,
+      "/project/main.workpipe": `
+import { build_job as imported_build_job } from "./fragments.workpipe"
+
+job_fragment build_job {
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo local }
+  }
+}
+
+workflow build {
+  on: push
+
+  job imported = imported_build_job {}
+  job local = build_job {}
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("imported:");
+      expect(result.value).toContain("echo from import");
+      expect(result.value).toContain("local:");
+      expect(result.value).toContain("echo local");
+    }
+  });
+
+  it("imports fragment and uses it alongside transitive dependency", async () => {
+    const files: Record<string, string> = {
+      "/project/base.workpipe": `
+steps_fragment base_steps {
+  shell { echo base step }
+}
+`,
+      "/project/main.workpipe": `
+import { base_steps } from "./base.workpipe"
+
+workflow build {
+  on: push
+
+  job test {
+    runs_on: ubuntu-latest
+    steps {
+      ...base_steps {}
+      shell { echo main step }
+    }
+  }
+}
+`,
+    };
+
+    const fileResolver = createMemoryFileResolver(files);
+    const importContext = createImportContext(fileResolver, "/project");
+
+    const result = await compileWithImports({
+      source: files["/project/main.workpipe"],
+      filePath: "/project/main.workpipe",
+      importContext,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value).toContain("test:");
+      expect(result.value).toContain("echo base step");
+      expect(result.value).toContain("echo main step");
+    }
   });
 });

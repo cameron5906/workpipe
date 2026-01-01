@@ -17,6 +17,14 @@ import type {
 import { semanticError, type Diagnostic } from "../diagnostic/index.js";
 
 /**
+ * Import item for fragment imports.
+ */
+export interface FragmentImportItem {
+  name: string;
+  alias?: string;
+}
+
+/**
  * Registry interface for managing fragment definitions.
  */
 export interface FragmentRegistry {
@@ -36,6 +44,17 @@ export interface FragmentRegistry {
   getJobFragmentNames(): string[];
   /** Get all registered steps fragment names */
   getStepsFragmentNames(): string[];
+  /** Import fragments from another registry */
+  importFragments(
+    sourceRegistry: FragmentRegistry,
+    imports: FragmentImportItem[],
+    sourceFile: string,
+    span?: Span
+  ): Diagnostic[];
+  /** Get the provenance (source file) of a fragment */
+  getFragmentProvenance(name: string): string | undefined;
+  /** Check if a fragment is exportable (defined locally, not imported) */
+  isExportable(name: string): boolean;
 }
 
 /**
@@ -80,6 +99,8 @@ export const FRAGMENT_DIAGNOSTICS = {
 class FragmentRegistryImpl implements FragmentRegistry {
   private jobFragments = new Map<string, JobFragmentNode>();
   private stepsFragments = new Map<string, StepsFragmentNode>();
+  private provenance = new Map<string, string>();
+  private exportable = new Set<string>();
 
   registerJobFragment(node: JobFragmentNode): Diagnostic | null {
     if (this.jobFragments.has(node.name)) {
@@ -101,6 +122,7 @@ class FragmentRegistryImpl implements FragmentRegistry {
       );
     }
     this.jobFragments.set(node.name, node);
+    this.exportable.add(node.name);
     return null;
   }
 
@@ -124,6 +146,7 @@ class FragmentRegistryImpl implements FragmentRegistry {
       );
     }
     this.stepsFragments.set(node.name, node);
+    this.exportable.add(node.name);
     return null;
   }
 
@@ -149,6 +172,76 @@ class FragmentRegistryImpl implements FragmentRegistry {
 
   getStepsFragmentNames(): string[] {
     return Array.from(this.stepsFragments.keys());
+  }
+
+  importFragments(
+    sourceRegistry: FragmentRegistry,
+    imports: FragmentImportItem[],
+    sourceFile: string,
+    span?: Span
+  ): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    const errorSpan = span ?? { start: 0, end: 0 };
+
+    for (const importItem of imports) {
+      const sourceName = importItem.name;
+      const localName = importItem.alias ?? importItem.name;
+
+      const sourceJobFragment = sourceRegistry.getJobFragment(sourceName);
+      const sourceStepsFragment = sourceRegistry.getStepsFragment(sourceName);
+
+      if (!sourceJobFragment && !sourceStepsFragment) {
+        continue;
+      }
+
+      if (!sourceRegistry.isExportable(sourceName)) {
+        diagnostics.push(
+          semanticError(
+            "WP7003",
+            `Fragment '${sourceName}' is not exportable from '${sourceFile}' (it was imported from another file)`,
+            errorSpan,
+            "Fragments are not transitive; import directly from the original source file"
+          )
+        );
+        continue;
+      }
+
+      if (this.jobFragments.has(localName) || this.stepsFragments.has(localName)) {
+        const existingProvenance = this.provenance.get(localName);
+        const existingSource = existingProvenance
+          ? `imported from '${existingProvenance}'`
+          : `defined locally`;
+
+        diagnostics.push(
+          semanticError(
+            "WP7005",
+            `Name collision: '${localName}' already exists (${existingSource})`,
+            errorSpan,
+            importItem.alias
+              ? `Consider using a different alias`
+              : `Use 'import { ${sourceName} as <different_name> }' to avoid collision`
+          )
+        );
+        continue;
+      }
+
+      if (sourceJobFragment) {
+        this.jobFragments.set(localName, sourceJobFragment);
+      } else if (sourceStepsFragment) {
+        this.stepsFragments.set(localName, sourceStepsFragment);
+      }
+      this.provenance.set(localName, sourceFile);
+    }
+
+    return diagnostics;
+  }
+
+  getFragmentProvenance(name: string): string | undefined {
+    return this.provenance.get(name);
+  }
+
+  isExportable(name: string): boolean {
+    return this.exportable.has(name);
   }
 }
 

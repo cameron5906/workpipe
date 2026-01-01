@@ -25,7 +25,8 @@ export interface TypeRegistry {
     sourceRegistry: TypeRegistry,
     imports: ImportItem[],
     sourceFile: string,
-    span?: Span
+    span?: Span,
+    skipMissing?: boolean
   ): Diagnostic[];
   getTypeProvenance(typeName: string): string | undefined;
   isExportable(typeName: string): boolean;
@@ -72,7 +73,8 @@ export function createTypeRegistry(): TypeRegistry {
       sourceRegistry: TypeRegistry,
       imports: ImportItem[],
       sourceFile: string,
-      span?: Span
+      span?: Span,
+      skipMissing?: boolean
     ): Diagnostic[] {
       const diagnostics: Diagnostic[] = [];
       const errorSpan = span ?? { start: 0, end: 0 };
@@ -83,20 +85,22 @@ export function createTypeRegistry(): TypeRegistry {
 
         const sourceType = sourceRegistry.resolve(sourceName);
         if (!sourceType) {
-          const availableTypes = Array.from(sourceRegistry.types.keys())
-            .filter(name => sourceRegistry.isExportable(name));
-          const hint = availableTypes.length > 0
-            ? `Available types in '${sourceFile}': ${availableTypes.join(", ")}`
-            : `No exportable types are available in '${sourceFile}'`;
+          if (!skipMissing) {
+            const availableTypes = Array.from(sourceRegistry.types.keys())
+              .filter(name => sourceRegistry.isExportable(name));
+            const hint = availableTypes.length > 0
+              ? `Available types in '${sourceFile}': ${availableTypes.join(", ")}`
+              : `No exportable types are available in '${sourceFile}'`;
 
-          diagnostics.push(
-            semanticError(
-              "WP7003",
-              `Type '${sourceName}' does not exist in '${sourceFile}'`,
-              errorSpan,
-              hint
-            )
-          );
+            diagnostics.push(
+              semanticError(
+                "WP7003",
+                `Type '${sourceName}' does not exist in '${sourceFile}'`,
+                errorSpan,
+                hint
+              )
+            );
+          }
           continue;
         }
 
