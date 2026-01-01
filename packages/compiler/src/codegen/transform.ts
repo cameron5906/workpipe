@@ -484,12 +484,32 @@ function collectGuardJsOutputs(
   return outputs;
 }
 
+function assignStepIds(steps: StepIR[]): { steps: StepIR[]; lastStepId: string | undefined } {
+  let stepIndex = 0;
+  const stepsWithIds: StepIR[] = [];
+  let lastStepId: string | undefined;
+
+  for (const step of steps) {
+    const stepId = step.id ?? `step_${stepIndex}`;
+    lastStepId = stepId;
+    stepsWithIds.push({ ...step, id: stepId } as StepIR);
+    stepIndex++;
+  }
+
+  return { steps: stepsWithIds, lastStepId };
+}
+
 function transformRegularJob(job: JobNode, workflowName: string, registry?: TypeRegistry): JobIR {
-  const steps: StepIR[] = [];
+  const rawSteps: StepIR[] = [];
   for (const step of job.steps) {
     const transformed = transformStep(step, workflowName, job.name, undefined, registry);
-    steps.push(...transformed);
+    rawSteps.push(...transformed);
   }
+
+  const hasUserOutputs = job.outputs.length > 0;
+  const { steps, lastStepId } = hasUserOutputs
+    ? assignStepIds(rawSteps)
+    : { steps: rawSteps, lastStepId: undefined };
 
   const result: JobIR = {
     runsOn: job.runsOn ?? "ubuntu-latest",
@@ -507,7 +527,8 @@ function transformRegularJob(job: JobNode, workflowName: string, registry?: Type
   const guardOutputs = collectGuardJsOutputs(job.steps);
   const userOutputs: Record<string, string> = {};
   for (const output of job.outputs) {
-    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    const stepId = lastStepId ?? "step_0";
+    userOutputs[output.name] = `\${{ steps.${stepId}.outputs.${output.name} }}`;
   }
 
   const mergedOutputs = { ...guardOutputs, ...userOutputs };
@@ -519,11 +540,16 @@ function transformRegularJob(job: JobNode, workflowName: string, registry?: Type
 }
 
 function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
-  const steps: StepIR[] = [];
+  const rawSteps: StepIR[] = [];
   for (const step of job.steps) {
     const transformed = transformStep(step, workflowName, job.name, undefined, registry);
-    steps.push(...transformed);
+    rawSteps.push(...transformed);
   }
+
+  const hasUserOutputs = job.outputs.length > 0;
+  const { steps, lastStepId } = hasUserOutputs
+    ? assignStepIds(rawSteps)
+    : { steps: rawSteps, lastStepId: undefined };
 
   const result: JobIR = {
     runsOn: job.runsOn ?? "ubuntu-latest",
@@ -537,7 +563,8 @@ function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: T
   const guardOutputs = collectGuardJsOutputs(job.steps);
   const userOutputs: Record<string, string> = {};
   for (const output of job.outputs) {
-    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    const stepId = lastStepId ?? "step_0";
+    userOutputs[output.name] = `\${{ steps.${stepId}.outputs.${output.name} }}`;
   }
 
   const mergedOutputs = { ...guardOutputs, ...userOutputs };
@@ -550,11 +577,16 @@ function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: T
 
 function transformMatrixJob(job: MatrixJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
   const matrixContext: MatrixContext = { axes: job.axes };
-  const steps: StepIR[] = [];
+  const rawSteps: StepIR[] = [];
   for (const step of job.steps) {
     const transformed = transformStep(step, workflowName, job.name, matrixContext, registry);
-    steps.push(...transformed);
+    rawSteps.push(...transformed);
   }
+
+  const hasUserOutputs = job.outputs.length > 0;
+  const { steps, lastStepId } = hasUserOutputs
+    ? assignStepIds(rawSteps)
+    : { steps: rawSteps, lastStepId: undefined };
 
   const strategy: MatrixStrategyIR = {
     matrix: job.axes,
@@ -581,7 +613,8 @@ function transformMatrixJob(job: MatrixJobNode, workflowName: string, registry?:
   const guardOutputs = collectGuardJsOutputs(job.steps);
   const userOutputs: Record<string, string> = {};
   for (const output of job.outputs) {
-    userOutputs[output.name] = `\${{ steps.set_outputs.outputs.${output.name} }}`;
+    const stepId = lastStepId ?? "step_0";
+    userOutputs[output.name] = `\${{ steps.${stepId}.outputs.${output.name} }}`;
   }
 
   const mergedOutputs = { ...guardOutputs, ...userOutputs };

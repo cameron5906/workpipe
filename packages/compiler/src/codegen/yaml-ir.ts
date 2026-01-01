@@ -55,28 +55,33 @@ export type StepIR =
 
 export interface RunStepIR {
   readonly kind: "run";
+  readonly id?: string;
   readonly command: string;
 }
 
 export interface ShellStepIR {
   readonly kind: "shell";
+  readonly id?: string;
   readonly run: string;
   readonly multiline: boolean;
 }
 
 export interface UsesStepIR {
   readonly kind: "uses";
+  readonly id?: string;
   readonly action: string;
 }
 
 export interface UsesWithStepIR {
   readonly kind: "uses_with";
+  readonly id?: string;
   readonly action: string;
   readonly with: Record<string, unknown>;
 }
 
 export interface ClaudeCodeStepIR {
   readonly kind: "claude_code";
+  readonly id?: string;
   readonly name: string;
   readonly uses: "anthropics/claude-code-action@v1";
   readonly with: {
@@ -91,6 +96,7 @@ export interface ClaudeCodeStepIR {
 
 export interface UploadArtifactStepIR {
   readonly kind: "upload_artifact";
+  readonly id?: string;
   readonly name: string;
   readonly uses: "actions/upload-artifact@v4";
   readonly with: {

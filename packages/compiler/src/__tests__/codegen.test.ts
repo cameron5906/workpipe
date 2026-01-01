@@ -653,8 +653,8 @@ describe("job outputs", () => {
 
     const job = ir.jobs.get("build")!;
     expect(job.outputs).toBeDefined();
-    expect(job.outputs!.version).toBe("${{ steps.set_outputs.outputs.version }}");
-    expect(job.outputs!.sha).toBe("${{ steps.set_outputs.outputs.sha }}");
+    expect(job.outputs!.version).toBe("${{ steps.step_0.outputs.version }}");
+    expect(job.outputs!.sha).toBe("${{ steps.step_0.outputs.sha }}");
   });
 
   it("emits outputs in YAML correctly", () => {
@@ -674,7 +674,7 @@ describe("job outputs", () => {
     const yaml = emit(ir);
 
     expect(yaml).toContain("outputs:");
-    expect(yaml).toContain("version: ${{ steps.set_outputs.outputs.version }}");
+    expect(yaml).toContain("version: ${{ steps.step_0.outputs.version }}");
   });
 
   it("does not emit outputs block when job has no outputs", () => {
@@ -692,6 +692,89 @@ describe("job outputs", () => {
 
     const jobSection = yaml.split("build:")[1].split("steps:")[0];
     expect(jobSection).not.toContain("outputs:");
+  });
+
+  it("generates sequential step IDs when job has outputs", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: { result: string }
+        steps {
+          shell { echo "step 1" }
+          shell { echo "step 2" }
+          shell { echo "step 3" }
+        }
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("build")!;
+    expect(job.steps).toHaveLength(3);
+    expect(job.steps[0]).toHaveProperty("id", "step_0");
+    expect(job.steps[1]).toHaveProperty("id", "step_1");
+    expect(job.steps[2]).toHaveProperty("id", "step_2");
+  });
+
+  it("does not generate step IDs when job has no outputs", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        steps: [run("echo hello"), run("echo world")]
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("build")!;
+    expect(job.steps).toHaveLength(2);
+    expect(job.steps[0]).not.toHaveProperty("id");
+    expect(job.steps[1]).not.toHaveProperty("id");
+  });
+
+  it("references last step ID in output expressions", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: { version: string }
+        steps {
+          shell { echo "first" }
+          shell { echo "second" }
+          shell { echo "version=1.0.0" >> $GITHUB_OUTPUT }
+        }
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+
+    const job = ir.jobs.get("build")!;
+    expect(job.outputs!.version).toBe("${{ steps.step_2.outputs.version }}");
+  });
+
+  it("emits step IDs in YAML output", () => {
+    const source = `workflow test {
+      on: push
+      job build {
+        runs_on: ubuntu-latest
+        outputs: { version: string }
+        steps {
+          shell { echo "set output" }
+        }
+      }
+    }`;
+    const tree = parse(source);
+    const ast = buildAST(tree, source);
+    const ir = transform(ast!);
+    const yaml = emit(ir);
+
+    expect(yaml).toContain("id: step_0");
+    expect(yaml).toContain("version: ${{ steps.step_0.outputs.version }}");
   });
 });
 
@@ -2369,7 +2452,7 @@ describe("guard_js auto-generated outputs", () => {
 
     expect(irJob.outputs).toBeDefined();
     expect(irJob.outputs!.check_labels_result).toBe("${{ steps.check_labels.outputs.result }}");
-    expect(irJob.outputs!.custom_output).toBe("${{ steps.set_outputs.outputs.custom_output }}");
+    expect(irJob.outputs!.custom_output).toBe("${{ steps.check_labels.outputs.custom_output }}");
   });
 
   it("does not generate outputs for jobs without guard_js steps", () => {

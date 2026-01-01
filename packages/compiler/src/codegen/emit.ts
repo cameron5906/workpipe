@@ -9,31 +9,57 @@ import type {
 
 function serializeStep(step: StepIR): Record<string, unknown> {
   switch (step.kind) {
-    case "run":
-      return { run: step.command };
-    case "shell":
-      return { run: step.run };
-    case "uses":
-      return { uses: step.action };
-    case "uses_with":
-      return {
-        uses: step.action,
-        with: { ...step.with },
-      };
+    case "run": {
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.run = step.command;
+      return result;
+    }
+    case "shell": {
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.run = step.run;
+      return result;
+    }
+    case "uses": {
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.uses = step.action;
+      return result;
+    }
+    case "uses_with": {
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.uses = step.action;
+      result.with = { ...step.with };
+      return result;
+    }
     case "claude_code": {
-      const result: Record<string, unknown> = {
-        name: step.name,
-        uses: step.uses,
-        with: { ...step.with },
-      };
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.name = step.name;
+      result.uses = step.uses;
+      result.with = { ...step.with };
       return result;
     }
     case "upload_artifact": {
-      const result: Record<string, unknown> = {
-        name: step.name,
-        uses: step.uses,
-        with: { ...step.with },
-      };
+      const result: Record<string, unknown> = {};
+      if (step.id) {
+        result.id = step.id;
+      }
+      result.name = step.name;
+      result.uses = step.uses;
+      result.with = { ...step.with };
       return result;
     }
     case "download_artifact": {

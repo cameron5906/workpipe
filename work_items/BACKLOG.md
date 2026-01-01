@@ -31,19 +31,14 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None)
+(No work items currently in progress)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### P0-Critical (End-User Review Findings)
-1. **WI-099: Step ID Mismatch Investigation** - P0-Critical
-   - Investigate step ID generation in codegen
-   - Ensure step IDs are predictable and documented
-   - Milestone G
-
-3. **WI-100: Examples Catalog Audit** - P0-Critical
+1. **WI-100: Examples Catalog Audit** - P0-Critical
    - Comprehensive audit of all examples for correctness
    - Fix any compilation failures, update expected.yml files
    - Address aspirational examples (multi-environment-deploy, enterprise-e2e-pipeline)
@@ -113,10 +108,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 972 tests (71 lang + 821 compiler + 80 VS Code)
-**Work Items Completed:** 98 (WI-001 through WI-098)
+**Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
+**Work Items Completed:** 99 (WI-001 through WI-099)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 6 (WI-099 through WI-104)
+**Work Items In Backlog:** 5 (WI-100 through WI-104)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -291,6 +286,13 @@ The following issues were identified during reviews. These are tracked for futur
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-099: Step ID Mismatch Investigation** - Completed 2026-01-01
+  - Investigated step ID generation in codegen
+  - Implemented auto-generated sequential step IDs (`step_0`, `step_1`, etc.) for jobs with outputs
+  - Output references now correctly use `steps.step_N.outputs.X` format
+  - Added 4 new tests for step ID consistency
+  - 976 tests passing
 
 - **WI-098: uses() Trailing {} Documentation Gap** - Completed 2026-01-01
   - Added prominent callouts in language-reference.md, quick-reference.md, getting-started.md
