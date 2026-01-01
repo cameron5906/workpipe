@@ -2580,4 +2580,313 @@ workflow ci {
       expect(importNames).toContain("TestResult");
     });
   });
+
+  describe("steps block syntax (WI-091)", () => {
+    it("parses steps block with shell step", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo hello }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsBlock = false;
+      let foundShellStep = false;
+      let foundShellBlock = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsBlock") foundStepsBlock = true;
+        if (node.name === "ShellStep") foundShellStep = true;
+        if (node.name === "ShellBlock") foundShellBlock = true;
+      });
+
+      expect(foundStepsBlock).toBe(true);
+      expect(foundShellStep).toBe(true);
+      expect(foundShellBlock).toBe(true);
+    });
+
+    it("parses multi-line shell block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell {
+        pnpm install
+        pnpm build
+        pnpm test
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let shellBlockContent = "";
+      tree.cursor().iterate((node) => {
+        if (node.name === "ShellBlock") {
+          shellBlockContent = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(shellBlockContent).toContain("pnpm install");
+      expect(shellBlockContent).toContain("pnpm build");
+      expect(shellBlockContent).toContain("pnpm test");
+    });
+
+    it("parses shell block with nested braces", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell {
+        if [ -f file ]; then
+          { echo "found"; }
+        fi
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let shellBlockContent = "";
+      tree.cursor().iterate((node) => {
+        if (node.name === "ShellBlock") {
+          shellBlockContent = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(shellBlockContent).toContain('{ echo "found"; }');
+    });
+
+    it("parses uses block step with with property", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {
+        with: { ref: "main" }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundUsesBlockStep = false;
+      let foundWithProperty = false;
+      let foundObjectLiteral = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "UsesBlockStep") foundUsesBlockStep = true;
+        if (node.name === "WithProperty") foundWithProperty = true;
+        if (node.name === "ObjectLiteral") foundObjectLiteral = true;
+      });
+
+      expect(foundUsesBlockStep).toBe(true);
+      expect(foundWithProperty).toBe(true);
+      expect(foundObjectLiteral).toBe(true);
+    });
+
+    it("parses multiple shell steps", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { npm install }
+      shell { npm build }
+      shell { npm test }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let shellStepCount = 0;
+      tree.cursor().iterate((node) => {
+        if (node.name === "ShellStep") shellStepCount++;
+      });
+
+      expect(shellStepCount).toBe(3);
+    });
+
+    it("parses mixed shell and uses block steps", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {
+        with: { ref: "main" }
+      }
+      shell {
+        pnpm install
+        pnpm build
+      }
+      uses("actions/upload-artifact@v4") {
+        with: { name: "dist", path: "dist/" }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let usesBlockCount = 0;
+      let shellStepCount = 0;
+      tree.cursor().iterate((node) => {
+        if (node.name === "UsesBlockStep") usesBlockCount++;
+        if (node.name === "ShellStep") shellStepCount++;
+      });
+
+      expect(usesBlockCount).toBe(2);
+      expect(shellStepCount).toBe(1);
+    });
+
+    it("backward compat: old steps array syntax still works", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [
+      run("echo hello"),
+      uses("actions/checkout@v4")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsProperty = false;
+      let foundRunStep = false;
+      let foundUsesStep = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsProperty") foundStepsProperty = true;
+        if (node.name === "RunStep") foundRunStep = true;
+        if (node.name === "UsesStep") foundUsesStep = true;
+      });
+
+      expect(foundStepsProperty).toBe(true);
+      expect(foundRunStep).toBe(true);
+      expect(foundUsesStep).toBe(true);
+    });
+
+    it("parses empty steps block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps { }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundStepsBlock = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "StepsBlock") foundStepsBlock = true;
+      });
+
+      expect(foundStepsBlock).toBe(true);
+    });
+
+    it("parses single-line shell block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Single line works too" }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let shellBlockContent = "";
+      tree.cursor().iterate((node) => {
+        if (node.name === "ShellBlock") {
+          shellBlockContent = source.slice(node.from, node.to);
+        }
+      });
+
+      expect(shellBlockContent).toContain("Single line works too");
+    });
+
+    it("exports new term constants", () => {
+      expect(terms.StepsBlock).toBeDefined();
+      expect(terms.BlockStep).toBeDefined();
+      expect(terms.ShellStep).toBeDefined();
+      expect(terms.shell).toBeDefined();
+      expect(terms.ShellBlock).toBeDefined();
+      expect(terms.shellContent).toBeDefined();
+      expect(terms.UsesBlockStep).toBeDefined();
+      expect(terms.UsesConfigBlock).toBeDefined();
+      expect(terms.WithProperty).toBeDefined();
+      expect(terms.ObjectLiteral).toBeDefined();
+    });
+
+    it("parses with property containing nested objects", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("some-action@v1") {
+        with: {
+          config: {
+            enabled: true,
+            count: 5
+          }
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let objectLiteralCount = 0;
+      tree.cursor().iterate((node) => {
+        if (node.name === "ObjectLiteral") objectLiteralCount++;
+      });
+
+      expect(objectLiteralCount).toBeGreaterThanOrEqual(2);
+    });
+
+    it("parses with property containing arrays", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("some-action@v1") {
+        with: {
+          items: ["one", "two", "three"]
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let foundArrayLiteral = false;
+      tree.cursor().iterate((node) => {
+        if (node.name === "ArrayLiteral") foundArrayLiteral = true;
+      });
+
+      expect(foundArrayLiteral).toBe(true);
+    });
+  });
 });

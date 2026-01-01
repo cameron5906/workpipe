@@ -1,7 +1,7 @@
 # WI-091: Grammar - Steps Block and Shell Keyword
 
 **ID**: WI-091
-**Status**: Backlog
+**Status**: In Progress
 **Priority**: P1-High
 **Milestone**: Step Syntax Improvements (ADR-0013)
 **Created**: 2025-12-31

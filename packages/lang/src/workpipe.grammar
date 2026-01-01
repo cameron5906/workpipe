@@ -1,5 +1,7 @@
 @top Workflow { ImportDecl* TypeDecl* WorkflowDecl* }
 
+@external tokens shellTokenizer from "./shell-tokenizer.js" { shellContent }
+
 ImportDecl {
   kw<"import"> "{" ImportList "}" kw<"from"> ImportPath
 }
@@ -120,6 +122,7 @@ JobProperty {
   IfProperty |
   OutputsProperty |
   StepsProperty |
+  StepsBlock |
   AxesProperty |
   MaxParallelProperty |
   FailFastProperty |
@@ -236,6 +239,10 @@ StepsProperty {
   kw<"steps"> ":" "[" StepList? "]"
 }
 
+StepsBlock {
+  kw<"steps"> "{" BlockStep* "}"
+}
+
 StepList {
   Step ("," Step)*
 }
@@ -245,6 +252,69 @@ Step {
   UsesStep |
   AgentTaskStep |
   GuardJsStep
+}
+
+BlockStep {
+  ShellStep |
+  UsesBlockStep |
+  AgentTaskStep |
+  GuardJsStep
+}
+
+ShellStep {
+  kw<"shell"> ShellBlock
+}
+
+ShellBlock {
+  shellContent
+}
+
+UsesBlockStep {
+  kw<"uses"> "(" String ")" UsesConfigBlock
+}
+
+UsesConfigBlock {
+  "{" UsesConfigProperty* "}"
+}
+
+UsesConfigProperty {
+  WithProperty
+}
+
+WithProperty {
+  kw<"with"> ":" ObjectLiteral
+}
+
+ObjectLiteral {
+  "{" ObjectPropertyList? "}"
+}
+
+ObjectPropertyList {
+  ObjectProperty ("," ObjectProperty)* ","?
+}
+
+ObjectProperty {
+  ObjectPropertyKey ":" ObjectValue
+}
+
+ObjectPropertyKey {
+  Identifier | TypeName
+}
+
+ObjectValue {
+  String |
+  Number |
+  Boolean |
+  ObjectLiteral |
+  ArrayLiteral
+}
+
+ArrayLiteral {
+  "[" ArrayItems? "]"
+}
+
+ArrayItems {
+  ObjectValue ("," ObjectValue)*
 }
 
 GuardJsStep {

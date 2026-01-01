@@ -31,7 +31,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No work items in progress)
+- **WI-092: AST and Parser Updates** - P1-High
 
 ---
 
@@ -39,31 +39,19 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
 
-1. **WI-091: Grammar - Steps Block and Shell Keyword** - P1-High
-   - Add `steps { }` block syntax (remove array requirement)
-   - Add `shell { }` with brace-counting content capture
-   - Add `uses() { }` block variant
-   - Keep `run()` and `uses()` for backward compatibility
-
-2. **WI-092: AST and Parser Updates** - P1-High
-   - Update AST nodes for new step types (ShellStepNode, UsesBlockStepNode)
-   - Implement brace-counting in parser/AST builder
-   - Handle single-line vs multi-line shell blocks
-   - **Depends on**: WI-091
-
-3. **WI-093: Codegen - Indentation Stripping** - P1-High
+1. **WI-093: Codegen - Indentation Stripping** - P1-High
    - Strip common prefix from shell content
    - Generate proper YAML run commands
    - Handle uses block with: parameters
    - **Depends on**: WI-092
 
-4. **WI-094: VS Code Extension Updates** - P2-Medium
+2. **WI-094: VS Code Extension Updates** - P2-Medium
    - Update TextMate grammar for shell blocks
    - Syntax highlighting for shell content
    - Diagnostics for new syntax
    - **Depends on**: WI-091, WI-092, WI-093 (partial)
 
-5. **WI-095: Documentation and Examples** - P2-Medium
+3. **WI-095: Documentation and Examples** - P2-Medium
    - Update language-reference.md
    - Update all examples to new syntax
    - Migration guide from old to new syntax
@@ -112,10 +100,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 998 tests (71 lang + 870 compiler + 57 VS Code)
-**Work Items Completed:** 90 (WI-001 through WI-090)
-**Work Items In Progress:** 0
-**Work Items In Backlog:** 5 (WI-091 through WI-095)
+**Test Count:** 950+ tests (71 lang + 882+ compiler + 57 VS Code)
+**Work Items Completed:** 91 (WI-001 through WI-091)
+**Work Items In Progress:** 1 (WI-092)
+**Work Items In Backlog:** 3 (WI-093 through WI-095)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -285,6 +273,14 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Step Syntax Improvements (Milestone G - In Progress)
+
+- **WI-091: Grammar - Steps Block and Shell Keyword** - Completed 2025-12-31
+  - Extended workpipe.grammar with StepsBlock, ShellStep, UsesBlockStep productions
+  - Created shell-tokenizer.ts with brace-counting external tokenizer
+  - Added 12 new grammar tests for new step syntax
+  - All 938 baseline tests passing
 
 ### Research Spikes
 - **WI-090: Step Syntax Improvement Research Spike** - Completed 2025-12-31
