@@ -1,8 +1,15 @@
 # ADR-0015: Generic Workflows with Typed Triggers
 
 **Date**: 2026-01-01
-**Status**: Proposed
+**Status**: Superseded
+**Superseded By**: [ADR-0016: Typed Triggers Implementation Plan](0016-typed-triggers-implementation.md)
 **Deciders**: Architecture Team
+
+## Supersession Note
+
+This ADR was a research document exploring five options for typed triggers. **Option B (Type Inference from `on:` Clause)** was selected by the user, explicitly without generics syntax. The full implementation plan is documented in [ADR-0016](0016-typed-triggers-implementation.md).
+
+---
 
 ## Context
 

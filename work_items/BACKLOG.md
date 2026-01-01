@@ -32,22 +32,26 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No work items currently in progress)
+1. **WI-109: Built-in DSL Constructs for Commonly Used Steps** - P2-Medium
+   - Feature Request: Native syntax for checkout (POC), then download_artifact, upload_artifact
+   - Proof of concept: implementing `checkout {}` first
+   - Milestone G (Step Syntax Improvements) / Future Enhancement
 
 ---
 
 ## Up Next (Priority Order)
 
-1. **WI-108: VS Code Extension - Missing Diagnostic for Unresolved Types** - P1-High
-   - Bug: VS Code extension doesn't warn when `output_schema` references a non-existent type
-   - WP5002 diagnostic exists in compiler but may not be surfacing in extension
-   - Milestone E (Tooling)
+(WI-109 moved to In Progress - no other items queued)
 
-2. **WI-109: Built-in DSL Constructs for Commonly Used Steps** - P2-Medium
-   - Feature Request: Native syntax for checkout, download_artifact, upload_artifact
-   - Avoids magic strings, improves editor support and validation
-   - Milestone G (Step Syntax Improvements) / Future Enhancement
-   - Coordinate with generic workflows research spike if in progress
+---
+
+## Research / ADRs Pending Review
+
+1. **ADR-0015: Generic Workflows with Typed Triggers** - Proposed
+   - Research spike completed 2026-01-01
+   - 5 design options analyzed, recommends Option B (type inference from `on:` clause)
+   - Implementation would provide compile-time validation of `github.event.*` access
+   - Awaiting team decision before work item creation
 
 ---
 
@@ -94,9 +98,10 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
-**Work Items Completed:** 107 (WI-001 through WI-107)
-**Work Items In Progress:** 0
-**Work Items In Backlog:** 2 (WI-108, WI-109)
+**Work Items Completed:** 108 (WI-001 through WI-108)
+**Work Items In Progress:** 1 (WI-109)
+**Work Items In Backlog:** 0
+**Research/ADRs Pending:** 1 (ADR-0015)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -269,6 +274,13 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### VS Code Diagnostics Fix (Milestone E - Complete)
+
+- **WI-108: VS Code Extension - Missing Diagnostic for Unresolved Types** - Completed 2026-01-01
+  - Fixed AST builder to handle SchemaTypeReference nodes in agent task output_schema
+  - WP5002 diagnostic now correctly surfaces for undefined type references
+  - Both job outputs and agent task output_schema validated
 
 ### VS Code Fragment Syntax Fix (Milestone E - Complete)
 

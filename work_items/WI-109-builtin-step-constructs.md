@@ -1,11 +1,39 @@
 # Built-in DSL Constructs for Commonly Used Steps
 
 **ID**: WI-109
-**Status**: Backlog
+**Status**: In Progress
 **Priority**: P2-Medium
 **Milestone**: G (Step Syntax Improvements) / Future Enhancement
 **Created**: 2026-01-01
 **Updated**: 2026-01-01
+
+## Implementation Plan (Proof of Concept: checkout only)
+
+Starting with `checkout {}` as proof of concept per work item guidance. This validates the pattern before expanding to other built-ins.
+
+### Phase 2A: Grammar Changes
+- [ ] Add `CheckoutStep` production to `packages/lang/src/workpipe.grammar`
+- [ ] Add `checkout` keyword
+- [ ] CheckoutStep accepts optional `with:` block for parameters (ref, fetch_depth, etc.)
+- [ ] Grammar tests for valid checkout syntax
+- [ ] Grammar tests for error recovery
+
+### Phase 2B: AST Updates
+- [ ] Add `CheckoutStepNode` interface to `packages/compiler/src/ast/types.ts`
+- [ ] Update `StepNode` union to include `CheckoutStepNode`
+- [ ] Update `packages/compiler/src/ast/builder.ts` to build CheckoutStepNode
+- [ ] AST builder tests
+
+### Phase 2C: Codegen
+- [ ] Add `transformCheckoutStep()` to `packages/compiler/src/codegen/transform.ts`
+- [ ] Map DSL properties to action inputs (fetch_depth -> fetch-depth, etc.)
+- [ ] Default to `actions/checkout@v4`
+- [ ] Codegen tests
+
+### Phase 2D: Integration
+- [ ] Create example in `examples/` demonstrating checkout syntax
+- [ ] Verify existing tests still pass
+- [ ] End-to-end compilation test
 
 ## Description
 
