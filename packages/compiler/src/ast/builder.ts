@@ -86,6 +86,7 @@ const {
   SchemaPrimitiveType,
   NullType,
   StringLiteralType,
+  SchemaTypeReference,
   GuardJsStep,
   MatrixModifier,
   AxesProperty,
@@ -849,6 +850,8 @@ function buildAgentTask(cursor: TreeCursor, source: string): AgentTaskNode | nul
                       outputSchema = unquoteString(getText(cursor, source));
                     } else if (cursor.type.id === InlineSchema) {
                       outputSchema = buildInlineSchema(cursor, source) ?? undefined;
+                    } else if (cursor.type.id === SchemaTypeReference) {
+                      outputSchema = getText(cursor, source);
                     }
                   } while (cursor.nextSibling());
                   cursor.parent();

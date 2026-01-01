@@ -43,6 +43,12 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
    - WP5002 diagnostic exists in compiler but may not be surfacing in extension
    - Milestone E (Tooling)
 
+2. **WI-109: Built-in DSL Constructs for Commonly Used Steps** - P2-Medium
+   - Feature Request: Native syntax for checkout, download_artifact, upload_artifact
+   - Avoids magic strings, improves editor support and validation
+   - Milestone G (Step Syntax Improvements) / Future Enhancement
+   - Coordinate with generic workflows research spike if in progress
+
 ---
 
 ## MILESTONE A++ COMPLETE: USER-DEFINED TYPE SYSTEM
@@ -90,7 +96,7 @@ The entire feature is production-ready with:
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
 **Work Items Completed:** 107 (WI-001 through WI-107)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-108)
+**Work Items In Backlog:** 2 (WI-108, WI-109)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
