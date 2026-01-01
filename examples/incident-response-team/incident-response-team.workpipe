@@ -1,0 +1,154 @@
+type LogPattern {
+  pattern: string
+  frequency: int
+  severity: "critical" | "error" | "warning"
+  first_seen: string
+  last_seen: string
+}
+
+type LogAnalysis {
+  error_patterns: [LogPattern]
+  anomalies: [string]
+  affected_services: [string]
+  timeline_summary: string
+}
+
+type RootCauseReport {
+  root_cause: string
+  contributing_factors: [string]
+  evidence: [string]
+  confidence_level: "high" | "medium" | "low"
+  affected_components: [string]
+}
+
+type ImpactAssessment {
+  scope: "critical" | "major" | "minor" | "negligible"
+  affected_users: string
+  data_impact: string
+  service_degradation: [string]
+  estimated_duration: string
+  business_impact: string
+}
+
+type HotfixDraft {
+  proposed_changes: [string]
+  affected_files: [string]
+  risk_assessment: "high" | "medium" | "low"
+  testing_notes: string
+  rollback_plan: string
+}
+
+type PostmortemDoc {
+  incident_summary: string
+  timeline: [string]
+  root_cause: string
+  resolution: string
+  action_items: [string]
+  lessons_learned: [string]
+}
+
+workflow incident_response_team {
+  on: workflow_dispatch
+
+  agent_job log_analyzer {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Analyze application logs for error patterns, anomalies, and timeline of issues. Look for log files, error reports, and monitoring data. Identify patterns that indicate the source of the incident.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 7
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: LogAnalysis
+        output_artifact: "log-analysis"
+      }
+    }
+  }
+
+  agent_job root_cause_investigator {
+    runs_on: ubuntu-latest
+    needs: [log_analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "log-analysis" } }
+      agent_task("Investigate the root cause of the incident based on the log analysis. Examine code changes, configuration, and system state. Trace the error back to its origin and identify all contributing factors.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 10
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: RootCauseReport
+        output_artifact: "root-cause"
+      }
+    }
+  }
+
+  agent_job impact_assessor {
+    runs_on: ubuntu-latest
+    needs: [log_analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "log-analysis" } }
+      agent_task("Assess the scope and impact of the incident. Determine affected users, data impact, service degradation, and business implications. Estimate the duration and severity of the outage.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: ImpactAssessment
+        output_artifact: "impact-assessment"
+      }
+    }
+  }
+
+  agent_job hotfix_drafter {
+    runs_on: ubuntu-latest
+    needs: [root_cause_investigator]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "root-cause" } }
+      agent_task("Draft a hotfix to address the root cause. Identify the minimal code changes needed, assess risks, provide testing notes, and document a rollback plan in case the fix causes issues.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 10
+        tools: { allowed: ["Read", "Write", "Glob", "Grep"] }
+        output_schema: HotfixDraft
+        output_artifact: "hotfix-draft"
+      }
+    }
+  }
+
+  job hotfix_approval {
+    runs_on: ubuntu-latest
+    needs: [hotfix_drafter, impact_assessor]
+    steps {
+      uses("actions/download-artifact@v4") { with: { name: "hotfix-draft" } }
+      uses("actions/download-artifact@v4") { with: { name: "impact-assessment" } }
+      shell {
+        echo "=== HOTFIX APPROVAL GATE ==="
+        echo "Review the hotfix draft and impact assessment before proceeding."
+        echo ""
+        echo "Hotfix Draft:"
+        cat hotfix-draft/* 2>/dev/null || echo "No hotfix draft found"
+        echo ""
+        echo "Impact Assessment:"
+        cat impact-assessment/* 2>/dev/null || echo "No impact assessment found"
+        echo ""
+        echo "This job requires manual approval via GitHub Environment protection rules."
+        echo "Configure environment 'hotfix-approval' with required reviewers to enable gating."
+      }
+    }
+  }
+
+  agent_job postmortem_writer {
+    runs_on: ubuntu-latest
+    needs: [root_cause_investigator, impact_assessor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "root-cause" } }
+      uses("actions/download-artifact@v4") { with: { name: "impact-assessment" } }
+      uses("actions/download-artifact@v4") { with: { name: "log-analysis" } }
+      agent_task("Write an initial postmortem document based on the incident analysis. Include timeline, root cause, resolution steps, action items to prevent recurrence, and lessons learned.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 7
+        tools: { allowed: ["Read", "Write"] }
+        output_schema: PostmortemDoc
+        output_artifact: "postmortem-doc"
+      }
+    }
+  }
+}

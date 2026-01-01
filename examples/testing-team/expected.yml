@@ -1,0 +1,159 @@
+name: testing_team
+on: pull_request
+jobs:
+  change_detector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch_depth: 0
+      - name: change_detector-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the PR diff to identify changed files and determine testing needs. Examine what code changed, what modules are affected, and prioritize what needs unit vs integration tests.
+          allowed_tools: '["Read","Glob","Grep","Bash"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload change-analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: change-analysis
+          path: change-analysis
+  unit_test_writer:
+    runs-on: ubuntu-latest
+    needs:
+      - change_detector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: change-analysis
+      - name: unit_test_writer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Based on the change analysis artifact, write unit tests. Focus on: individual functions, edge cases, error handling, and boundary conditions. Generate comprehensive test cases with actual test code."
+          allowed_tools: '["Read","Glob","Grep","Write"]'
+          max_turns: 8
+          model: claude-sonnet-4-20250514
+      - name: Upload test-plan-unit
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-plan-unit
+          path: test-plan-unit
+  integration_test_writer:
+    runs-on: ubuntu-latest
+    needs:
+      - change_detector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: change-analysis
+      - name: integration_test_writer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Based on the change analysis artifact, write integration tests. Focus on: API contracts, module interactions, data flow between components. Generate comprehensive test cases with actual test code."
+          allowed_tools: '["Read","Glob","Grep","Write"]'
+          max_turns: 8
+          model: claude-sonnet-4-20250514
+      - name: Upload test-plan-integration
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-plan-integration
+          path: test-plan-integration
+  test_executor:
+    runs-on: ubuntu-latest
+    needs:
+      - unit_test_writer
+      - integration_test_writer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: test-plan-*
+      - uses: actions/setup-node@v4
+        with:
+          node_version: "20"
+      - name: test_executor-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the generated test plans. Set up the test environment, write the tests to appropriate locations, and run the test suite. Report detailed results including pass/fail status and any error messages.
+          allowed_tools: '["Read","Write","Glob","Bash"]'
+          max_turns: 10
+          model: claude-sonnet-4-20250514
+      - name: Upload test-results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+  coverage_analyzer:
+    runs-on: ubuntu-latest
+    needs:
+      - test_executor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-results
+      - uses: actions/download-artifact@v4
+        with:
+          name: change-analysis
+      - name: coverage_analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze test coverage for the changed code. Identify uncovered code paths, calculate coverage metrics, and provide actionable recommendations for improving coverage.
+          allowed_tools: '["Read","Glob","Grep","Bash"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload coverage-report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+  flaky_detector:
+    runs-on: ubuntu-latest
+    needs:
+      - test_executor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-results
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: test-plan-*
+      - name: flaky_detector-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Analyze the test code and results for flakiness indicators. Look for: timing dependencies, external service calls, shared state, non-deterministic behavior, race conditions, and order-dependent tests. Score each test for flakiness risk."
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload flaky-report
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-report
+          path: flaky-report
+  test_summary:
+    runs-on: ubuntu-latest
+    needs:
+      - coverage_analyzer
+      - flaky_detector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+      - name: test_summary-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Synthesize all testing artifacts into a comprehensive test report. Summarize: what was tested, test results, coverage gaps, flaky test risks, and provide a final testing verdict with recommendations for the PR."
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload final-test-report
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-test-report
+          path: final-test-report
+

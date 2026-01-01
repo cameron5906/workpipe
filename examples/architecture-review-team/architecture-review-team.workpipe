@@ -1,0 +1,190 @@
+// Architecture Review Team
+// Multi-agent workflow for comprehensive architecture analysis
+// Triggers on pull requests with fan-out/fan-in pattern
+
+// Finding from a design pattern analysis
+type PatternFinding {
+  pattern_name: string
+  category: "creational" | "structural" | "behavioral" | "architectural"
+  assessment: "well-applied" | "misapplied" | "missing-opportunity"
+  location: string
+  description: string
+  recommendation: string
+}
+
+// Design pattern analysis report
+type DesignAnalysis {
+  solid_compliance: {
+    single_responsibility: "pass" | "warn" | "fail"
+    open_closed: "pass" | "warn" | "fail"
+    liskov_substitution: "pass" | "warn" | "fail"
+    interface_segregation: "pass" | "warn" | "fail"
+    dependency_inversion: "pass" | "warn" | "fail"
+  }
+  patterns_found: [PatternFinding]
+  overall_score: int
+  summary: string
+}
+
+// Dependency relationship between modules
+type DependencyEdge {
+  source_module: string
+  target_module: string
+  coupling_strength: "tight" | "loose" | "decoupled"
+  dependency_kind: "import" | "inheritance" | "composition" | "runtime"
+}
+
+// Dependency graph analysis report
+type DependencyGraph {
+  modules: [string]
+  edges: [DependencyEdge]
+  circular_dependencies: [string]
+  coupling_issues: [string]
+  cohesion_score: int
+  summary: string
+}
+
+// Identified performance concern
+type PerformanceHotspot {
+  location: string
+  hotspot_category: "algorithmic" | "io-bound" | "memory" | "network" | "rendering"
+  severity: "critical" | "moderate" | "minor"
+  estimated_impact: string
+  suggestion: string
+}
+
+// Performance analysis report
+type PerformanceReport {
+  hotspots: [PerformanceHotspot]
+  critical_count: int
+  scalability_concerns: [string]
+  optimization_opportunities: [string]
+  summary: string
+}
+
+// Individual technical debt item
+type DebtItem {
+  location: string
+  debt_category: "code-smell" | "outdated-pattern" | "missing-abstraction" | "hardcoded-value" | "todo-fixme"
+  effort_estimate: "trivial" | "small" | "medium" | "large" | "epic"
+  priority: "high" | "medium" | "low"
+  description: string
+}
+
+// Technical debt assessment report
+type TechDebtAssessment {
+  debt_items: [DebtItem]
+  total_debt_score: int
+  refactoring_opportunities: [string]
+  legacy_code_areas: [string]
+  summary: string
+}
+
+// Architecture documentation update report
+type ArchDocUpdate {
+  diagrams_updated: [string]
+  sections_modified: [string]
+  adr_required: bool
+  adr_title: string
+  change_summary: string
+}
+
+// Reusable analyzer fragment with parameterized focus and output
+job_fragment architecture_analyzer {
+  params {
+    focus: string
+    analyzer_name: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Analyze the PR changes focusing on ${{ params.focus }}. Examine the code structure, patterns, and provide detailed findings.") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 7
+      tools: { allowed: ["Read", "Glob", "Grep"] }
+      output_artifact: "analysis-${{ params.analyzer_name }}"
+    }
+  }
+}
+
+workflow architecture_review_team {
+  on: pull_request
+
+  // Fan-out: Four specialized analyzers run in parallel
+
+  job design_patterns = architecture_analyzer {
+    focus: "design patterns usage, SOLID principles compliance, class/module structure, abstraction levels, and object-oriented design quality"
+    analyzer_name: "design-patterns"
+  }
+
+  job dependencies = architecture_analyzer {
+    focus: "module dependencies, import graphs, circular dependencies, coupling between components, and cohesion within modules"
+    analyzer_name: "dependencies"
+  }
+
+  job performance = architecture_analyzer {
+    focus: "potential performance bottlenecks, algorithmic complexity, memory usage patterns, I/O operations, and scalability concerns"
+    analyzer_name: "performance"
+  }
+
+  job tech_debt = architecture_analyzer {
+    focus: "technical debt indicators, code smells, TODO/FIXME comments, outdated patterns, and refactoring opportunities"
+    analyzer_name: "tech-debt"
+  }
+
+  // Fan-in: Synthesizer collects all analysis reports
+
+  agent_job synthesizer {
+    runs_on: ubuntu-latest
+    needs: [design_patterns, dependencies, performance, tech_debt]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "analysis-*" } }
+      agent_task("Synthesize all architecture analysis reports into a comprehensive assessment. Read each analysis-* artifact and combine findings. Identify cross-cutting concerns and prioritize issues.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob"] }
+        output_artifact: "architecture-synthesis"
+      }
+    }
+  }
+
+  // Doc updater runs after synthesis to update architecture documentation
+
+  agent_job doc_updater {
+    runs_on: ubuntu-latest
+    needs: [synthesizer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "analysis-*" } }
+      uses("actions/download-artifact@v4") { with: { name: "architecture-synthesis" } }
+      agent_task("Based on the architecture analysis, determine what architecture documentation needs updating. Check for existing ADRs, architecture diagrams, and design docs. Identify if a new ADR is required for significant architectural decisions.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Write", "Glob"] }
+        output_schema: ArchDocUpdate
+        output_artifact: "doc-update-plan"
+      }
+    }
+  }
+
+  // Human approval gate for architectural changes requiring ADR approval
+  // Configure GitHub environment protection rules for required reviewers
+  // See README.md for setup instructions
+
+  agent_job approval_gate {
+    runs_on: ubuntu-latest
+    needs: [doc_updater]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "doc-update-plan" } }
+      uses("actions/download-artifact@v4") { with: { name: "architecture-synthesis" } }
+      agent_task("Review the architecture analysis and documentation update plan. Summarize the key findings and provide a recommendation for the architecture team. Highlight any ADR requirements and critical issues that need human review.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_artifact: "approval-summary"
+      }
+    }
+  }
+}

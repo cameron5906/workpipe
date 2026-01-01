@@ -1,0 +1,138 @@
+name: release_manager_team
+on: workflow_dispatch
+jobs:
+  commit_analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git fetch --unshallow || true
+      - name: commit_analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze commits since the last release tag. Categorize each commit as feature, fix, docs, chore, refactor, test, or breaking change. Count totals for each category and summarize the changes.
+          allowed_tools: '["Bash","Read","Glob"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload commit-analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-analysis
+          path: commit-analysis
+  version_determiner:
+    runs-on: ubuntu-latest
+    needs:
+      - commit_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: commit-analysis
+      - name: version_determiner-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Determine the semantic version bump based on the commit analysis. If there are breaking changes, bump major. If there are new features, bump minor. Otherwise, bump patch. Read the current version from package.json or similar.
+          allowed_tools: '["Read","Bash"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload version-bump
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-bump
+          path: version-bump
+  changelog_generator:
+    runs-on: ubuntu-latest
+    needs:
+      - commit_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: commit-analysis
+      - name: changelog_generator-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Generate changelog entries from the commit analysis. Group commits by category: breaking changes, features, fixes, and other. Format each entry with the commit message and author."
+          allowed_tools: '["Read","Write"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: changelog
+  release_notes_writer:
+    runs-on: ubuntu-latest
+    needs:
+      - changelog_generator
+      - version_determiner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: changelog
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-bump
+      - name: release_notes_writer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Write user-friendly release notes combining the version bump and changelog. Create an engaging title, highlight the most important changes, convert the changelog to markdown format, and add any necessary upgrade notes for breaking changes.
+          allowed_tools: '["Read","Write"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload release-notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes
+  human_approval_gate:
+    runs-on: ubuntu-latest
+    needs:
+      - release_notes_writer
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-bump
+      - run: |-
+          echo "=== RELEASE APPROVAL REQUIRED ==="
+          echo ""
+          echo "Please review the following release artifacts before approval:"
+          echo ""
+          echo "--- Version Bump ---"
+          cat version-bump || echo "Version bump artifact not found"
+          echo ""
+          echo "--- Release Notes ---"
+          cat release-notes || echo "Release notes artifact not found"
+          echo ""
+          echo "This job requires manual approval in the GitHub Actions UI."
+          echo "Configure environment protection rules in repository settings"
+          echo "to enable the approval gate for the 'production' environment."
+  release_publisher:
+    runs-on: ubuntu-latest
+    needs:
+      - human_approval_gate
+    steps:
+      - uses: actions/checkout@v4
+      - run: git fetch --unshallow || true
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-bump
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - name: release_publisher-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Create and publish the GitHub release. Read the version-bump and release-notes artifacts. Create a git tag for the new version, then use the GitHub CLI to create the release with the notes. Include any built artifacts if present.
+          allowed_tools: '["Read","Bash"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload release-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-result
+          path: release-result
+

@@ -1,0 +1,129 @@
+name: issue_triage_team
+on: issues
+jobs:
+  classifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: classifier-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Classify this GitHub issue into one of the following categories: bug, feature, question, enhancement, or documentation. Analyze the issue title, body, and any provided context. Consider the language used, what the reporter is describing, and their apparent intent. Provide your classification with confidence level and reasoning."
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload classification
+        uses: actions/upload-artifact@v4
+        with:
+          name: classification
+          path: classification
+  priority_assessor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: priority_assessor-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Assess the priority of this GitHub issue on a P0-P3 scale. P0 is critical/blocking, P1 is high priority, P2 is medium priority, P3 is low priority/backlog. Consider: severity of impact, number of affected users, availability of workarounds, business criticality, and urgency indicators in the issue description."
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload priority
+        uses: actions/upload-artifact@v4
+        with:
+          name: priority
+          path: priority
+  label_suggester:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: label_suggester-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Suggest appropriate labels for this GitHub issue. Consider: the type of issue (bug, feature, etc.), affected areas/components, complexity level, and any special handling needed. Provide primary labels (most important), secondary labels (additional context), and area labels (component/module specific)."
+          allowed_tools: '["Read","Glob"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload labels
+        uses: actions/upload-artifact@v4
+        with:
+          name: labels
+          path: labels
+  assignee_recommender:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: assignee_recommender-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Recommend team members to assign to this GitHub issue based on the issue content and codebase. Look at recent contributors, code ownership patterns, and expertise areas. Consider current workload distribution and provide reasoning for your recommendations.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload assignees
+        uses: actions/upload-artifact@v4
+        with:
+          name: assignees
+          path: assignees
+  response_drafter:
+    runs-on: ubuntu-latest
+    needs:
+      - classifier
+      - priority_assessor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: classification
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: priority
+      - name: response_drafter-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Draft an initial response to the issue reporter. Read the classification and priority artifacts to understand the issue context. Create a professional, helpful response that: acknowledges their report, sets expectations based on priority, asks any clarifying questions needed, and outlines next steps. Be friendly but concise."
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload response-draft
+        uses: actions/upload-artifact@v4
+        with:
+          name: response-draft
+          path: response-draft
+  synthesizer:
+    runs-on: ubuntu-latest
+    needs:
+      - classifier
+      - priority_assessor
+      - label_suggester
+      - assignee_recommender
+      - response_drafter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: classification
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: priority
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: labels
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: assignees
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: response-draft
+      - name: synthesizer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Synthesize all triage analysis into a final triage decision. Read each artifact (classification, priority, labels, assignees, response-draft) and combine them into a coherent, actionable triage decision. Resolve any conflicts between recommendations, finalize the label set, confirm assignees, and prepare the final response. Produce a comprehensive triage summary.
+          allowed_tools: '["Read"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload triage-decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-decision
+          path: triage-decision

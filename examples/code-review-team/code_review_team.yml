@@ -1,0 +1,92 @@
+name: code_review_team
+on: pull_request
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: security-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the PR focusing on security vulnerabilities, injection risks, auth issues. Provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload review-${{ params.reviewer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ params.reviewer_name }}
+          path: review-${{ params.reviewer_name }}
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: performance-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the PR focusing on performance bottlenecks, memory leaks, N+1 queries. Provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload review-${{ params.reviewer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ params.reviewer_name }}
+          path: review-${{ params.reviewer_name }}
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: style-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the PR focusing on code style, naming conventions, maintainability. Provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload review-${{ params.reviewer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ params.reviewer_name }}
+          path: review-${{ params.reviewer_name }}
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: architecture-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the PR focusing on design patterns, coupling, SOLID principles. Provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload review-${{ params.reviewer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ params.reviewer_name }}
+          path: review-${{ params.reviewer_name }}
+  synthesizer:
+    runs-on: ubuntu-latest
+    needs:
+      - security
+      - performance
+      - style
+      - architecture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: review-*
+      - name: synthesizer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Synthesize all review reports into a final verdict. Read each review-* artifact and combine findings into a comprehensive assessment.
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload final-review
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-review
+          path: final-review
+

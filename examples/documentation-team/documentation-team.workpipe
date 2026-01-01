@@ -1,0 +1,75 @@
+type DocDraft {
+  content: string
+  sections: [string]
+  word_count: int
+}
+
+type EditSuggestions {
+  suggestions: [string]
+  quality_score: int
+}
+
+workflow documentation_team {
+  on: workflow_dispatch
+
+  agent_job analyzer {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Analyze the codebase and identify undocumented areas. List modules, functions, and APIs that need documentation.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_artifact: "doc-needs"
+      }
+    }
+  }
+
+  agent_job writer {
+    runs_on: ubuntu-latest
+    needs: [analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "doc-needs" } }
+      agent_task("Write documentation for the identified areas. Read the doc-needs artifact and create comprehensive documentation.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 10
+        tools: { allowed: ["Read", "Write", "Glob"] }
+        output_schema: DocDraft
+        output_artifact: "doc-draft"
+      }
+    }
+  }
+
+  agent_job editor {
+    runs_on: ubuntu-latest
+    needs: [writer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "doc-draft" } }
+      agent_task("Edit the documentation for clarity and consistency. Read the doc-draft artifact and provide suggestions for improvement.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Write"] }
+        output_schema: EditSuggestions
+        output_artifact: "edit-suggestions"
+      }
+    }
+  }
+
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    needs: [editor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "doc-*" } }
+      uses("actions/download-artifact@v4") { with: { name: "edit-suggestions" } }
+      agent_task("Review the final documentation and approve or request changes. Assess completeness, accuracy, and quality.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_artifact: "doc-review"
+      }
+    }
+  }
+}

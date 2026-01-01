@@ -1,0 +1,94 @@
+type SecurityFinding {
+  severity: "critical" | "high" | "medium" | "low"
+  category: string
+  location: string
+  description: string
+  recommendation: string
+}
+
+type AuditReport {
+  findings: [SecurityFinding]
+  critical_count: int
+  risk_level: "high" | "medium" | "low"
+}
+
+type RemediationPlan {
+  action_steps: [string]
+  estimated_effort: string
+  priority_order: [string]
+}
+
+workflow security_audit_team {
+  on: [push, pull_request]
+
+  agent_job dependency_scanner {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Scan dependencies for known vulnerabilities. Check package.json, requirements.txt, go.mod, or similar files for vulnerable packages.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Bash", "Glob"] }
+        output_artifact: "deps-scan"
+      }
+    }
+  }
+
+  agent_job code_scanner {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Scan code for security vulnerabilities including SQL injection, XSS, CSRF, path traversal, and other OWASP Top 10 issues.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 7
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_artifact: "code-scan"
+      }
+    }
+  }
+
+  agent_job secrets_scanner {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Scan for exposed secrets and credentials including API keys, passwords, tokens, and private keys in source code and config files.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_artifact: "secrets-scan"
+      }
+    }
+  }
+
+  agent_job risk_analyzer {
+    runs_on: ubuntu-latest
+    needs: [dependency_scanner, code_scanner, secrets_scanner]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "*-scan" } }
+      agent_task("Analyze all scan results and produce a comprehensive risk assessment. Read each *-scan artifact and combine findings.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read"] }
+        output_schema: AuditReport
+        output_artifact: "audit-report"
+      }
+    }
+  }
+
+  agent_job remediation_planner {
+    runs_on: ubuntu-latest
+    needs: [risk_analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "audit-report" } }
+      agent_task("Create a prioritized remediation plan based on the audit report. Focus on critical issues first and estimate effort.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Write"] }
+        output_schema: RemediationPlan
+        output_artifact: "remediation-plan"
+      }
+    }
+  }
+}

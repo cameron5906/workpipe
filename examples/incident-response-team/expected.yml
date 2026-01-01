@@ -1,0 +1,135 @@
+name: incident_response_team
+on: workflow_dispatch
+jobs:
+  log_analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: log_analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze application logs for error patterns, anomalies, and timeline of issues. Look for log files, error reports, and monitoring data. Identify patterns that indicate the source of the incident.
+          allowed_tools: '["Read","Glob","Grep","Bash"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload log-analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-analysis
+          path: log-analysis
+  root_cause_investigator:
+    runs-on: ubuntu-latest
+    needs:
+      - log_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: log-analysis
+      - name: root_cause_investigator-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Investigate the root cause of the incident based on the log analysis. Examine code changes, configuration, and system state. Trace the error back to its origin and identify all contributing factors.
+          allowed_tools: '["Read","Glob","Grep","Bash"]'
+          max_turns: 10
+          model: claude-sonnet-4-20250514
+      - name: Upload root-cause
+        uses: actions/upload-artifact@v4
+        with:
+          name: root-cause
+          path: root-cause
+  impact_assessor:
+    runs-on: ubuntu-latest
+    needs:
+      - log_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: log-analysis
+      - name: impact_assessor-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Assess the scope and impact of the incident. Determine affected users, data impact, service degradation, and business implications. Estimate the duration and severity of the outage.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload impact-assessment
+        uses: actions/upload-artifact@v4
+        with:
+          name: impact-assessment
+          path: impact-assessment
+  hotfix_drafter:
+    runs-on: ubuntu-latest
+    needs:
+      - root_cause_investigator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: root-cause
+      - name: hotfix_drafter-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Draft a hotfix to address the root cause. Identify the minimal code changes needed, assess risks, provide testing notes, and document a rollback plan in case the fix causes issues.
+          allowed_tools: '["Read","Write","Glob","Grep"]'
+          max_turns: 10
+          model: claude-sonnet-4-20250514
+      - name: Upload hotfix-draft
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotfix-draft
+          path: hotfix-draft
+  hotfix_approval:
+    runs-on: ubuntu-latest
+    needs:
+      - hotfix_drafter
+      - impact_assessor
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hotfix-draft
+      - uses: actions/download-artifact@v4
+        with:
+          name: impact-assessment
+      - run: |-
+          echo "=== HOTFIX APPROVAL GATE ==="
+          echo "Review the hotfix draft and impact assessment before proceeding."
+          echo ""
+          echo "Hotfix Draft:"
+          cat hotfix-draft/* 2>/dev/null || echo "No hotfix draft found"
+          echo ""
+          echo "Impact Assessment:"
+          cat impact-assessment/* 2>/dev/null || echo "No impact assessment found"
+          echo ""
+          echo "This job requires manual approval via GitHub Environment protection rules."
+          echo "Configure environment 'hotfix-approval' with required reviewers to enable gating."
+  postmortem_writer:
+    runs-on: ubuntu-latest
+    needs:
+      - root_cause_investigator
+      - impact_assessor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: root-cause
+      - uses: actions/download-artifact@v4
+        with:
+          name: impact-assessment
+      - uses: actions/download-artifact@v4
+        with:
+          name: log-analysis
+      - name: postmortem_writer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Write an initial postmortem document based on the incident analysis. Include timeline, root cause, resolution steps, action items to prevent recurrence, and lessons learned.
+          allowed_tools: '["Read","Write"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload postmortem-doc
+        uses: actions/upload-artifact@v4
+        with:
+          name: postmortem-doc
+          path: postmortem-doc
+

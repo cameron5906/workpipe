@@ -1,0 +1,86 @@
+name: documentation_team
+on: workflow_dispatch
+jobs:
+  analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the codebase and identify undocumented areas. List modules, functions, and APIs that need documentation.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload doc-needs
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-needs
+          path: doc-needs
+  writer:
+    runs-on: ubuntu-latest
+    needs:
+      - analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: doc-needs
+      - name: writer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Write documentation for the identified areas. Read the doc-needs artifact and create comprehensive documentation.
+          allowed_tools: '["Read","Write","Glob"]'
+          max_turns: 10
+          model: claude-sonnet-4-20250514
+      - name: Upload doc-draft
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-draft
+          path: doc-draft
+  editor:
+    runs-on: ubuntu-latest
+    needs:
+      - writer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: doc-draft
+      - name: editor-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Edit the documentation for clarity and consistency. Read the doc-draft artifact and provide suggestions for improvement.
+          allowed_tools: '["Read","Write"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload edit-suggestions
+        uses: actions/upload-artifact@v4
+        with:
+          name: edit-suggestions
+          path: edit-suggestions
+  reviewer:
+    runs-on: ubuntu-latest
+    needs:
+      - editor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: doc-*
+      - uses: actions/download-artifact@v4
+        with:
+          name: edit-suggestions
+      - name: reviewer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the final documentation and approve or request changes. Assess completeness, accuracy, and quality.
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload doc-review
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-review
+          path: doc-review
+

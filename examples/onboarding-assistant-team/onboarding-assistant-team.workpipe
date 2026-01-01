@@ -1,0 +1,161 @@
+// Onboarding Assistant Team - Multi-agent workflow for developer onboarding
+// Demonstrates fan-out/fan-in pattern with specialized content generators
+
+// Type for a section of the codebase tour
+type TourSection {
+  name: string
+  directory: string
+  purpose: string
+  key_files: [string]
+  related_sections: [string]
+}
+
+// Type for the complete codebase tour
+type CodebaseTour {
+  project_name: string
+  overview: string
+  sections: [TourSection]
+  architecture_summary: string
+  navigation_tips: [string]
+}
+
+// Type for a single FAQ entry
+type FAQEntry {
+  question: string
+  answer: string
+  category: string
+  related_docs: [string]
+}
+
+// Type for a collection of FAQ entries
+type FAQSection {
+  category: string
+  entries: [FAQEntry]
+  common_gotchas: [string]
+}
+
+// Type for a curated code example
+type CodeExample {
+  title: string
+  description: string
+  filepath: string
+  language: string
+  use_case: string
+  complexity: "beginner" | "intermediate" | "advanced"
+}
+
+// Type for the collection of examples
+type ExampleCollection {
+  examples: [CodeExample]
+  learning_order: [string]
+  recommended_first: [string]
+}
+
+// Type for a setup step in getting started guide
+type SetupStep {
+  order: int
+  title: string
+  command: string
+  expected_output: string
+  troubleshooting: [string]
+}
+
+// Type for the getting started guide
+type GettingStartedGuide {
+  prerequisites: [string]
+  setup_steps: [SetupStep]
+  first_task_suggestions: [string]
+  helpful_resources: [string]
+}
+
+// Type for the synthesized onboarding package
+type OnboardingPackage {
+  generated_at: string
+  project_name: string
+  tour_summary: string
+  faq_highlights: [string]
+  quick_start_steps: [string]
+  key_examples: [string]
+  next_steps: [string]
+}
+
+workflow onboarding_assistant_team {
+  on: workflow_dispatch
+
+  // Tour generator - creates guided tour of codebase structure
+  agent_job tour_generator {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Analyze the codebase structure and create a comprehensive guided tour. Identify the main directories, their purposes, key files in each area, and how they relate to each other. Focus on helping new developers understand the overall architecture and where to find things. Look at package.json, directory structure, and any existing documentation.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: CodebaseTour
+        output_artifact: "onboarding-tour"
+      }
+    }
+  }
+
+  // FAQ builder - generates FAQ from patterns and documentation
+  agent_job faq_builder {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Generate a helpful FAQ for new developers. Look at README files, documentation, code comments, and common patterns. Create questions that a new developer would likely ask about setup, conventions, architecture decisions, and common tasks. Include gotchas and tips for avoiding common mistakes.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: FAQSection
+        output_artifact: "onboarding-faq"
+      }
+    }
+  }
+
+  // Example finder - curates relevant code examples
+  agent_job example_finder {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Find and curate relevant code examples throughout the codebase. Look for well-documented functions, test files that demonstrate usage, and example directories. Categorize by complexity level and use case. Create a recommended learning path through the examples that builds understanding progressively.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: ExampleCollection
+        output_artifact: "onboarding-examples"
+      }
+    }
+  }
+
+  // Getting started updater - creates setup and first-steps guide
+  agent_job getting_started_updater {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Create or update a getting started guide based on the current state of the repository. Identify prerequisites, installation steps, and first tasks for new developers. Include troubleshooting tips for common setup issues. Reference actual commands from package.json or build files. Verify steps are accurate by checking the actual project configuration.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: GettingStartedGuide
+        output_artifact: "onboarding-getting-started"
+      }
+    }
+  }
+
+  // Knowledge compiler - synthesizes all outputs into comprehensive package
+  agent_job knowledge_compiler {
+    runs_on: ubuntu-latest
+    needs: [tour_generator, faq_builder, example_finder, getting_started_updater]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "onboarding-*" } }
+      agent_task("Compile all onboarding materials into a comprehensive package. Read each onboarding-* artifact and synthesize the key information. Create an executive summary that highlights the most important things a new developer should know, the quickest path to productivity, and recommended next steps after initial onboarding. Ensure the package is coherent and non-redundant.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read"] }
+        output_schema: OnboardingPackage
+        output_artifact: "onboarding-package"
+      }
+    }
+  }
+}

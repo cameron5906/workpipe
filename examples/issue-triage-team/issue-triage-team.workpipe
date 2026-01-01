@@ -1,0 +1,178 @@
+// Issue Triage Team - Multi-agent workflow for GitHub issue triage
+// Demonstrates fan-out/fan-in pattern with specialized agents
+
+// Type for issue classification output
+type IssueClassification {
+  category: "bug" | "feature" | "question" | "enhancement" | "documentation"
+  confidence: float
+  reasoning: string
+  suggested_template: string
+}
+
+// Type for priority assessment output
+type PriorityAssessment {
+  priority: "P0" | "P1" | "P2" | "P3"
+  impact: "critical" | "high" | "medium" | "low"
+  urgency: "immediate" | "soon" | "normal" | "backlog"
+  reasoning: string
+  affected_users_estimate: string
+}
+
+// Type for label suggestions
+type LabelSuggestion {
+  primary_labels: [string]
+  secondary_labels: [string]
+  area_labels: [string]
+  reasoning: string
+}
+
+// Type for assignee recommendations
+type AssigneeRecommendation {
+  recommended_assignees: [string]
+  expertise_match: string
+  workload_consideration: string
+  reasoning: string
+}
+
+// Type for response draft
+type ResponseDraft {
+  greeting: string
+  acknowledgment: string
+  next_steps: string
+  questions_for_reporter: [string]
+  closing: string
+  full_response: string
+}
+
+// Type for final synthesized triage decision
+type TriageDecision {
+  classification: string
+  priority: string
+  assigned_labels: [string]
+  assigned_to: [string]
+  initial_response: string
+  action_items: [string]
+  triage_summary: string
+}
+
+// Fragment for analysis agents that examine the issue
+job_fragment issue_analyzer {
+  params {
+    analysis_focus: string
+    analyzer_name: string
+    output_type: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Analyze the GitHub issue with focus on: ${{ params.analysis_focus }}. Use the issue context from github.event.issue.") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 3
+      tools: { allowed: ["Read"] }
+      output_artifact: "analysis-${{ params.analyzer_name }}"
+    }
+  }
+}
+
+workflow issue_triage_team {
+  on: issues
+
+  // Classification agent - determines issue category
+  agent_job classifier {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Classify this GitHub issue into one of the following categories: bug, feature, question, enhancement, or documentation. Analyze the issue title, body, and any provided context. Consider the language used, what the reporter is describing, and their apparent intent. Provide your classification with confidence level and reasoning.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_schema: IssueClassification
+        output_artifact: "classification"
+      }
+    }
+  }
+
+  // Priority assessor - determines P0-P3 priority
+  agent_job priority_assessor {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Assess the priority of this GitHub issue on a P0-P3 scale. P0 is critical/blocking, P1 is high priority, P2 is medium priority, P3 is low priority/backlog. Consider: severity of impact, number of affected users, availability of workarounds, business criticality, and urgency indicators in the issue description.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_schema: PriorityAssessment
+        output_artifact: "priority"
+      }
+    }
+  }
+
+  // Label suggester - recommends appropriate labels
+  agent_job label_suggester {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Suggest appropriate labels for this GitHub issue. Consider: the type of issue (bug, feature, etc.), affected areas/components, complexity level, and any special handling needed. Provide primary labels (most important), secondary labels (additional context), and area labels (component/module specific).") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read", "Glob"] }
+        output_schema: LabelSuggestion
+        output_artifact: "labels"
+      }
+    }
+  }
+
+  // Assignee recommender - suggests team members based on expertise
+  agent_job assignee_recommender {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      agent_task("Recommend team members to assign to this GitHub issue based on the issue content and codebase. Look at recent contributors, code ownership patterns, and expertise areas. Consider current workload distribution and provide reasoning for your recommendations.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: AssigneeRecommendation
+        output_artifact: "assignees"
+      }
+    }
+  }
+
+  // Response drafter - needs classification and priority first
+  agent_job response_drafter {
+    runs_on: ubuntu-latest
+    needs: [classifier, priority_assessor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "classification" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "priority" } }
+      agent_task("Draft an initial response to the issue reporter. Read the classification and priority artifacts to understand the issue context. Create a professional, helpful response that: acknowledges their report, sets expectations based on priority, asks any clarifying questions needed, and outlines next steps. Be friendly but concise.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_schema: ResponseDraft
+        output_artifact: "response-draft"
+      }
+    }
+  }
+
+  // Synthesizer - combines all outputs into final triage decision
+  agent_job synthesizer {
+    runs_on: ubuntu-latest
+    needs: [classifier, priority_assessor, label_suggester, assignee_recommender, response_drafter]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "classification" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "priority" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "labels" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "assignees" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "response-draft" } }
+      agent_task("Synthesize all triage analysis into a final triage decision. Read each artifact (classification, priority, labels, assignees, response-draft) and combine them into a coherent, actionable triage decision. Resolve any conflicts between recommendations, finalize the label set, confirm assignees, and prepare the final response. Produce a comprehensive triage summary.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read"] }
+        output_schema: TriageDecision
+        output_artifact: "triage-decision"
+      }
+    }
+  }
+}

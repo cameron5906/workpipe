@@ -1,0 +1,141 @@
+// User-defined types for PR review workflow
+
+type FileChange {
+  filepath: string
+  change_kind: "added" | "modified" | "deleted"
+  lines_added: int
+  lines_removed: int
+}
+
+type DiffAnalysis {
+  total_files_changed: int
+  total_additions: int
+  total_deletions: int
+  changed_files: [FileChange]
+  affected_modules: [string]
+  summary: string
+}
+
+type CoverageCheck {
+  coverage_status: "adequate" | "insufficient" | "missing"
+  tested_changes: [string]
+  untested_changes: [string]
+  recommendations: [string]
+}
+
+type DocsCheck {
+  docs_status: "up_to_date" | "needs_update" | "missing"
+  public_api_changes: [string]
+  missing_docs: [string]
+  recommendations: [string]
+}
+
+type BreakingChangeCheck {
+  has_breaking_changes: bool
+  breaking_items: [string]
+  migration_notes: [string]
+  severity: "none" | "minor" | "major"
+}
+
+type DependencyAudit {
+  new_dependencies: [string]
+  removed_dependencies: [string]
+  security_concerns: [string]
+  license_issues: [string]
+  audit_status: "clean" | "warnings" | "critical"
+}
+
+type PRReviewSummary {
+  overall_verdict: "approve" | "request_changes" | "comment"
+  blocking_issues: int
+  warnings: int
+  test_coverage_ok: bool
+  docs_ok: bool
+  breaking_changes_handled: bool
+  dependencies_ok: bool
+  summary: string
+  action_items: [string]
+}
+
+// Reusable fragment for PR checker agents
+job_fragment pr_checker {
+  params {
+    checker_name: string
+    focus_area: string
+    analysis_input: string
+  }
+  runs_on: ubuntu-latest
+  needs: [diff_analyzer]
+  steps {
+    uses("actions/checkout@v4") {}
+    uses("actions/download-artifact@v4") { with: { name: "diff-analysis" } }
+    agent_task("${{ params.analysis_input }}") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 5
+      tools: { allowed: ["Read", "Glob", "Grep"] }
+      output_artifact: "${{ params.checker_name }}-result"
+    }
+  }
+}
+
+workflow pr_review_orchestrator {
+  on: pull_request
+
+  // Stage 1: Analyze the PR diff first
+  agent_job diff_analyzer {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") { with: { fetch_depth: 0 } }
+      agent_task("Analyze this PR's diff. Identify all changed files, their types (added/modified/deleted), line counts, and affected modules. Summarize the nature and scope of the changes.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: DiffAnalysis
+        output_artifact: "diff-analysis"
+      }
+    }
+  }
+
+  // Stage 2: Parallel checkers (all depend on diff_analyzer)
+  job test_coverage = pr_checker {
+    checker_name: "test-coverage"
+    focus_area: "test coverage"
+    analysis_input: "Read the diff-analysis artifact. For each changed file, verify that appropriate tests exist. Check for new functions without tests, modified logic without updated tests. Report coverage status and list any untested changes."
+  }
+
+  job docs_checker = pr_checker {
+    checker_name: "docs"
+    focus_area: "documentation"
+    analysis_input: "Read the diff-analysis artifact. For each changed file that affects public APIs, check if documentation is updated. Look for README changes, JSDoc/docstrings, API docs. Report documentation status and list missing docs."
+  }
+
+  job breaking_change_detector = pr_checker {
+    checker_name: "breaking-changes"
+    focus_area: "breaking changes"
+    analysis_input: "Read the diff-analysis artifact. Analyze changes for breaking changes: removed exports, changed function signatures, modified interfaces, renamed symbols, changed defaults. Report severity and migration notes."
+  }
+
+  job dependency_auditor = pr_checker {
+    checker_name: "dependency-audit"
+    focus_area: "dependencies"
+    analysis_input: "Read the diff-analysis artifact. Check for new or removed dependencies in package.json, requirements.txt, go.mod, etc. Evaluate security implications and license compatibility. Report audit status and any concerns."
+  }
+
+  // Stage 3: Synthesize all checks into final review
+  agent_job review_coordinator {
+    runs_on: ubuntu-latest
+    needs: [test_coverage, docs_checker, breaking_change_detector, dependency_auditor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "*-result" } }
+      uses("actions/download-artifact@v4") { with: { name: "diff-analysis" } }
+      agent_task("Synthesize all PR review results into a final comprehensive review. Read the diff-analysis and all *-result artifacts. Determine overall verdict, count blocking issues, and create a clear summary with actionable items.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read"] }
+        output_schema: PRReviewSummary
+        output_artifact: "pr-review-summary"
+      }
+    }
+  }
+}

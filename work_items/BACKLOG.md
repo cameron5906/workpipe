@@ -32,21 +32,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-1. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
-   - **Phase 1 Implementation: COMPLETE** - 8 examples created and committed
-   - Examples: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy, cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
-   - Each example has .workpipe, expected.yml, and README.md
-   - All examples compile successfully
-   - **Phase 2 (In Design)**: Fragment System Showcase (4-6 examples)
-     - Demonstrates job_fragment and steps_fragment patterns
-     - Cross-file fragment imports
-     - Parameterized fragments with defaults
-     - Enables Phase 3 examples to use reusable agent fragments
-   - **Phase 3 (Blocked on Phase 2)**: AI/Agentic Multi-Agent Workflows (10-15 examples)
-     - Multi-agent teams: code review, docs, security, release, triage, testing, architecture
-     - Human feedback gates in relevant examples
-     - Entire dev team lifecycle automated
-   - **Phase 4**: Finalization (cleanup, READMEs, learning path)
+(No work items currently in progress)
 
 ---
 
@@ -110,8 +96,8 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
-**Work Items Completed:** 105 (WI-001 through WI-104, WI-106)
-**Work Items In Progress:** 1 (WI-105 - Phase 1 complete, Phases 2-3 pending)
+**Work Items Completed:** 106 (WI-001 through WI-106)
+**Work Items In Progress:** 0
 **Work Items In Backlog:** 1 (WI-107 - VS Code fragment syntax bug)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
@@ -285,6 +271,20 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Examples Overhaul (Milestone E - Complete)
+
+- **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - Completed 2026-01-01
+  - **Phase 1**: 8 core examples (types, matrices, guards, cycles, stages, dependencies)
+    - cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy
+    - cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
+  - **Phase 2**: 5 Fragment System Showcase examples
+    - fragment-basics, agent-task-fragments, cross-file-fragments, microservices-with-fragments, fragment-composition
+  - **Phase 3**: 10 multi-agent workflow examples
+    - code-review-team, documentation-team, security-audit-team, testing-team, issue-triage-team
+    - release-manager-team, pr-review-orchestrator, architecture-review-team, onboarding-assistant-team, incident-response-team
+  - **Phase 4**: Finalization - all 23 examples compile, READMEs complete, learning path documented
+  - Legacy examples preserved in dedicated section (avoids breaking existing references)
 
 ### Fragment System (Milestone H - Complete)
 

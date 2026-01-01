@@ -1,0 +1,98 @@
+name: security_audit_team
+on:
+  - push
+  - pull_request
+jobs:
+  dependency_scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dependency_scanner-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Scan dependencies for known vulnerabilities. Check package.json, requirements.txt, go.mod, or similar files for vulnerable packages.
+          allowed_tools: '["Read","Bash","Glob"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload deps-scan
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-scan
+          path: deps-scan
+  code_scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: code_scanner-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Scan code for security vulnerabilities including SQL injection, XSS, CSRF, path traversal, and other OWASP Top 10 issues.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload code-scan
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-scan
+          path: code-scan
+  secrets_scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: secrets_scanner-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Scan for exposed secrets and credentials including API keys, passwords, tokens, and private keys in source code and config files.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload secrets-scan
+        uses: actions/upload-artifact@v4
+        with:
+          name: secrets-scan
+          path: secrets-scan
+  risk_analyzer:
+    runs-on: ubuntu-latest
+    needs:
+      - dependency_scanner
+      - code_scanner
+      - secrets_scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-scan"
+      - name: risk_analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze all scan results and produce a comprehensive risk assessment. Read each *-scan artifact and combine findings.
+          allowed_tools: '["Read"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload audit-report
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: audit-report
+  remediation_planner:
+    runs-on: ubuntu-latest
+    needs:
+      - risk_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: audit-report
+      - name: remediation_planner-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Create a prioritized remediation plan based on the audit report. Focus on critical issues first and estimate effort.
+          allowed_tools: '["Read","Write"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload remediation-plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: remediation-plan
+          path: remediation-plan
+

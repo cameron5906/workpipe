@@ -1,0 +1,133 @@
+name: pr_review_orchestrator
+on: pull_request
+jobs:
+  diff_analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch_depth: 0
+      - name: diff_analyzer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze this PR's diff. Identify all changed files, their types (added/modified/deleted), line counts, and affected modules. Summarize the nature and scope of the changes.
+          allowed_tools: '["Read","Glob","Grep","Bash"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload diff-analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: diff-analysis
+          path: diff-analysis
+  test_coverage:
+    runs-on: ubuntu-latest
+    needs:
+      - diff_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-analysis
+      - name: test_coverage-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Read the diff-analysis artifact. For each changed file, verify that appropriate tests exist. Check for new functions without tests, modified logic without updated tests. Report coverage status and list any untested changes.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload ${{ params.checker_name }}-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ params.checker_name }}-result
+          path: ${{ params.checker_name }}-result
+  docs_checker:
+    runs-on: ubuntu-latest
+    needs:
+      - diff_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-analysis
+      - name: docs_checker-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Read the diff-analysis artifact. For each changed file that affects public APIs, check if documentation is updated. Look for README changes, JSDoc/docstrings, API docs. Report documentation status and list missing docs.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload ${{ params.checker_name }}-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ params.checker_name }}-result
+          path: ${{ params.checker_name }}-result
+  breaking_change_detector:
+    runs-on: ubuntu-latest
+    needs:
+      - diff_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-analysis
+      - name: breaking_change_detector-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: "Read the diff-analysis artifact. Analyze changes for breaking changes: removed exports, changed function signatures, modified interfaces, renamed symbols, changed defaults. Report severity and migration notes."
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload ${{ params.checker_name }}-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ params.checker_name }}-result
+          path: ${{ params.checker_name }}-result
+  dependency_auditor:
+    runs-on: ubuntu-latest
+    needs:
+      - diff_analyzer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-analysis
+      - name: dependency_auditor-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Read the diff-analysis artifact. Check for new or removed dependencies in package.json, requirements.txt, go.mod, etc. Evaluate security implications and license compatibility. Report audit status and any concerns.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload ${{ params.checker_name }}-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ params.checker_name }}-result
+          path: ${{ params.checker_name }}-result
+  review_coordinator:
+    runs-on: ubuntu-latest
+    needs:
+      - test_coverage
+      - docs_checker
+      - breaking_change_detector
+      - dependency_auditor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-result"
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-analysis
+      - name: review_coordinator-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Synthesize all PR review results into a final comprehensive review. Read the diff-analysis and all *-result artifacts. Determine overall verdict, count blocking issues, and create a clear summary with actionable items.
+          allowed_tools: '["Read"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload pr-review-summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-review-summary
+          path: pr-review-summary
+

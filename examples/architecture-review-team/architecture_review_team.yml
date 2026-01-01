@@ -1,0 +1,140 @@
+name: architecture_review_team
+on: pull_request
+jobs:
+  design_patterns:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: design_patterns-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the PR changes focusing on design patterns usage, SOLID principles compliance, class/module structure, abstraction levels, and object-oriented design quality. Examine the code structure, patterns, and provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload analysis-${{ params.analyzer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ params.analyzer_name }}
+          path: analysis-${{ params.analyzer_name }}
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dependencies-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the PR changes focusing on module dependencies, import graphs, circular dependencies, coupling between components, and cohesion within modules. Examine the code structure, patterns, and provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload analysis-${{ params.analyzer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ params.analyzer_name }}
+          path: analysis-${{ params.analyzer_name }}
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: performance-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the PR changes focusing on potential performance bottlenecks, algorithmic complexity, memory usage patterns, I/O operations, and scalability concerns. Examine the code structure, patterns, and provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload analysis-${{ params.analyzer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ params.analyzer_name }}
+          path: analysis-${{ params.analyzer_name }}
+  tech_debt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: tech_debt-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Analyze the PR changes focusing on technical debt indicators, code smells, TODO/FIXME comments, outdated patterns, and refactoring opportunities. Examine the code structure, patterns, and provide detailed findings.
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 7
+          model: claude-sonnet-4-20250514
+      - name: Upload analysis-${{ params.analyzer_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-${{ params.analyzer_name }}
+          path: analysis-${{ params.analyzer_name }}
+  synthesizer:
+    runs-on: ubuntu-latest
+    needs:
+      - design_patterns
+      - dependencies
+      - performance
+      - tech_debt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: analysis-*
+      - name: synthesizer-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Synthesize all architecture analysis reports into a comprehensive assessment. Read each analysis-* artifact and combine findings. Identify cross-cutting concerns and prioritize issues.
+          allowed_tools: '["Read","Glob"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload architecture-synthesis
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-synthesis
+          path: architecture-synthesis
+  doc_updater:
+    runs-on: ubuntu-latest
+    needs:
+      - synthesizer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: analysis-*
+      - uses: actions/download-artifact@v4
+        with:
+          name: architecture-synthesis
+      - name: doc_updater-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Based on the architecture analysis, determine what architecture documentation needs updating. Check for existing ADRs, architecture diagrams, and design docs. Identify if a new ADR is required for significant architectural decisions.
+          allowed_tools: '["Read","Write","Glob"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+      - name: Upload doc-update-plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-update-plan
+          path: doc-update-plan
+  approval_gate:
+    runs-on: ubuntu-latest
+    needs:
+      - doc_updater
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: doc-update-plan
+      - uses: actions/download-artifact@v4
+        with:
+          name: architecture-synthesis
+      - name: approval_gate-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the architecture analysis and documentation update plan. Summarize the key findings and provide a recommendation for the architecture team. Highlight any ADR requirements and critical issues that need human review.
+          allowed_tools: '["Read"]'
+          max_turns: 3
+          model: claude-sonnet-4-20250514
+      - name: Upload approval-summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: approval-summary
+          path: approval-summary
+

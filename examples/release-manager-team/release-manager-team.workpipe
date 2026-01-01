@@ -1,0 +1,156 @@
+type CommitInfo {
+  sha: string
+  message: string
+  author: string
+  category: "feature" | "fix" | "docs" | "chore" | "refactor" | "test" | "breaking"
+}
+
+type CommitAnalysis {
+  commits: [CommitInfo]
+  feature_count: int
+  fix_count: int
+  breaking_count: int
+  summary: string
+}
+
+type VersionBump {
+  current_version: string
+  new_version: string
+  bump_type: "major" | "minor" | "patch"
+  reason: string
+}
+
+type ChangelogEntry {
+  version: string
+  date: string
+  sections: {
+    breaking: [string]
+    features: [string]
+    fixes: [string]
+    other: [string]
+  }
+}
+
+type ReleaseNotes {
+  title: string
+  highlights: [string]
+  changelog_markdown: string
+  upgrade_notes: string
+}
+
+type ReleaseArtifact {
+  tag_name: string
+  release_url: string
+  assets: [string]
+  published: bool
+}
+
+workflow release_manager_team {
+  on: workflow_dispatch
+
+  agent_job commit_analyzer {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { git fetch --unshallow || true }
+      agent_task("Analyze commits since the last release tag. Categorize each commit as feature, fix, docs, chore, refactor, test, or breaking change. Count totals for each category and summarize the changes.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Bash", "Read", "Glob"] }
+        output_schema: CommitAnalysis
+        output_artifact: "commit-analysis"
+      }
+    }
+  }
+
+  agent_job version_determiner {
+    runs_on: ubuntu-latest
+    needs: [commit_analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "commit-analysis" } }
+      agent_task("Determine the semantic version bump based on the commit analysis. If there are breaking changes, bump major. If there are new features, bump minor. Otherwise, bump patch. Read the current version from package.json or similar.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read", "Bash"] }
+        output_schema: VersionBump
+        output_artifact: "version-bump"
+      }
+    }
+  }
+
+  agent_job changelog_generator {
+    runs_on: ubuntu-latest
+    needs: [commit_analyzer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "commit-analysis" } }
+      agent_task("Generate changelog entries from the commit analysis. Group commits by category: breaking changes, features, fixes, and other. Format each entry with the commit message and author.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Write"] }
+        output_schema: ChangelogEntry
+        output_artifact: "changelog"
+      }
+    }
+  }
+
+  agent_job release_notes_writer {
+    runs_on: ubuntu-latest
+    needs: [changelog_generator, version_determiner]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "changelog" } }
+      uses("actions/download-artifact@v4") { with: { name: "version-bump" } }
+      agent_task("Write user-friendly release notes combining the version bump and changelog. Create an engaging title, highlight the most important changes, convert the changelog to markdown format, and add any necessary upgrade notes for breaking changes.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Write"] }
+        output_schema: ReleaseNotes
+        output_artifact: "release-notes"
+      }
+    }
+  }
+
+  job human_approval_gate {
+    runs_on: ubuntu-latest
+    needs: [release_notes_writer]
+    steps {
+      uses("actions/download-artifact@v4") { with: { name: "release-notes" } }
+      uses("actions/download-artifact@v4") { with: { name: "version-bump" } }
+      shell {
+        echo "=== RELEASE APPROVAL REQUIRED ==="
+        echo ""
+        echo "Please review the following release artifacts before approval:"
+        echo ""
+        echo "--- Version Bump ---"
+        cat version-bump || echo "Version bump artifact not found"
+        echo ""
+        echo "--- Release Notes ---"
+        cat release-notes || echo "Release notes artifact not found"
+        echo ""
+        echo "This job requires manual approval in the GitHub Actions UI."
+        echo "Configure environment protection rules in repository settings"
+        echo "to enable the approval gate for the 'production' environment."
+      }
+    }
+  }
+
+  agent_job release_publisher {
+    runs_on: ubuntu-latest
+    needs: [human_approval_gate]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { git fetch --unshallow || true }
+      uses("actions/download-artifact@v4") { with: { name: "version-bump" } }
+      uses("actions/download-artifact@v4") { with: { name: "release-notes" } }
+      agent_task("Create and publish the GitHub release. Read the version-bump and release-notes artifacts. Create a git tag for the new version, then use the GitHub CLI to create the release with the notes. Include any built artifacts if present.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 7
+        tools: { allowed: ["Read", "Bash"] }
+        output_schema: ReleaseArtifact
+        output_artifact: "release-result"
+      }
+    }
+  }
+}

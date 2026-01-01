@@ -1,0 +1,233 @@
+// Testing Team Multi-Agent Workflow
+// Demonstrates change-driven test generation with coverage analysis
+
+// Output types for structured agent responses
+
+type ChangedFile {
+  filepath: string
+  change_type: "added" | "modified" | "deleted"
+  language: string
+  needs_unit_tests: bool
+  needs_integration_tests: bool
+}
+
+type ChangeAnalysis {
+  changed_files: [ChangedFile]
+  affected_modules: [string]
+  test_priority: "high" | "medium" | "low"
+  summary: string
+}
+
+type TestCase {
+  name: string
+  description: string
+  target_function: string
+  test_code: string
+}
+
+type TestPlan {
+  test_cases: [TestCase]
+  coverage_targets: [string]
+  estimated_coverage_increase: int
+  notes: string
+}
+
+type TestExecution {
+  test_name: string
+  status: "passed" | "failed" | "skipped"
+  duration_ms: int
+  error_message: string
+}
+
+type TestResult {
+  total_tests: int
+  passed: int
+  failed: int
+  skipped: int
+  executions: [TestExecution]
+  summary: string
+}
+
+type UncoveredPath {
+  filepath: string
+  line_start: int
+  line_end: int
+  reason: string
+}
+
+type CoverageReport {
+  overall_coverage: int
+  line_coverage: int
+  branch_coverage: int
+  uncovered_paths: [UncoveredPath]
+  recommendations: [string]
+}
+
+type FlakyIndicator {
+  test_name: string
+  flaky_score: int
+  indicators: [string]
+  recommendation: string
+}
+
+type FlakyTestReport {
+  flaky_tests: [FlakyIndicator]
+  total_analyzed: int
+  high_risk_count: int
+  summary: string
+}
+
+type FinalTestSummary {
+  overall_status: "pass" | "fail" | "partial"
+  total_tests: int
+  passed: int
+  failed: int
+  coverage_percentage: int
+  flaky_count: int
+  recommendations: [string]
+  summary: string
+}
+
+// Reusable fragment for test writer agents (run in parallel, no dependencies)
+job_fragment test_writer {
+  params {
+    test_type: string
+    focus_description: string
+    writer_name: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    uses("actions/download-artifact@v4") { with: { name: "change-analysis" } }
+    agent_task("Based on the change analysis artifact, write ${{ params.test_type }} tests. Focus on: ${{ params.focus_description }}. Generate comprehensive test cases with actual test code.") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 8
+      tools: { allowed: ["Read", "Glob", "Grep", "Write"] }
+      output_schema: TestPlan
+      output_artifact: "test-plan-${{ params.writer_name }}"
+    }
+  }
+}
+
+workflow testing_team {
+  on: pull_request
+
+  // Stage 1: Analyze changes to determine what needs testing
+  agent_job change_detector {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") { with: { fetch_depth: 0 } }
+      agent_task("Analyze the PR diff to identify changed files and determine testing needs. Examine what code changed, what modules are affected, and prioritize what needs unit vs integration tests.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: ChangeAnalysis
+        output_artifact: "change-analysis"
+      }
+    }
+  }
+
+  // Stage 2: Parallel test writers
+  // These need change_detector output, so we use agent_job with needs instead of fragment
+  agent_job unit_test_writer {
+    runs_on: ubuntu-latest
+    needs: [change_detector]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "change-analysis" } }
+      agent_task("Based on the change analysis artifact, write unit tests. Focus on: individual functions, edge cases, error handling, and boundary conditions. Generate comprehensive test cases with actual test code.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep", "Write"] }
+        output_schema: TestPlan
+        output_artifact: "test-plan-unit"
+      }
+    }
+  }
+
+  agent_job integration_test_writer {
+    runs_on: ubuntu-latest
+    needs: [change_detector]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "change-analysis" } }
+      agent_task("Based on the change analysis artifact, write integration tests. Focus on: API contracts, module interactions, data flow between components. Generate comprehensive test cases with actual test code.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 8
+        tools: { allowed: ["Read", "Glob", "Grep", "Write"] }
+        output_schema: TestPlan
+        output_artifact: "test-plan-integration"
+      }
+    }
+  }
+
+  // Stage 3: Execute tests and gather results
+  agent_job test_executor {
+    runs_on: ubuntu-latest
+    needs: [unit_test_writer, integration_test_writer]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "test-plan-*" } }
+      uses("actions/setup-node@v4") { with: { node_version: "20" } }
+      agent_task("Review the generated test plans. Set up the test environment, write the tests to appropriate locations, and run the test suite. Report detailed results including pass/fail status and any error messages.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 10
+        tools: { allowed: ["Read", "Write", "Glob", "Bash"] }
+        output_schema: TestResult
+        output_artifact: "test-results"
+      }
+    }
+  }
+
+  // Stage 4: Parallel analysis of test quality
+  agent_job coverage_analyzer {
+    runs_on: ubuntu-latest
+    needs: [test_executor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "test-results" } }
+      uses("actions/download-artifact@v4") { with: { name: "change-analysis" } }
+      agent_task("Analyze test coverage for the changed code. Identify uncovered code paths, calculate coverage metrics, and provide actionable recommendations for improving coverage.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep", "Bash"] }
+        output_schema: CoverageReport
+        output_artifact: "coverage-report"
+      }
+    }
+  }
+
+  agent_job flaky_detector {
+    runs_on: ubuntu-latest
+    needs: [test_executor]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { name: "test-results" } }
+      uses("actions/download-artifact@v4") { with: { pattern: "test-plan-*" } }
+      agent_task("Analyze the test code and results for flakiness indicators. Look for: timing dependencies, external service calls, shared state, non-deterministic behavior, race conditions, and order-dependent tests. Score each test for flakiness risk.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 5
+        tools: { allowed: ["Read", "Glob", "Grep"] }
+        output_schema: FlakyTestReport
+        output_artifact: "flaky-report"
+      }
+    }
+  }
+
+  // Stage 5: Final synthesis
+  agent_job test_summary {
+    runs_on: ubuntu-latest
+    needs: [coverage_analyzer, flaky_detector]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "*" } }
+      agent_task("Synthesize all testing artifacts into a comprehensive test report. Summarize: what was tested, test results, coverage gaps, flaky test risks, and provide a final testing verdict with recommendations for the PR.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_schema: FinalTestSummary
+        output_artifact: "final-test-report"
+      }
+    }
+  }
+}

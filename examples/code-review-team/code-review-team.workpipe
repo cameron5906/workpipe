@@ -1,0 +1,76 @@
+type ReviewFinding {
+  severity: "critical" | "warning" | "info"
+  filepath: string
+  description: string
+}
+
+type ReviewReport {
+  reviewer: string
+  verdict: "approve" | "request_changes" | "comment"
+  findings: [ReviewFinding]
+  summary: string
+}
+
+type SynthesizedReview {
+  final_verdict: "approve" | "request_changes" | "comment"
+  blocking_issues: int
+  summary: string
+}
+
+job_fragment specialized_reviewer {
+  params {
+    focus: string
+    reviewer_name: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Review the PR focusing on ${{ params.focus }}. Provide detailed findings.") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 5
+      tools: { allowed: ["Read", "Glob", "Grep"] }
+      output_schema: ReviewReport
+      output_artifact: "review-${{ params.reviewer_name }}"
+    }
+  }
+}
+
+workflow code_review_team {
+  on: pull_request
+
+  job security = specialized_reviewer {
+    focus: "security vulnerabilities, injection risks, auth issues"
+    reviewer_name: "security"
+  }
+
+  job performance = specialized_reviewer {
+    focus: "performance bottlenecks, memory leaks, N+1 queries"
+    reviewer_name: "performance"
+  }
+
+  job style = specialized_reviewer {
+    focus: "code style, naming conventions, maintainability"
+    reviewer_name: "style"
+  }
+
+  job architecture = specialized_reviewer {
+    focus: "design patterns, coupling, SOLID principles"
+    reviewer_name: "architecture"
+  }
+
+  agent_job synthesizer {
+    runs_on: ubuntu-latest
+    needs: [security, performance, style, architecture]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/download-artifact@v4") { with: { pattern: "review-*" } }
+      agent_task("Synthesize all review reports into a final verdict. Read each review-* artifact and combine findings into a comprehensive assessment.") {
+        model: "claude-sonnet-4-20250514"
+        max_turns: 3
+        tools: { allowed: ["Read"] }
+        output_schema: SynthesizedReview
+        output_artifact: "final-review"
+      }
+    }
+  }
+}
