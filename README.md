@@ -191,6 +191,9 @@ Less noise. Same power. Compile-time validation catches errors before you push.
 # Install globally
 npm install -g @workpipe/cli
 
+# Verify installation
+workpipe --version
+
 # Create your first workflow
 mkdir -p workpipe
 ```

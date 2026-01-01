@@ -6,6 +6,31 @@ The WorkPipe CLI (`workpipe`) provides commands for compiling, validating, and f
 
 ```bash
 npm install -g @workpipe/cli
+
+# Verify installation
+workpipe --version
+```
+
+## Global Options
+
+These options are available for all commands:
+
+| Option | Description |
+|--------|-------------|
+| `--version` | Display the CLI version and exit |
+| `--help` | Display help information for any command |
+
+**Examples:**
+
+```bash
+# Show version
+workpipe --version
+
+# Show general help
+workpipe --help
+
+# Show help for a specific command
+workpipe build --help
 ```
 
 ## Commands

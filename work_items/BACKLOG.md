@@ -32,22 +32,15 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(None currently)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
-### P1-High (End-User Review Findings)
-
-1. **WI-104: Installation Verification Step** - P1-High
-   - Add `--version` flag verification to getting-started docs
-   - Implement `--version` if not present
-   - Milestone E
-
 ### P1-High (Major Feature)
 
-2. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
+1. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
    - Implement `job_fragment` and `steps_fragment` constructs
    - Parameterized, composable workflow components
    - Import integration for cross-file fragments
@@ -57,7 +50,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### P2-Medium (Marketing/Showcase)
 
-3. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
+2. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
    - Wipe and rebuild examples/ directory with impressive showcase examples
    - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
    - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
@@ -110,9 +103,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
-**Work Items Completed:** 103 (WI-001 through WI-103)
+**Work Items Completed:** 104 (WI-001 through WI-104)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 3 (WI-104 through WI-106)
+**Work Items In Backlog:** 2 (WI-105, WI-106)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -285,6 +278,14 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Installation Verification (Milestone E - Complete)
+
+- **WI-104: Installation Verification Step** - Completed 2026-01-01
+  - Added `--version` verification step to README quickstart
+  - Added Global Options section to cli-reference.md with `--version` and `--help` docs
+  - Fixed language-reference.md artifact syntax (replaced unimplemented emits/emit/consumes with supported output_artifact and typed outputs patterns)
+  - **Carry-over from WI-103**: Language-reference.md artifact syntax corrected
 
 ### Quick Reference Audit (Milestone E - Complete)
 

@@ -1435,32 +1435,51 @@ agent_task("Review code") {
 
 ## Artifacts
 
-Artifacts pass structured data between jobs.
+Artifacts pass structured data between jobs. WorkPipe supports two patterns: agent task artifacts and typed job outputs.
 
-### Emitting Artifacts
+### Agent Task Artifacts
+
+Agent tasks can emit structured artifacts using `output_artifact`:
+
+```workpipe
+agent_job review {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Review the code") {
+      model: "claude-sonnet-4-20250514"
+      output_schema: { rating: int, summary: string }
+      output_artifact: "review_result"
+    }
+  }
+}
+```
+
+The artifact is uploaded to `wp.<workflow>.<job>.<artifact>.${{ github.run_attempt }}`.
+
+### Typed Job Outputs
+
+For job-to-job data passing, use typed outputs with the `json` type:
 
 ```workpipe
 job build {
-  emits build_output: json
-
-  steps: [
-    run("npm run build"),
-    emit build_output from_file "build-info.json"
-  ]
+  runs_on: ubuntu-latest
+  outputs: { metadata: json }
+  steps {
+    shell { echo "metadata={\"version\":\"1.0.0\"}" >> $GITHUB_OUTPUT }
+  }
 }
-```
 
-### Consuming Artifacts
-
-```workpipe
 job deploy {
-  consumes build_output from build.build_output
-
-  steps: [
-    run("./deploy.sh")
-  ]
+  needs: [build]
+  runs_on: ubuntu-latest
+  steps {
+    shell { echo "Deploying version: ${{ needs.build.outputs.metadata }}" }
+  }
 }
 ```
+
+The `json` type provides compile-time validation that referenced outputs exist and are properly typed. See [The json Type](#the-json-type) for details on JSON output handling.
 
 ---
 

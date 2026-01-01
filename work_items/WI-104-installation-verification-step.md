@@ -1,11 +1,12 @@
 # Installation Verification Step
 
 **ID**: WI-104
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: E (Tooling)
 **Created**: 2026-01-01
 **Updated**: 2026-01-01
+**Completed**: 2026-01-01
 
 ## Description
 
@@ -15,16 +16,21 @@ A simple verification step like `workpipe --version` should be documented in the
 
 ## Acceptance Criteria
 
-- [ ] Verify `workpipe --version` command exists and works
-- [ ] If not, implement `--version` flag in CLI
-- [ ] Add installation verification step to `docs/getting-started.md`:
+- [x] Verify `workpipe --version` command exists and works
+- [x] If not, implement `--version` flag in CLI (already existed)
+- [x] Add installation verification step to `docs/getting-started.md`:
   - After installation instructions
   - Show expected output
   - Provide troubleshooting if command not found
-- [ ] Update `docs/cli-reference.md` with `--version` flag documentation
-- [ ] Update README.md quickstart section with verification step
-- [ ] Consider adding `workpipe doctor` or `workpipe --help` as additional verification
-- [ ] **Carry-over from WI-103**: Update `docs/language-reference.md` (lines 1436-1463) to fix unimplemented `emit`/`emits`/`consumes` artifact syntax (use `output_artifact` approach consistent with quick-reference.md)
+  - (Already present in getting-started.md)
+- [x] Update `docs/cli-reference.md` with `--version` flag documentation
+  - Added Global Options section with --version and --help flags
+- [x] Update README.md quickstart section with verification step
+  - Added --version verification after npm install step
+- [x] Consider adding `workpipe doctor` or `workpipe --help` as additional verification
+  - Added --help documentation to Global Options section
+- [x] **Carry-over from WI-103**: Update `docs/language-reference.md` (lines 1436-1463) to fix unimplemented `emit`/`emits`/`consumes` artifact syntax (use `output_artifact` approach consistent with quick-reference.md)
+  - Replaced unimplemented emits/emit/consumes syntax with supported output_artifact and typed outputs patterns
 
 ## Technical Context
 
