@@ -12,6 +12,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 - **Milestone E**: Tooling (VS Code extension)
 - **Milestone A++**: User-Defined Type System (NEW - User Directive)
 - **Milestone F**: Import System (Cross-File Type Sharing)
+- **Milestone G**: Step Syntax Improvements (ADR-0013)
 
 **Implementation Phases** (from PROJECT.md):
 - Phase 0: Repo + contracts
@@ -36,12 +37,37 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-1. **WI-090: Step Syntax Improvement Research Spike** - P1-High
-   - Research spike to investigate step syntax improvements
-   - User feedback: shell code in string syntax is cumbersome
-   - **DECISION POINT**: Requires ADR before implementation
-   - Output: ADR-0013 (Proposed status)
-   - Work pauses after ADR creation for team review
+### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
+
+1. **WI-091: Grammar - Steps Block and Shell Keyword** - P1-High
+   - Add `steps { }` block syntax (remove array requirement)
+   - Add `shell { }` with brace-counting content capture
+   - Add `uses() { }` block variant
+   - Keep `run()` and `uses()` for backward compatibility
+
+2. **WI-092: AST and Parser Updates** - P1-High
+   - Update AST nodes for new step types (ShellStepNode, UsesBlockStepNode)
+   - Implement brace-counting in parser/AST builder
+   - Handle single-line vs multi-line shell blocks
+   - **Depends on**: WI-091
+
+3. **WI-093: Codegen - Indentation Stripping** - P1-High
+   - Strip common prefix from shell content
+   - Generate proper YAML run commands
+   - Handle uses block with: parameters
+   - **Depends on**: WI-092
+
+4. **WI-094: VS Code Extension Updates** - P2-Medium
+   - Update TextMate grammar for shell blocks
+   - Syntax highlighting for shell content
+   - Diagnostics for new syntax
+   - **Depends on**: WI-091, WI-092, WI-093 (partial)
+
+5. **WI-095: Documentation and Examples** - P2-Medium
+   - Update language-reference.md
+   - Update all examples to new syntax
+   - Migration guide from old to new syntax
+   - **Depends on**: WI-091, WI-092, WI-093
 
 ---
 
@@ -70,6 +96,7 @@ The entire feature is production-ready with:
 | **D** | COMPLETE | Matrices |
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
+| **G** | UP NEXT | Step Syntax Improvements (ADR-0013 Accepted) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -86,9 +113,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 998 tests (71 lang + 870 compiler + 57 VS Code)
-**Work Items Completed:** 89 (WI-001 through WI-089)
+**Work Items Completed:** 90 (WI-001 through WI-090)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-090)
+**Work Items In Backlog:** 5 (WI-091 through WI-095)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -258,6 +285,15 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Research Spikes
+- **WI-090: Step Syntax Improvement Research Spike** - Completed 2025-12-31
+  - Investigated step syntax improvements based on user feedback
+  - Surveyed comparable DSLs (Terraform, Bazel, Just, etc.)
+  - Created ADR-0013 with 5 options analyzed
+  - **Decision**: Block-based syntax with `shell { }` keyword (ACCEPTED)
+  - Key decisions: brace counting, indentation stripping, single-line support
+  - Implementation work items created: WI-091 through WI-095
 
 ### Bug Fix & Investigation
 - **WI-089: Import Syntax Error - Parse Regression** - Completed 2025-12-31

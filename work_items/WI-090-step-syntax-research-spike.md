@@ -1,11 +1,12 @@
 # WI-090: Step Syntax Improvement Research Spike
 
 **ID**: WI-090
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
-**Milestone**: Future Enhancement
+**Milestone**: G (Step Syntax Improvements)
 **Created**: 2025-12-31
 **Updated**: 2025-12-31
+**Completed**: 2025-12-31
 
 ## Description
 
@@ -152,24 +153,24 @@ job build {
 
 ## Acceptance Criteria
 
-- [ ] Survey of comparable DSL step/command syntax (minimum 5 examples)
-- [ ] Evaluation matrix scoring each candidate on:
+- [x] Survey of comparable DSL step/command syntax (minimum 5 examples)
+- [x] Evaluation matrix scoring each candidate on:
   - Readability
   - Lezer parseability
   - Backward compatibility
   - Error recovery quality
   - Expression interpolation support
   - Migration complexity
-- [ ] Draft ADR (ADR-0013) documenting:
+- [x] Draft ADR (ADR-0013) documenting:
   - Current syntax pain points
   - Alternatives considered
   - Recommended approach
   - Migration strategy (if breaking)
-  - Decision: Proposed status
-- [ ] **DECISION POINT**: Work MUST pause after ADR creation
-  - ADR goes to team review
-  - User acceptance required before implementation
-  - PM creates follow-up implementation work items only after ADR approved
+  - Decision: ~~Proposed~~ **Accepted** status
+- [x] **DECISION POINT**: ADR reviewed and accepted
+  - ADR reviewed by team
+  - User accepted the proposed direction
+  - PM created follow-up implementation work items (WI-091 through WI-095)
 
 ## Technical Context
 
@@ -216,14 +217,28 @@ None - this is a research spike.
 
 ## Notes
 
-**This is a DECISION POINT work item.**
+**This was a DECISION POINT work item.**
 
-The output is an ADR in Proposed status. Implementation work items will be created by the PM only after:
-1. ADR review by tech lead and architect
-2. User acceptance of the proposed direction
-3. Explicit approval to proceed
+The output was ADR-0013, which has been **Accepted**. Implementation work items have been created:
 
-Do NOT begin implementation during this spike. The goal is informed decision-making, not code.
+- **WI-091**: Grammar - Steps Block and Shell Keyword
+- **WI-092**: AST and Parser Updates
+- **WI-093**: Codegen - Indentation Stripping
+- **WI-094**: VS Code Extension Updates
+- **WI-095**: Documentation and Examples
+
+---
+
+## Final Decision Summary
+
+ADR-0013 was accepted with the following key decisions:
+
+1. **Keyword**: Use `shell` instead of overloading `run`
+2. **Brace handling**: Count braces in compiler (no escaping needed)
+3. **Indentation**: Strip common prefix when outputting to YAML
+4. **Single-line**: `shell { echo hello }` is supported
+5. **Uses block**: `uses("action") { with: { ... } }` is also supported
+6. **Backward compatibility**: `run("...")` and `uses("...")` remain valid
 
 ---
 
