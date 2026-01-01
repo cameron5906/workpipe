@@ -1,0 +1,108 @@
+name: comprehensive_review
+on: pull_request
+jobs:
+  security_review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: security_review-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the codebase focusing on security vulnerabilities
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+          output_schema:
+            type: object
+            properties:
+              rating:
+                type: integer
+              summary:
+                type: string
+              issues:
+                type: array
+                items:
+                  type: string
+            required:
+              - rating
+              - summary
+              - issues
+            additionalProperties: false
+      - name: Upload review-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-result
+          path: review-result
+  performance_review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: performance_review-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the codebase focusing on performance issues
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+          output_schema:
+            type: object
+            properties:
+              rating:
+                type: integer
+              summary:
+                type: string
+              issues:
+                type: array
+                items:
+                  type: string
+            required:
+              - rating
+              - summary
+              - issues
+            additionalProperties: false
+      - name: Upload review-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-result
+          path: review-result
+  style_review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: style_review-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the codebase focusing on code style and maintainability
+          allowed_tools: '["Read","Glob","Grep"]'
+          max_turns: 5
+          model: claude-sonnet-4-20250514
+          output_schema:
+            type: object
+            properties:
+              rating:
+                type: integer
+              summary:
+                type: string
+              issues:
+                type: array
+                items:
+                  type: string
+            required:
+              - rating
+              - summary
+              - issues
+            additionalProperties: false
+      - name: Upload review-result
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-result
+          path: review-result
+  aggregate:
+    runs-on: ubuntu-latest
+    needs:
+      - security_review
+      - performance_review
+      - style_review
+    steps:
+      - run: echo "All reviews complete"
+

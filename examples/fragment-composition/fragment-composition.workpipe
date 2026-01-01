@@ -1,0 +1,46 @@
+// Fragment Composition: Building from primitives to complex patterns
+
+// Level 1: Atomic primitives
+steps_fragment checkout {
+  uses("actions/checkout@v4") {}
+}
+
+steps_fragment setup_node {
+  uses("actions/setup-node@v4") {}
+}
+
+// Level 2: Composed setup
+steps_fragment node_project_setup {
+  uses("actions/checkout@v4") {}
+  uses("actions/setup-node@v4") {}
+  shell { npm ci }
+}
+
+workflow composed {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      ...node_project_setup {}
+      shell { npm run build }
+    }
+  }
+
+  job test {
+    runs_on: ubuntu-latest
+    steps {
+      ...node_project_setup {}
+      shell { npm test }
+    }
+  }
+
+  job lint {
+    runs_on: ubuntu-latest
+    steps {
+      ...checkout {}
+      ...setup_node {}
+      shell { npm ci && npm run lint }
+    }
+  }
+}

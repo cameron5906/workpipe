@@ -1,0 +1,42 @@
+// Fragment Basics Example
+// Demonstrates both job_fragment and steps_fragment with parameters
+
+// job_fragment with required and optional params
+job_fragment service_build {
+  params {
+    service_name: string
+    node_version: string = "20"
+  }
+
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    shell { cd services/${{ params.service_name }} && npm ci && npm run build }
+  }
+}
+
+// steps_fragment with defaults
+steps_fragment checkout_and_setup {
+  params {
+    node_version: string = "20"
+  }
+  uses("actions/checkout@v4") {}
+  shell { npm ci }
+}
+
+workflow fragment_basics {
+  on: push
+
+  // Job fragment instantiation
+  job api = service_build { service_name: "api" }
+  job web = service_build { service_name: "web" node_version: "18" }
+
+  // Steps fragment spread
+  job lint {
+    runs_on: ubuntu-latest
+    steps {
+      ...checkout_and_setup {}
+      shell { npm run lint }
+    }
+  }
+}

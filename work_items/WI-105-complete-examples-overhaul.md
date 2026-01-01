@@ -9,12 +9,19 @@
 
 ## Progress Log
 
+### 2026-01-01: Phase Reorganization
+- User requested phase reorder: Fragment Showcase now Phase 2, AI/Agentic now Phase 3
+- Rationale: Fragment examples enable Phase 3 examples to use reusable agent patterns
+- Phase 3 scope expanded: Multi-agent teams across entire dev lifecycle
+- Added human feedback gates requirement for Phase 3 examples
+- Phase 2 design delegated to architects
+
 ### 2026-01-01: Phase 1 Implementation COMPLETE
 - All 8 Phase 1 examples implemented and committed
 - Examples created: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy, cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
 - Each example has .workpipe source, expected.yml, and README.md
 - All examples compile successfully
-- Ready for Phase 2: AI/Agentic workflow examples
+- Ready for Phase 2: Fragment System Showcase
 
 ### 2026-01-01: Phase 1 Designs Complete
 - Both architects completed Phase 1 design work
@@ -100,33 +107,150 @@ Completely wipe the `examples/` directory and create new, impressive examples th
 - [x] All 8 examples implemented with .workpipe, expected.yml, and README.md
 - [x] All examples compile successfully
 
-### Phase 2: AI/Agentic Workflow Examples (10-15 examples)
+### Phase 2: Fragment System Showcase (4-6 examples)
 
-**Creative, impressive examples showing:**
+**Purpose:** Demonstrate job_fragment and steps_fragment patterns that enable Phase 3 examples to leverage reusable, parameterized workflow components.
 
-- [ ] Autonomous teams embedded in GitHub - Multi-agent coordination
-- [ ] Code review agents with structured feedback
-- [ ] Documentation generation agents
-- [ ] Security audit agents
-- [ ] Test generation agents
-- [ ] PR triage and auto-labeling
-- [ ] Issue analysis and routing
-- [ ] Release management automation
-- [ ] Dependency update agents
-- [ ] Performance profiling agents
-- [ ] Architecture decision agents
-- [ ] Multi-model orchestration (different models for different tasks)
-- [ ] Iterative improvement cycles (agent refines its own output)
-- [ ] Human-in-the-loop approval workflows
-- [ ] Cross-repository coordination
+**Design Status:** PENDING
 
-### Phase 3: Finalization
+**Examples to create:**
+
+- [ ] **fragment-basics** - Single-file job_fragment and steps_fragment usage
+  - Job fragment with parameterized runs_on, steps
+  - Steps fragment with default parameter values
+  - Fragment instantiation syntax showcase
+
+- [ ] **cross-file-fragments** - Import fragments from shared library files
+  - Common CI fragments (lint, test, build)
+  - Parameterized reuse across multiple workflows
+  - Demonstrates fragment import/export patterns
+
+- [ ] **agent-task-fragments** - Reusable agent task patterns
+  - Fragment containing agent_task with parameterized prompts
+  - Shared tool configurations
+  - Agent output schema inheritance
+
+- [ ] **conditional-fragment-usage** - Fragments with guard conditions
+  - Steps fragments that include guard_js blocks
+  - Conditional fragment instantiation
+  - Matrix-aware fragment expansion
+
+- [ ] **composed-fragments** - Fragments that use other fragments
+  - Multi-level fragment composition
+  - Fragment parameter forwarding
+  - Complex workflow assembly from primitives
+
+- [ ] **fragment-library-pattern** - Best practices for fragment libraries
+  - Directory structure for shared fragments
+  - Versioning and deprecation patterns
+  - Documentation conventions
+
+**Phase 2 Design Checklist:**
+- [ ] job_fragment examples with clear parameterization
+- [ ] steps_fragment examples with defaults
+- [ ] Cross-file import patterns for fragments
+- [ ] Agent task fragment patterns (enables Phase 3)
+- [ ] Fragment composition patterns
+
+### Phase 3: AI/Agentic Multi-Agent Workflows (10-15 examples)
+
+**Key Theme:** Multi-agent workflows with different agents performing different specialized tasks - entire dev team lifecycle automated, not just code.
+
+**Design Status:** PENDING (blocked on Phase 2 completion)
+
+**Requirements:**
+- MUST use fragments from Phase 2 for agent reuse
+- MUST demonstrate type system with structured agent outputs
+- SHOULD include human feedback gates in some examples
+- SHOULD showcase advanced agentic patterns (coordination, handoffs, escalation)
+
+**Example Teams (Multi-Agent Coordination):**
+
+1. **code-review-team** - Multiple specialized reviewers
+   - [ ] Security reviewer agent
+   - [ ] Performance reviewer agent
+   - [ ] Style/maintainability reviewer agent
+   - [ ] Aggregator agent that synthesizes reviews
+   - Human gate: Final approval before merge
+
+2. **documentation-team** - Writer, editor, reviewer agents
+   - [ ] Doc writer agent (generates from code)
+   - [ ] Editor agent (improves clarity, consistency)
+   - [ ] Reviewer agent (checks accuracy, completeness)
+   - [ ] Publisher agent (formats for docs site)
+   - Human gate: Review before publish
+
+3. **security-team** - Scanner, analyst, remediation agents
+   - [ ] Vulnerability scanner agent
+   - [ ] Risk analyst agent (severity, impact assessment)
+   - [ ] Remediation agent (suggests/applies fixes)
+   - [ ] Compliance checker agent
+   - Human gate: Security sign-off for high-severity issues
+
+4. **release-management-team** - Changelog, versioning, deployment agents
+   - [ ] Changelog generator agent (from commits/PRs)
+   - [ ] Version determiner agent (semver analysis)
+   - [ ] Release notes writer agent
+   - [ ] Deployment orchestrator agent
+   - Human gate: Release approval
+
+5. **issue-triage-team** - Classifier, prioritizer, assigner agents
+   - [ ] Issue classifier agent (bug/feature/question)
+   - [ ] Priority assessor agent
+   - [ ] Assignee recommender agent
+   - [ ] Response drafter agent
+   - Human gate: Optional review for high-priority issues
+
+6. **testing-team** - Test writer, runner, analyst agents
+   - [ ] Unit test writer agent
+   - [ ] Integration test designer agent
+   - [ ] Test runner agent with coverage analysis
+   - [ ] Coverage gap identifier agent
+   - [ ] Flaky test detector agent
+
+7. **architecture-review-team** - Design, dependency, performance analysts
+   - [ ] Design reviewer agent (patterns, SOLID)
+   - [ ] Dependency checker agent (updates, vulnerabilities)
+   - [ ] Performance analyst agent (hotspots, optimization)
+   - [ ] Architecture doc updater agent
+   - Human gate: ADR approval
+
+8. **onboarding-assistant-team** - Code tour, FAQ, example agents
+   - [ ] Codebase tour generator agent
+   - [ ] FAQ builder agent (from issues/discussions)
+   - [ ] Example creator agent
+   - [ ] Getting started guide updater agent
+
+9. **refactoring-team** - Analyzer, planner, executor agents
+   - [ ] Tech debt analyzer agent
+   - [ ] Refactoring planner agent
+   - [ ] Code modifier agent (applies changes)
+   - [ ] Regression tester agent
+   - Human gate: Approve refactoring plan
+
+10. **incident-response-team** - Detector, analyzer, responder agents
+    - [ ] Log analyzer agent
+    - [ ] Root cause investigator agent
+    - [ ] Hotfix drafter agent
+    - [ ] Postmortem writer agent
+    - Human gate: Deploy hotfix approval
+
+**Phase 3 Design Checklist:**
+- [ ] Each example demonstrates multi-agent coordination (3+ agents)
+- [ ] Fragment reuse from Phase 2 library patterns
+- [ ] Typed structured outputs between agents
+- [ ] Human feedback gates where appropriate
+- [ ] Clear handoff and coordination patterns
+- [ ] Cycle usage for iterative refinement where applicable
+
+### Phase 4: Finalization
 
 - [ ] All existing examples archived or removed
 - [ ] Each example has README with clear explanation
 - [ ] All examples compile and generate valid YAML
 - [ ] Examples serve as both documentation and marketing material
 - [ ] Examples README provides clear learning path and categorization
+- [ ] Fragment library examples serve as reusable starting point for users
 
 ## Implementation Checklist
 
@@ -148,24 +272,46 @@ Completely wipe the `examples/` directory and create new, impressive examples th
 - [x] 4. environment-matrix-deploy (Architect A design)
 - [x] 8. parallel-iterative-agents (Architect B design)
 
-### Phase 2 Implementation (10-15 AI examples)
-- [ ] Examples designed (pending Phase 1 completion)
-- [ ] Examples implemented (pending design)
+### Phase 2 Implementation (Fragment Showcase - 4-6 examples)
+- [ ] Phase 2 design complete (architect review)
+- [ ] fragment-basics example implemented
+- [ ] cross-file-fragments example implemented
+- [ ] agent-task-fragments example implemented
+- [ ] conditional-fragment-usage example implemented
+- [ ] composed-fragments example implemented
+- [ ] fragment-library-pattern example implemented
 
-### Phase 3 Finalization
+### Phase 3 Implementation (AI/Agentic Teams - 10-15 examples)
+- [ ] Phase 3 design complete (blocked on Phase 2)
+- [ ] code-review-team example implemented
+- [ ] documentation-team example implemented
+- [ ] security-team example implemented
+- [ ] release-management-team example implemented
+- [ ] issue-triage-team example implemented
+- [ ] testing-team example implemented
+- [ ] architecture-review-team example implemented
+- [ ] onboarding-assistant-team example implemented
+- [ ] refactoring-team example implemented
+- [ ] incident-response-team example implemented
+
+### Phase 4 Finalization
 - [ ] All existing examples archived or removed
 - [ ] Each example has README with clear explanation
 - [ ] All examples compile and generate valid YAML
 - [ ] Examples serve as both documentation and marketing material
 - [ ] Examples README provides clear learning path and categorization
+- [ ] Fragment library examples serve as reusable starting point
 
 ## Acceptance Criteria
 
 - [ ] All existing examples archived or removed
-- [ ] 8 Phase 1 examples showcasing types, loops, stages, matrices, guards
-- [ ] 10-15 Phase 2 AI workflow examples with creative, impressive use cases
+- [x] 8 Phase 1 examples showcasing types, loops, stages, matrices, guards (COMPLETE)
+- [ ] 4-6 Phase 2 Fragment Showcase examples demonstrating reusable patterns
+- [ ] 10-15 Phase 3 AI/Agentic Multi-Agent Team workflow examples
+- [ ] Human feedback gates demonstrated in relevant examples
 - [ ] Each example has README with clear explanation
 - [ ] All examples compile and generate valid YAML
+- [ ] Fragment library patterns serve as reusable starting point for users
 - [ ] Examples serve as both documentation and marketing material
 
 ## Technical Context

@@ -1,0 +1,29 @@
+// Reusable agent task fragments for code review workflows
+
+type ReviewFeedback {
+  rating: int
+  summary: string
+  issues: [string]
+}
+
+job_fragment code_reviewer {
+  params {
+    review_focus: string
+  }
+
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    agent_task("Review the codebase focusing on ${{ params.review_focus }}") {
+      model: "claude-sonnet-4-20250514"
+      max_turns: 5
+      tools: { allowed: ["Read", "Glob", "Grep"] }
+      output_schema: {
+        rating: int
+        summary: string
+        issues: [string]
+      }
+      output_artifact: "review-result"
+    }
+  }
+}

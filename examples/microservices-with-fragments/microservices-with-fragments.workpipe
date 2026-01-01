@@ -1,0 +1,43 @@
+// Microservices workflow using fragments for dramatic code reduction
+
+job_fragment build_service {
+  params {
+    service: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    shell { docker build -t myorg/${{ params.service }}:latest ./services/${{ params.service }} }
+  }
+}
+
+job_fragment test_service {
+  params {
+    service: string
+  }
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    shell { cd services/${{ params.service }} && npm test }
+  }
+}
+
+workflow microservices {
+  on: push
+
+  job build_api = build_service { service: "api" }
+  job build_web = build_service { service: "web" }
+  job build_worker = build_service { service: "worker" }
+
+  job test_api = test_service { service: "api" }
+  job test_web = test_service { service: "web" }
+  job test_worker = test_service { service: "worker" }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build_api, build_web, build_worker, test_api, test_web, test_worker]
+    steps {
+      shell { echo "Deploying all services" }
+    }
+  }
+}

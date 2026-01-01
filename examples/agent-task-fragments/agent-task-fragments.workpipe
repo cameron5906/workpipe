@@ -1,0 +1,25 @@
+import { code_reviewer } from "./fragments/agent-library.workpipe"
+
+workflow comprehensive_review {
+  on: pull_request
+
+  job security_review = code_reviewer {
+    review_focus: "security vulnerabilities"
+  }
+
+  job performance_review = code_reviewer {
+    review_focus: "performance issues"
+  }
+
+  job style_review = code_reviewer {
+    review_focus: "code style and maintainability"
+  }
+
+  job aggregate {
+    runs_on: ubuntu-latest
+    needs: [security_review, performance_review, style_review]
+    steps {
+      shell { echo "All reviews complete" }
+    }
+  }
+}

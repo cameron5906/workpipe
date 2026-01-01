@@ -1,0 +1,15 @@
+import { node_setup, test_job } from "../fragments/ci-common.workpipe"
+
+workflow ci {
+  on: push
+
+  job test = test_job {}
+
+  job lint {
+    runs_on: ubuntu-latest
+    steps {
+      ...node_setup {}
+      shell { npm run lint }
+    }
+  }
+}

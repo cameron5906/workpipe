@@ -1,0 +1,45 @@
+name: microservices
+on: push
+jobs:
+  build_api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t myorg/api:latest ./services/api
+  build_web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t myorg/web:latest ./services/web
+  build_worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t myorg/worker:latest ./services/worker
+  test_api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd services/api && npm test
+  test_web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd services/web && npm test
+  test_worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd services/worker && npm test
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build_api
+      - build_web
+      - build_worker
+      - test_api
+      - test_web
+      - test_worker
+    steps:
+      - run: echo "Deploying all services"
+

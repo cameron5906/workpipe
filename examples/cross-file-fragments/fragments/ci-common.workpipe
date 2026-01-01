@@ -1,0 +1,17 @@
+// Shared CI fragments for reuse across workflows
+
+steps_fragment node_setup {
+  uses("actions/checkout@v4") {}
+  uses("actions/setup-node@v4") {}
+  shell { npm ci }
+}
+
+job_fragment test_job {
+  runs_on: ubuntu-latest
+  steps {
+    uses("actions/checkout@v4") {}
+    uses("actions/setup-node@v4") {}
+    shell { npm ci }
+    shell { npm test }
+  }
+}

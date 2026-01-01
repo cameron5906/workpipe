@@ -37,12 +37,29 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
    - Examples: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy, cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
    - Each example has .workpipe, expected.yml, and README.md
    - All examples compile successfully
-   - **Phase 2 Pending**: 10-15 AI/Agentic workflow examples (creative, impressive)
-   - **Phase 3 Pending**: Fragment system showcase examples
+   - **Phase 2 (In Design)**: Fragment System Showcase (4-6 examples)
+     - Demonstrates job_fragment and steps_fragment patterns
+     - Cross-file fragment imports
+     - Parameterized fragments with defaults
+     - Enables Phase 3 examples to use reusable agent fragments
+   - **Phase 3 (Blocked on Phase 2)**: AI/Agentic Multi-Agent Workflows (10-15 examples)
+     - Multi-agent teams: code review, docs, security, release, triage, testing, architecture
+     - Human feedback gates in relevant examples
+     - Entire dev team lifecycle automated
+   - **Phase 4**: Finalization (cleanup, READMEs, learning path)
 
 ---
 
 ## Up Next (Priority Order)
+
+### P1-High (Bug Fix)
+
+1. **WI-107: VS Code Extension Missing Fragment Syntax Support** - P1-High
+   - TextMate grammar out of sync with compiler grammar
+   - Missing keywords: `job_fragment`, `steps_fragment`, `params`
+   - Missing spread operator `...` for fragment spreading
+   - Causes false syntax error diagnostics in VS Code
+   - **Milestone E** (Tooling)
 
 ### P2-Medium (Marketing/Showcase)
 
@@ -95,7 +112,7 @@ The entire feature is production-ready with:
 **Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
 **Work Items Completed:** 105 (WI-001 through WI-104, WI-106)
 **Work Items In Progress:** 1 (WI-105 - Phase 1 complete, Phases 2-3 pending)
-**Work Items In Backlog:** 0
+**Work Items In Backlog:** 1 (WI-107 - VS Code fragment syntax bug)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
