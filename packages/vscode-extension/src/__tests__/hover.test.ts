@@ -10,10 +10,13 @@ function createMockDocument(content: string): vscode.TextDocument {
       const startLine = lines[range.start.line] || "";
       return startLine.substring(range.start.character, range.end.character);
     },
-    lineAt: (line: number) => ({
-      text: lines[line] || "",
-      range: new vscode.Range(line, 0, line, (lines[line] || "").length),
-    }),
+    lineAt: (lineOrPosition: number | vscode.Position) => {
+      const lineNum = typeof lineOrPosition === 'number' ? lineOrPosition : lineOrPosition.line;
+      return {
+        text: lines[lineNum] || "",
+        range: new vscode.Range(lineNum, 0, lineNum, (lines[lineNum] || "").length),
+      };
+    },
     getWordRangeAtPosition: (position: vscode.Position, pattern?: RegExp) => {
       const line = lines[position.line] || "";
       const regex = pattern || /\w+/;
@@ -64,7 +67,7 @@ describe("HoverProvider", () => {
       const hover = result as vscode.Hover;
       const markdown = hover.contents as vscode.MarkdownString;
       expect(markdown.value).toContain("**job**");
-      expect(markdown.value).toContain("unit of work");
+      expect(markdown.value).toContain("Defines a job that runs on a specified runner");
     });
 
     it("should provide hover for 'agent_job' keyword", () => {
@@ -88,7 +91,7 @@ describe("HoverProvider", () => {
       const hover = result as vscode.Hover;
       const markdown = hover.contents as vscode.MarkdownString;
       expect(markdown.value).toContain("**cycle**");
-      expect(markdown.value).toContain("loop");
+      expect(markdown.value).toContain("iterative refinement cycle");
     });
 
     it("should provide hover for 'agent_task' keyword", () => {
@@ -214,7 +217,8 @@ workflow ci {
       expect(result).toBeDefined();
       const hover = result as vscode.Hover;
       const markdown = hover.contents as vscode.MarkdownString;
-      expect(markdown.value).toContain("**type BuildInfo**");
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BuildInfo`");
       expect(markdown.value).toContain("Locally defined type");
       expect(markdown.value).toContain("version");
       expect(markdown.value).toContain("commit");
@@ -239,7 +243,8 @@ workflow ci {
       expect(result).toBeDefined();
       const hover = result as vscode.Hover;
       const markdown = hover.contents as vscode.MarkdownString;
-      expect(markdown.value).toContain("**type BuildInfo**");
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BuildInfo`");
       expect(markdown.value).toContain("./types.workpipe");
     });
 
@@ -262,9 +267,10 @@ workflow ci {
       expect(result).toBeDefined();
       const hover = result as vscode.Hover;
       const markdown = hover.contents as vscode.MarkdownString;
-      expect(markdown.value).toContain("**type BI**");
-      expect(markdown.value).toContain("Imported as");
-      expect(markdown.value).toContain("BuildInfo");
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BI`");
+      expect(markdown.value).toContain("originally");
+      expect(markdown.value).toContain("`BuildInfo`");
       expect(markdown.value).toContain("./types.workpipe");
     });
 
@@ -283,6 +289,313 @@ workflow ci {
       const result = provider.provideHover(document, position, createMockToken());
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("type keyword hover", () => {
+    it("should provide hover for 'type' keyword", () => {
+      const document = createMockDocument("type BuildInfo {\n  version: string\n}");
+      const position = new vscode.Position(0, 2);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("reusable type definition");
+    });
+  });
+
+  describe("job name hover", () => {
+    it("should provide hover for job definition with details", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    needs: [lint, test]
+    outputs: {
+      version: string
+      artifacts: BuildInfo
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(2, 7);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**job**");
+      expect(markdown.value).toContain("`build`");
+      expect(markdown.value).toContain("**Runs on:**");
+      expect(markdown.value).toContain("`ubuntu-latest`");
+      expect(markdown.value).toContain("**Needs:**");
+      expect(markdown.value).toContain("`lint`");
+      expect(markdown.value).toContain("`test`");
+      expect(markdown.value).toContain("**Outputs:**");
+      expect(markdown.value).toContain("`version`");
+      expect(markdown.value).toContain("(string)");
+    });
+
+    it("should provide hover for agent_job definition", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  agent_job review {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(2, 13);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**agent_job**");
+      expect(markdown.value).toContain("`review`");
+    });
+
+    it("should provide hover for job referenced in needs", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job lint {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+  job build {
+    runs_on: ubuntu-latest
+    needs: [lint]
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(8, 13);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**job**");
+      expect(markdown.value).toContain("`lint`");
+    });
+
+    it("should provide hover for job with single needs", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job test {
+    runs_on: ubuntu-latest
+    needs: build
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(2, 7);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**Needs:**");
+      expect(markdown.value).toContain("`build`");
+    });
+  });
+
+  describe("cycle hover", () => {
+    it("should provide hover for cycle definition", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  cycle retry_build {
+    max_iters = 3
+    body {
+      job attempt {
+        runs_on: ubuntu-latest
+        steps: []
+      }
+    }
+  }
+}`);
+      const position = new vscode.Position(2, 10);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**cycle**");
+      expect(markdown.value).toContain("`retry_build`");
+      expect(markdown.value).toContain("**Max iterations:**");
+      expect(markdown.value).toContain("3");
+    });
+  });
+
+  describe("output reference hover", () => {
+    it("should provide hover for output reference in expression", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      version: string
+    }
+    steps: []
+  }
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [build]
+    if: jobs.build.outputs.version == "1.0.0"
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(12, 30);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**output**");
+      expect(markdown.value).toContain("`version`");
+      expect(markdown.value).toContain("**Type:**");
+      expect(markdown.value).toContain("string");
+      expect(markdown.value).toContain("**From job:**");
+      expect(markdown.value).toContain("`build`");
+    });
+  });
+
+  describe("type hover with fields", () => {
+    it("should show all fields in type hover", () => {
+      const document = createMockDocument(`type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(11, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BuildInfo`");
+      expect(markdown.value).toContain("Locally defined type");
+      expect(markdown.value).toContain("**Fields:**");
+      expect(markdown.value).toContain("`version`");
+      expect(markdown.value).toContain("`commit`");
+      expect(markdown.value).toContain("`timestamp`");
+    });
+  });
+
+  describe("imported type hover with provenance", () => {
+    it("should show import source for imported type", () => {
+      const document = createMockDocument(`import { BuildInfo } from "./types.workpipe"
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(7, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BuildInfo`");
+      expect(markdown.value).toContain("**From:**");
+      expect(markdown.value).toContain("`./types.workpipe`");
+    });
+
+    it("should show original name for aliased imported type", () => {
+      const document = createMockDocument(`import { BuildInfo as BI } from "./types.workpipe"
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BI
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(7, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type**");
+      expect(markdown.value).toContain("`BI`");
+      expect(markdown.value).toContain("originally");
+      expect(markdown.value).toContain("`BuildInfo`");
+      expect(markdown.value).toContain("**From:**");
+      expect(markdown.value).toContain("`./types.workpipe`");
+    });
+  });
+
+  describe("job hover edge cases", () => {
+    it("should not show hover for job name in unrelated context", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [run("echo build")]
+  }
+}`);
+      const position = new vscode.Position(4, 20);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeNull();
+    });
+
+    it("should handle job without outputs", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job test {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(2, 7);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**job**");
+      expect(markdown.value).toContain("`test`");
+      expect(markdown.value).not.toContain("**Outputs:**");
+    });
+
+    it("should handle job without needs", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(2, 7);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).not.toContain("**Needs:**");
     });
   });
 });

@@ -30,18 +30,13 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No active work items)
+(No work items in progress)
 
 ---
 
 ## Up Next (Priority Order)
 
-### Tooling Enhancements (Lower Priority)
-
-1. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
-   - Rich hover information for keywords and symbols
-   - Context-aware hovers showing job/type details
-   - Import provenance in hovers
+(No work items scheduled)
 
 ---
 
@@ -85,10 +80,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 982 tests (71 lang + 854 compiler + 57 VS Code)
-**Work Items Completed:** 87 (WI-001 through WI-087)
+**Test Count:** 995 tests (71 lang + 867 compiler + 57 VS Code)
+**Work Items Completed:** 88 (WI-001 through WI-088)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 1 (WI-088)
+**Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -258,6 +253,18 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Tooling Polish (Milestone E - COMPLETE)
+
+- **WI-088: VS Code Hover Hints Enhancement** - Completed 2025-12-31
+  - Enhanced hover.ts with keyword documentation (workflow, job, agent_job, agent_task, cycle, type, needs)
+  - Context-aware hovers for job names showing runs_on, needs, outputs
+  - Cycle definition hovers with max_iters
+  - Output reference hovers showing type information
+  - Type hovers showing all fields
+  - Import provenance tracking for imported types
+  - 15 new tests, 5 existing tests updated
+  - All 995 tests passing
 
 ### Import System (Milestone F - COMPLETE)
 

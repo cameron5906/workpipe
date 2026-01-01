@@ -1,17 +1,9 @@
 import * as vscode from "vscode";
-import {
-  compile,
-  compileWithImports,
-  createImportContext,
-  normalizePath,
-  type TypeRegistry,
-  type FileResolver,
-} from "@workpipe/compiler";
 
 const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   workflow: {
     description:
-      "A workflow is the top-level container that defines a CI/CD pipeline. It contains jobs, cycles, and triggers.",
+      "Defines a GitHub Actions workflow. A workflow is the top-level container that defines a CI/CD pipeline with jobs, cycles, and triggers.",
     example: `workflow ci {
   on: push
   job build {
@@ -22,7 +14,7 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   },
   job: {
     description:
-      "A job is a unit of work that runs on a specified runner. Jobs can have steps, outputs, and dependencies on other jobs.",
+      "Defines a job that runs on a specified runner. Jobs can have steps, outputs, and dependencies on other jobs.",
     example: `job build {
   runs_on: ubuntu-latest
   steps: [
@@ -33,7 +25,7 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   },
   agent_job: {
     description:
-      "An agent job is a specialized job that runs an AI agent. It requires a runner and can have prompts, tools, and outputs.",
+      "Defines an AI agent job for automated tasks. Agent jobs run AI agents with prompts, tools, and outputs.",
     example: `agent_job review {
   runs_on: ubuntu-latest
   prompt: "Review the code changes"
@@ -42,7 +34,7 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   },
   cycle: {
     description:
-      "A cycle defines a loop that repeats until a condition is met or a maximum number of iterations is reached. Cycles contain a body with jobs.",
+      "Defines an iterative refinement cycle. A cycle repeats until a condition is met or a maximum number of iterations is reached.",
     example: `cycle retry_build {
   max_iters = 3
   body {
@@ -55,10 +47,19 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   },
   agent_task: {
     description:
-      "An agent task is a reusable AI agent definition that can be invoked within jobs or cycles.",
+      "Defines a task within an agent job. Agent tasks are reusable AI agent definitions that can be invoked within jobs or cycles.",
     example: `agent_task code_review {
   prompt: "Review code for best practices"
   tools: ["read_file"]
+}`,
+  },
+  type: {
+    description:
+      "Declares a reusable type definition. Types define structured data schemas that can be used for job outputs and agent task schemas.",
+    example: `type BuildInfo {
+  version: string
+  commit: string
+  artifacts: [string]
 }`,
   },
 };
@@ -118,52 +119,115 @@ const PROPERTY_DOCS: Record<string, { description: string; example: string }> = 
   },
 };
 
+interface JobInfo {
+  name: string;
+  kind: "job" | "agent_job" | "matrix_job";
+  runsOn: string | null;
+  needs: string[];
+  outputs: Array<{ name: string; type: string }>;
+}
+
 interface TypeInfo {
   name: string;
   provenance?: string;
   fields: Array<{ name: string; type: string }>;
 }
 
-function createMemoryFileResolver(source: string): FileResolver {
-  return {
-    async resolve(): Promise<string | null> {
-      return null;
-    },
-    async read(): Promise<string> {
-      return source;
-    },
-    async exists(): Promise<boolean> {
-      return false;
-    },
-  };
+function parseTypeExpression(typeStr: string): string {
+  return typeStr.trim();
 }
 
-async function getTypeInfoFromSource(
-  source: string,
-  typeName: string
-): Promise<TypeInfo | null> {
-  try {
-    const result = compile(source);
+function extractTypeFields(fieldsBlock: string): Array<{ name: string; type: string }> {
+  const fields: Array<{ name: string; type: string }> = [];
+  const lines = fieldsBlock.split('\n');
 
-    const typePattern = new RegExp(
-      `type\\s+${typeName}\\s*\\{([^}]*)\\}`,
-      "s"
-    );
-    const match = source.match(typePattern);
-    if (match) {
-      const fieldsStr = match[1];
-      const fields: Array<{ name: string; type: string }> = [];
-      const fieldPattern = /(\w+)\s*:\s*(\w+)/g;
-      let fieldMatch;
-      while ((fieldMatch = fieldPattern.exec(fieldsStr)) !== null) {
-        fields.push({ name: fieldMatch[1], type: fieldMatch[2] });
-      }
-      return { name: typeName, fields };
-    }
-  } catch {
-    return null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const colonIndex = trimmed.indexOf(':');
+    if (colonIndex === -1) continue;
+
+    const name = trimmed.substring(0, colonIndex).trim();
+    let type = trimmed.substring(colonIndex + 1).trim();
+
+    if (!name || !type) continue;
+
+    type = parseTypeExpression(type);
+    fields.push({ name, type });
   }
-  return null;
+
+  return fields;
+}
+
+function findJobDefinitions(source: string): JobInfo[] {
+  const jobs: JobInfo[] = [];
+
+  const jobPattern = /\b(job|agent_job|matrix\s+job)\s+(\w+)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/gs;
+  let match;
+
+  while ((match = jobPattern.exec(source)) !== null) {
+    const kindStr = match[1].replace(/\s+/g, '_');
+    const kind = kindStr === 'matrix_job' ? 'matrix_job' : kindStr as "job" | "agent_job" | "matrix_job";
+    const name = match[2];
+    const body = match[3];
+
+    let runsOn: string | null = null;
+    const needs: string[] = [];
+    const outputs: Array<{ name: string; type: string }> = [];
+
+    const runsOnMatch = body.match(/runs_on\s*:\s*(\S+)/);
+    if (runsOnMatch) {
+      runsOn = runsOnMatch[1];
+    }
+
+    const needsMatch = body.match(/needs\s*:\s*\[([^\]]*)\]/);
+    if (needsMatch) {
+      const needsList = needsMatch[1].split(',').map(n => n.trim()).filter(n => n);
+      needs.push(...needsList);
+    } else {
+      const singleNeedsMatch = body.match(/needs\s*:\s*(\w+)/);
+      if (singleNeedsMatch) {
+        needs.push(singleNeedsMatch[1]);
+      }
+    }
+
+    const outputsMatch = body.match(/outputs\s*:\s*\{([^}]*)\}/s);
+    if (outputsMatch) {
+      const outputsBlock = outputsMatch[1];
+      const outputPattern = /(\w+)\s*:\s*(\w+)/g;
+      let outputMatch;
+      while ((outputMatch = outputPattern.exec(outputsBlock)) !== null) {
+        outputs.push({ name: outputMatch[1], type: outputMatch[2] });
+      }
+    }
+
+    jobs.push({ name, kind, runsOn, needs, outputs });
+  }
+
+  return jobs;
+}
+
+function findCycleDefinitions(source: string): Array<{ name: string; maxIters: number | null }> {
+  const cycles: Array<{ name: string; maxIters: number | null }> = [];
+
+  const cyclePattern = /\bcycle\s+(\w+)\s*\{([^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*)\}/gs;
+  let match;
+
+  while ((match = cyclePattern.exec(source)) !== null) {
+    const name = match[1];
+    const body = match[2];
+
+    let maxIters: number | null = null;
+    const maxItersMatch = body.match(/max_iters\s*=\s*(\d+)/);
+    if (maxItersMatch) {
+      maxIters = parseInt(maxItersMatch[1], 10);
+    }
+
+    cycles.push({ name, maxIters });
+  }
+
+  return cycles;
 }
 
 function findImportForType(
@@ -208,21 +272,122 @@ export class HoverProvider implements vscode.HoverProvider {
 
     if (KEYWORD_DOCS[wordLower]) {
       const doc = KEYWORD_DOCS[wordLower];
-      return this.createHover(wordLower, doc.description, doc.example);
+      return this.createKeywordHover(wordLower, doc.description, doc.example);
     }
 
     if (PROPERTY_DOCS[wordLower]) {
       const doc = PROPERTY_DOCS[wordLower];
-      return this.createHover(wordLower, doc.description, doc.example);
+      return this.createKeywordHover(wordLower, doc.description, doc.example);
     }
 
     const source = document.getText();
+    const line = document.lineAt(position.line).text;
+
+    const jobHover = this.getJobHover(source, word, line, position);
+    if (jobHover) {
+      return jobHover;
+    }
+
+    const cycleHover = this.getCycleHover(source, word, line);
+    if (cycleHover) {
+      return cycleHover;
+    }
+
     const typeHover = this.getTypeHover(source, word);
     if (typeHover) {
       return typeHover;
     }
 
+    const outputRefHover = this.getOutputReferenceHover(source, word, line);
+    if (outputRefHover) {
+      return outputRefHover;
+    }
+
     return null;
+  }
+
+  private getJobHover(
+    source: string,
+    word: string,
+    line: string,
+    position: vscode.Position
+  ): vscode.Hover | null {
+    const jobs = findJobDefinitions(source);
+    const job = jobs.find((j) => j.name === word);
+
+    if (!job) {
+      return null;
+    }
+
+    const isJobDefinition = new RegExp(
+      `\\b(job|agent_job|matrix\\s+job)\\s+${word}\\b`
+    ).test(line);
+    const isNeedsReference = /\bneeds\s*:\s*/.test(line);
+    const isJobsPrefix = new RegExp(`\\bjobs\\.${word}\\b`).test(line);
+
+    if (!isJobDefinition && !isNeedsReference && !isJobsPrefix) {
+      return null;
+    }
+
+    return this.createJobHover(job);
+  }
+
+  private createJobHover(job: JobInfo): vscode.Hover {
+    const markdown = new vscode.MarkdownString();
+
+    const kindLabel =
+      job.kind === "agent_job"
+        ? "agent_job"
+        : job.kind === "matrix_job"
+          ? "matrix job"
+          : "job";
+
+    markdown.appendMarkdown(`**${kindLabel}** \`${job.name}\`\n\n`);
+
+    if (job.runsOn) {
+      markdown.appendMarkdown(`**Runs on:** \`${job.runsOn}\`\n\n`);
+    }
+
+    if (job.needs.length > 0) {
+      const needsList = job.needs.map((n) => `\`${n}\``).join(", ");
+      markdown.appendMarkdown(`**Needs:** ${needsList}\n\n`);
+    }
+
+    if (job.outputs.length > 0) {
+      markdown.appendMarkdown(`**Outputs:**\n`);
+      for (const output of job.outputs) {
+        markdown.appendMarkdown(`- \`${output.name}\` (${output.type})\n`);
+      }
+    }
+
+    return new vscode.Hover(markdown);
+  }
+
+  private getCycleHover(
+    source: string,
+    word: string,
+    line: string
+  ): vscode.Hover | null {
+    const cycles = findCycleDefinitions(source);
+    const cycle = cycles.find((c) => c.name === word);
+
+    if (!cycle) {
+      return null;
+    }
+
+    const isCycleDefinition = new RegExp(`\\bcycle\\s+${word}\\b`).test(line);
+    if (!isCycleDefinition) {
+      return null;
+    }
+
+    const markdown = new vscode.MarkdownString();
+    markdown.appendMarkdown(`**cycle** \`${cycle.name}\`\n\n`);
+
+    if (cycle.maxIters !== null) {
+      markdown.appendMarkdown(`**Max iterations:** ${cycle.maxIters}\n`);
+    }
+
+    return new vscode.Hover(markdown);
   }
 
   private getTypeHover(source: string, typeName: string): vscode.Hover | null {
@@ -234,15 +399,17 @@ export class HoverProvider implements vscode.HoverProvider {
 
     if (match) {
       const markdown = new vscode.MarkdownString();
-      markdown.appendMarkdown(`**type ${typeName}**\n\n`);
+      markdown.appendMarkdown(`**type** \`${typeName}\`\n\n`);
       markdown.appendMarkdown(`Locally defined type.\n\n`);
-      markdown.appendMarkdown(`**Fields:**\n`);
 
       const fieldsStr = match[1];
-      const fieldPattern = /(\w+)\s*:\s*(\w+)/g;
-      let fieldMatch;
-      while ((fieldMatch = fieldPattern.exec(fieldsStr)) !== null) {
-        markdown.appendMarkdown(`- \`${fieldMatch[1]}\`: ${fieldMatch[2]}\n`);
+      const fields = extractTypeFields(fieldsStr);
+
+      if (fields.length > 0) {
+        markdown.appendMarkdown(`**Fields:**\n`);
+        for (const field of fields) {
+          markdown.appendMarkdown(`- \`${field.name}\`: ${field.type}\n`);
+        }
       }
 
       return new vscode.Hover(markdown);
@@ -251,15 +418,15 @@ export class HoverProvider implements vscode.HoverProvider {
     const importInfo = findImportForType(source, typeName);
     if (importInfo) {
       const markdown = new vscode.MarkdownString();
-      markdown.appendMarkdown(`**type ${typeName}**\n\n`);
+      markdown.appendMarkdown(`**type** \`${typeName}\`\n\n`);
 
       if (importInfo.originalName !== typeName) {
         markdown.appendMarkdown(
-          `Imported as \`${typeName}\` from \`${importInfo.originalName}\` in ${importInfo.path}\n`
+          `Imported as \`${typeName}\` (originally \`${importInfo.originalName}\`)\n\n`
         );
-      } else {
-        markdown.appendMarkdown(`(from ${importInfo.path})\n`);
       }
+
+      markdown.appendMarkdown(`**From:** \`${importInfo.path}\`\n`);
 
       return new vscode.Hover(markdown);
     }
@@ -267,7 +434,40 @@ export class HoverProvider implements vscode.HoverProvider {
     return null;
   }
 
-  private createHover(
+  private getOutputReferenceHover(
+    source: string,
+    word: string,
+    line: string
+  ): vscode.Hover | null {
+    const outputRefPattern = new RegExp(`jobs\\.(\\w+)\\.outputs\\.${word}\\b`);
+    const match = line.match(outputRefPattern);
+
+    if (!match) {
+      return null;
+    }
+
+    const jobName = match[1];
+    const jobs = findJobDefinitions(source);
+    const job = jobs.find((j) => j.name === jobName);
+
+    if (!job) {
+      return null;
+    }
+
+    const output = job.outputs.find((o) => o.name === word);
+    if (!output) {
+      return null;
+    }
+
+    const markdown = new vscode.MarkdownString();
+    markdown.appendMarkdown(`**output** \`${word}\`\n\n`);
+    markdown.appendMarkdown(`**Type:** ${output.type}\n\n`);
+    markdown.appendMarkdown(`**From job:** \`${jobName}\`\n`);
+
+    return new vscode.Hover(markdown);
+  }
+
+  private createKeywordHover(
     keyword: string,
     description: string,
     example: string

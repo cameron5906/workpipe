@@ -1,7 +1,7 @@
 # WI-088: VS Code Hover Hints Enhancement
 
 **ID**: WI-088
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P3-Low
 **Milestone**: E (Tooling)
 **Created**: 2025-12-31
@@ -15,18 +15,18 @@ This improves the developer experience by providing inline documentation and con
 
 ## Acceptance Criteria
 
-- [ ] Hover over `workflow` keyword shows workflow documentation
-- [ ] Hover over `job` keyword shows job documentation
-- [ ] Hover over `agent_job` shows agent job documentation
-- [ ] Hover over `agent_task` shows agent task documentation
-- [ ] Hover over `cycle` shows cycle documentation
-- [ ] Hover over `type` shows type declaration documentation
-- [ ] Hover over type references shows type definition
-- [ ] Hover over job names shows job details (runs_on, needs, etc.)
-- [ ] Hover over output references shows output type info
-- [ ] Hover over `needs` shows dependency job information
-- [ ] Hover over imported types shows source file
-- [ ] Tests for hover provider functionality
+- [x] Hover over `workflow` keyword shows workflow documentation
+- [x] Hover over `job` keyword shows job documentation
+- [x] Hover over `agent_job` shows agent job documentation
+- [x] Hover over `agent_task` shows agent task documentation
+- [x] Hover over `cycle` shows cycle documentation
+- [x] Hover over `type` shows type declaration documentation
+- [x] Hover over type references shows type definition
+- [x] Hover over job names shows job details (runs_on, needs, etc.)
+- [x] Hover over output references shows output type info
+- [x] Hover over `needs` shows dependency job information
+- [x] Hover over imported types shows source file
+- [x] Tests for hover provider functionality
 
 ## Technical Context
 
