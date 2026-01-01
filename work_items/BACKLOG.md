@@ -36,7 +36,12 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-(No work items scheduled)
+1. **WI-090: Step Syntax Improvement Research Spike** - P1-High
+   - Research spike to investigate step syntax improvements
+   - User feedback: shell code in string syntax is cumbersome
+   - **DECISION POINT**: Requires ADR before implementation
+   - Output: ADR-0013 (Proposed status)
+   - Work pauses after ADR creation for team review
 
 ---
 
@@ -83,7 +88,7 @@ The entire feature is production-ready with:
 **Test Count:** 998 tests (71 lang + 870 compiler + 57 VS Code)
 **Work Items Completed:** 89 (WI-001 through WI-089)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 0
+**Work Items In Backlog:** 1 (WI-090)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
