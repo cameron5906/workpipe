@@ -31,7 +31,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No items in progress - all work complete)
+(No items in progress)
 
 ---
 
@@ -83,7 +83,7 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 972 tests (71 lang + 821 compiler + 80 VS Code)
-**Work Items Completed:** 96 (WI-001 through WI-096)
+**Work Items Completed:** 97 (WI-001 through WI-097)
 **Work Items In Progress:** 0
 **Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
@@ -257,6 +257,13 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-097: Update README.md Step Syntax** - Completed 2025-12-31
+  - Updated all 5 code examples in README.md to new block syntax
+  - Converted steps: [...] to steps { }
+  - Converted run("...") to shell { }
+  - Converted uses("...") to uses("...") {}
+  - Updated test count from "326+" to "1000+"
 
 - **WI-096: Update Remaining Examples to New Step Syntax** - Completed 2025-12-31
   - Converted 11 .workpipe example files to block syntax

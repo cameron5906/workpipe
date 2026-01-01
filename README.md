@@ -93,63 +93,72 @@ workflow microservices_build {
   job build_api {
     runs_on: ubuntu-latest
     outputs: { image_tag: string }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/api:${{ github.sha }} ./services/api"),
-      run("echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/api:${{ github.sha }} ./services/api }
+      shell { echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job build_web {
     runs_on: ubuntu-latest
     outputs: { image_tag: string }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/web:${{ github.sha }} ./services/web"),
-      run("echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/web:${{ github.sha }} ./services/web }
+      shell { echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job test_api {
     runs_on: ubuntu-latest
-    steps: [uses("actions/checkout@v4"), run("cd services/api && npm ci && npm run test:unit")]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/api && npm ci && npm run test:unit }
+    }
   }
 
   job test_web {
     runs_on: ubuntu-latest
-    steps: [uses("actions/checkout@v4"), run("cd services/web && npm ci && npm run test:unit")]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/web && npm ci && npm run test:unit }
+    }
   }
 
   job integration_tests {
     runs_on: ubuntu-latest
     needs: [build_api, build_web, test_api, test_web]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("docker-compose -f docker-compose.test.yml up -d"),
-      run("sleep 30"),
-      run("npm run test:integration"),
-      run("docker-compose -f docker-compose.test.yml down")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { docker-compose -f docker-compose.test.yml up -d }
+      shell { sleep 30 }
+      shell { npm run test:integration }
+      shell { docker-compose -f docker-compose.test.yml down }
+    }
   }
 
   job e2e_tests {
     runs_on: ubuntu-latest
     needs: [integration_tests]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("docker-compose -f docker-compose.e2e.yml up -d"),
-      run("npx playwright test"),
-      run("docker-compose -f docker-compose.e2e.yml down")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { docker-compose -f docker-compose.e2e.yml up -d }
+      shell { npx playwright test }
+      shell { docker-compose -f docker-compose.e2e.yml down }
+    }
   }
 
   job publish_images {
     runs_on: ubuntu-latest
     needs: [e2e_tests]
     if: github.ref == "refs/heads/main"
-    steps: [uses("actions/checkout@v4"), run("echo Publishing all service images")]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo Publishing all service images }
+    }
   }
 }
 ```
@@ -194,12 +203,16 @@ workflow ci {
 
   job test {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("actions/setup-node@v4") { with: { node-version: "20" } },
-      run("npm ci"),
-      run("npm test")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("actions/setup-node@v4") {
+        with: { node-version: "20" }
+      }
+      shell {
+        npm ci
+        npm test
+      }
+    }
   }
 }
 ```
@@ -241,8 +254,8 @@ workflow review {
 
   agent_job code_review {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       agent_task("Review the code changes and provide structured feedback") {
         model: "claude-sonnet-4-20250514"
         max_turns: 5
@@ -250,7 +263,7 @@ workflow review {
         output_schema: "ReviewResult"
         output_artifact: "review_result"
       }
-    ]
+    }
   }
 }
 ```
@@ -272,18 +285,20 @@ workflow quality_gate {
     body {
       agent_job analyze {
         runs_on: ubuntu-latest
-        steps: [
+        steps {
           agent_task("Analyze and improve code quality") {
             model: "claude-sonnet-4-20250514"
             max_turns: 10
           }
-        ]
+        }
       }
 
       job apply_fixes {
         runs_on: ubuntu-latest
         needs: analyze
-        steps: [run("echo Applying fixes from analysis")]
+        steps {
+          shell { echo Applying fixes from analysis }
+        }
       }
     }
   }
@@ -301,25 +316,29 @@ workflow deploy {
   job build {
     runs_on: ubuntu-latest
     outputs: { image_tag: string }
-    steps: [
-      uses("actions/checkout@v4"),
-      run("docker build -t myapp:${{ github.sha }} ."),
-      run("echo image_tag=myapp:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { docker build -t myapp:${{ github.sha }} . }
+      shell { echo image_tag=myapp:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job deploy_staging {
     runs_on: ubuntu-latest
     needs: [build]
     environment: staging
-    steps: [run("echo Deploying ${{ needs.build.outputs.image_tag }} to staging")]
+    steps {
+      shell { echo Deploying ${{ needs.build.outputs.image_tag }} to staging }
+    }
   }
 
   job deploy_production {
     runs_on: ubuntu-latest
     needs: [deploy_staging]
     environment: production
-    steps: [run("echo Deploying to production")]
+    steps {
+      shell { echo Deploying to production }
+    }
   }
 }
 ```
@@ -357,7 +376,7 @@ See the [examples/](examples/) directory for more complete workflows.
 WorkPipe is in active development. The current release includes:
 
 - **5 packages:** `@workpipe/cli`, `@workpipe/compiler`, `@workpipe/lang`, `@workpipe/action`, VS Code extension
-- **326+ passing tests** covering lexer, parser, semantic analysis, and code generation
+- **1000+ passing tests** covering lexer, parser, semantic analysis, and code generation
 - **Full compiler pipeline** with comprehensive error diagnostics
 
 ---
