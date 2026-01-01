@@ -1,4 +1,12 @@
 import * as vscode from "vscode";
+import {
+  compile,
+  compileWithImports,
+  createImportContext,
+  normalizePath,
+  type TypeRegistry,
+  type FileResolver,
+} from "@workpipe/compiler";
 
 const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   workflow: {
@@ -110,6 +118,80 @@ const PROPERTY_DOCS: Record<string, { description: string; example: string }> = 
   },
 };
 
+interface TypeInfo {
+  name: string;
+  provenance?: string;
+  fields: Array<{ name: string; type: string }>;
+}
+
+function createMemoryFileResolver(source: string): FileResolver {
+  return {
+    async resolve(): Promise<string | null> {
+      return null;
+    },
+    async read(): Promise<string> {
+      return source;
+    },
+    async exists(): Promise<boolean> {
+      return false;
+    },
+  };
+}
+
+async function getTypeInfoFromSource(
+  source: string,
+  typeName: string
+): Promise<TypeInfo | null> {
+  try {
+    const result = compile(source);
+
+    const typePattern = new RegExp(
+      `type\\s+${typeName}\\s*\\{([^}]*)\\}`,
+      "s"
+    );
+    const match = source.match(typePattern);
+    if (match) {
+      const fieldsStr = match[1];
+      const fields: Array<{ name: string; type: string }> = [];
+      const fieldPattern = /(\w+)\s*:\s*(\w+)/g;
+      let fieldMatch;
+      while ((fieldMatch = fieldPattern.exec(fieldsStr)) !== null) {
+        fields.push({ name: fieldMatch[1], type: fieldMatch[2] });
+      }
+      return { name: typeName, fields };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function findImportForType(
+  source: string,
+  typeName: string
+): { path: string; originalName: string } | null {
+  const importPattern = /import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+  let match;
+
+  while ((match = importPattern.exec(source)) !== null) {
+    const imports = match[1];
+    const path = match[2];
+
+    const aliasPattern = new RegExp(`(\\w+)\\s+as\\s+${typeName}\\b`);
+    const aliasMatch = imports.match(aliasPattern);
+    if (aliasMatch) {
+      return { path, originalName: aliasMatch[1] };
+    }
+
+    const directPattern = new RegExp(`\\b${typeName}\\b`);
+    if (directPattern.test(imports)) {
+      return { path, originalName: typeName };
+    }
+  }
+
+  return null;
+}
+
 export class HoverProvider implements vscode.HoverProvider {
   provideHover(
     document: vscode.TextDocument,
@@ -121,16 +203,65 @@ export class HoverProvider implements vscode.HoverProvider {
       return null;
     }
 
-    const word = document.getText(wordRange).toLowerCase();
+    const word = document.getText(wordRange);
+    const wordLower = word.toLowerCase();
 
-    if (KEYWORD_DOCS[word]) {
-      const doc = KEYWORD_DOCS[word];
-      return this.createHover(word, doc.description, doc.example);
+    if (KEYWORD_DOCS[wordLower]) {
+      const doc = KEYWORD_DOCS[wordLower];
+      return this.createHover(wordLower, doc.description, doc.example);
     }
 
-    if (PROPERTY_DOCS[word]) {
-      const doc = PROPERTY_DOCS[word];
-      return this.createHover(word, doc.description, doc.example);
+    if (PROPERTY_DOCS[wordLower]) {
+      const doc = PROPERTY_DOCS[wordLower];
+      return this.createHover(wordLower, doc.description, doc.example);
+    }
+
+    const source = document.getText();
+    const typeHover = this.getTypeHover(source, word);
+    if (typeHover) {
+      return typeHover;
+    }
+
+    return null;
+  }
+
+  private getTypeHover(source: string, typeName: string): vscode.Hover | null {
+    const typePattern = new RegExp(
+      `type\\s+${typeName}\\s*\\{([^}]*)\\}`,
+      "s"
+    );
+    const match = source.match(typePattern);
+
+    if (match) {
+      const markdown = new vscode.MarkdownString();
+      markdown.appendMarkdown(`**type ${typeName}**\n\n`);
+      markdown.appendMarkdown(`Locally defined type.\n\n`);
+      markdown.appendMarkdown(`**Fields:**\n`);
+
+      const fieldsStr = match[1];
+      const fieldPattern = /(\w+)\s*:\s*(\w+)/g;
+      let fieldMatch;
+      while ((fieldMatch = fieldPattern.exec(fieldsStr)) !== null) {
+        markdown.appendMarkdown(`- \`${fieldMatch[1]}\`: ${fieldMatch[2]}\n`);
+      }
+
+      return new vscode.Hover(markdown);
+    }
+
+    const importInfo = findImportForType(source, typeName);
+    if (importInfo) {
+      const markdown = new vscode.MarkdownString();
+      markdown.appendMarkdown(`**type ${typeName}**\n\n`);
+
+      if (importInfo.originalName !== typeName) {
+        markdown.appendMarkdown(
+          `Imported as \`${typeName}\` from \`${importInfo.originalName}\` in ${importInfo.path}\n`
+        );
+      } else {
+        markdown.appendMarkdown(`(from ${importInfo.path})\n`);
+      }
+
+      return new vscode.Hover(markdown);
     }
 
     return null;

@@ -190,4 +190,99 @@ describe("HoverProvider", () => {
       expect(properties).toHaveProperty("outputs");
     });
   });
+
+  describe("type hover", () => {
+    it("should provide hover for locally defined type", () => {
+      const document = createMockDocument(`type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(10, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type BuildInfo**");
+      expect(markdown.value).toContain("Locally defined type");
+      expect(markdown.value).toContain("version");
+      expect(markdown.value).toContain("commit");
+    });
+
+    it("should provide hover for imported type", () => {
+      const document = createMockDocument(`import { BuildInfo } from "./types.workpipe"
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(7, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type BuildInfo**");
+      expect(markdown.value).toContain("./types.workpipe");
+    });
+
+    it("should provide hover for aliased imported type", () => {
+      const document = createMockDocument(`import { BuildInfo as BI } from "./types.workpipe"
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BI
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(7, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**type BI**");
+      expect(markdown.value).toContain("Imported as");
+      expect(markdown.value).toContain("BuildInfo");
+      expect(markdown.value).toContain("./types.workpipe");
+    });
+
+    it("should return null for unknown type", () => {
+      const document = createMockDocument(`workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: UnknownType
+    }
+    steps: []
+  }
+}`);
+      const position = new vscode.Position(5, 12);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeNull();
+    });
+  });
 });

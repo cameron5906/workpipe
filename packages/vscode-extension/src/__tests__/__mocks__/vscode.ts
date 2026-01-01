@@ -8,6 +8,7 @@ export const languages = {
         store.set(uri, diagnostics);
       }),
       get: (uri: Uri) => store.get(uri),
+      delete: vi.fn((uri: Uri) => store.delete(uri)),
       dispose: vi.fn(),
       clear: vi.fn(),
     };
@@ -20,11 +21,24 @@ export const workspace = {
   onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
   onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
   onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-  textDocuments: [],
+  onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+  createFileSystemWatcher: vi.fn(() => ({
+    onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+    onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+    onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+    dispose: vi.fn(),
+  })),
+  textDocuments: [] as any[],
+  workspaceFolders: undefined as any,
+  fs: {
+    stat: vi.fn(() => Promise.resolve({ type: 1 })),
+    readFile: vi.fn(() => Promise.resolve(new Uint8Array())),
+  },
 };
 
 export const window = {
-  activeTextEditor: undefined,
+  activeTextEditor: undefined as any,
+  onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
 };
 
 export class Range {
@@ -92,6 +106,8 @@ export enum DiagnosticSeverity {
 }
 
 export class Uri {
+  public readonly fsPath: string;
+
   static file(path: string): Uri {
     return new Uri(path);
   }
@@ -100,7 +116,27 @@ export class Uri {
     return new Uri(value);
   }
 
-  constructor(public path: string) {}
+  static joinPath(base: Uri, ...segments: string[]): Uri {
+    let path = base.path;
+    for (const segment of segments) {
+      if (segment === "..") {
+        const lastSlash = path.lastIndexOf("/");
+        if (lastSlash > 0) {
+          path = path.substring(0, lastSlash);
+        }
+      } else if (segment !== ".") {
+        if (!path.endsWith("/")) {
+          path += "/";
+        }
+        path += segment;
+      }
+    }
+    return new Uri(path);
+  }
+
+  constructor(public path: string) {
+    this.fsPath = path.replace(/^file:\/\//, "");
+  }
 
   toString(): string {
     return this.path;

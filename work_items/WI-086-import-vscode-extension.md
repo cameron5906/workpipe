@@ -1,11 +1,12 @@
 # WI-086: Import System - VS Code Extension
 
 **ID**: WI-086
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
 **Updated**: 2025-12-31
+**Completed**: 2025-12-31
 
 ## Description
 
@@ -13,15 +14,15 @@ Update VS Code extension for cross-file diagnostics and file watching with impor
 
 ## Acceptance Criteria
 
-- [ ] Cross-file diagnostics (import errors reference other files)
-- [ ] File watching for dependents (recompile when imported file changes)
-- [ ] Reverse dependency tracking (know which files import a changed file)
-- [ ] Diagnostics show correct file paths for cross-file errors
+- [x] Cross-file diagnostics (import errors reference other files)
+- [x] File watching for dependents (recompile when imported file changes)
+- [x] Reverse dependency tracking (know which files import a changed file)
+- [x] Diagnostics show correct file paths for cross-file errors
 - [ ] Import path completion (stretch goal)
 - [ ] Go-to-definition for imported types (stretch goal)
-- [ ] Hover shows import source on imported types
-- [ ] Tests for cross-file diagnostic display
-- [ ] Tests for file watching behavior
+- [x] Hover shows import source on imported types
+- [x] Tests for cross-file diagnostic display
+- [x] Tests for file watching behavior
 
 ## Technical Context
 

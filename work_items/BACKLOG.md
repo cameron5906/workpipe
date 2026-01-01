@@ -30,7 +30,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- WI-086: Import System - VS Code Extension - P0-Critical
+- WI-087: Import System - Documentation - P0-Critical
 
 ---
 
@@ -39,11 +39,6 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 ### Milestone F: Import System (P0-Critical - User Directive)
 
 ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementation phases:
-
-2. **WI-086: Import System - VS Code Extension** - P0-Critical
-   - Cross-file diagnostics
-   - File watching for dependents
-   - Go-to-definition for imported types (stretch)
 
 3. **WI-087: Import System - Documentation** - P0-Critical
    - Import syntax documentation
@@ -99,10 +94,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 925 tests (71 lang + 854 compiler)
-**Work Items Completed:** 85 (WI-001 through WI-085)
-**Work Items In Progress:** 1 (WI-086)
-**Work Items In Backlog:** 2 (WI-087 through WI-088)
+**Test Count:** 982 tests (71 lang + 854 compiler + 57 VS Code)
+**Work Items Completed:** 86 (WI-001 through WI-086)
+**Work Items In Progress:** 1 (WI-087)
+**Work Items In Backlog:** 1 (WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -274,6 +269,15 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Import System (Milestone F - In Progress)
+
+- **WI-086: Import System - VS Code Extension** - Completed 2025-12-31
+  - Created import-watcher.ts with ImportAwareCompilation class
+  - Updated diagnostics.ts to use compileWithImports() for cross-file diagnostics
+  - Updated extension.ts with file watchers for dependent recompilation
+  - Updated hover.ts to show import source on imported types
+  - Created import-watcher.test.ts with 12 comprehensive tests
+  - Added 4 hover tests for type provenance display
+  - All 982 tests passing (925 compiler/CLI + 57 VS Code)
 
 - **WI-085: Import System - CLI Integration** - Completed 2025-12-31
   - Updated build.ts with compileWithImports and topological compilation order

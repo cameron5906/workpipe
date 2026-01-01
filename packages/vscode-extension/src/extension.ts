@@ -11,6 +11,11 @@ function isWorkPipeDocument(document: vscode.TextDocument): boolean {
   return document.languageId === LANGUAGE_ID;
 }
 
+function isWorkPipeFile(uri: vscode.Uri): boolean {
+  const path = uri.fsPath.toLowerCase();
+  return path.endsWith(".workpipe") || path.endsWith(".wp");
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   diagnosticsProvider = new DiagnosticsProvider();
   context.subscriptions.push(diagnosticsProvider);
@@ -31,6 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (isWorkPipeDocument(document)) {
         diagnosticsProvider?.updateDiagnosticsImmediate(document);
+        diagnosticsProvider?.recompileDependents(document.uri);
       }
     })
   );
@@ -66,6 +72,26 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
   );
+
+  const watcher = vscode.workspace.createFileSystemWatcher("**/*.{workpipe,wp}");
+
+  context.subscriptions.push(
+    watcher.onDidChange((uri) => {
+      if (isWorkPipeFile(uri)) {
+        diagnosticsProvider?.recompileDependents(uri);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    watcher.onDidDelete((uri) => {
+      if (isWorkPipeFile(uri)) {
+        diagnosticsProvider?.recompileDependents(uri);
+      }
+    })
+  );
+
+  context.subscriptions.push(watcher);
 
   if (vscode.window.activeTextEditor?.document.languageId === LANGUAGE_ID) {
     diagnosticsProvider.updateDiagnosticsImmediate(vscode.window.activeTextEditor.document);
