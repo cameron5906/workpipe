@@ -10,7 +10,9 @@ import type {
   AgentJobNode,
   AgentTaskNode,
   RunStepNode,
+  ShellStepNode,
   UsesStepNode,
+  UsesBlockStepNode,
   GuardJsStepNode,
   BinaryExpressionNode,
   PropertyAccessNode,
@@ -2342,6 +2344,354 @@ workflow test {
       expect(items[1].alias).toBe("Deploy");
       expect(items[2].name).toBe("Config");
       expect(items[2].alias).toBeUndefined();
+    });
+  });
+
+  describe("shell step parsing", () => {
+    it("parses single-line shell step", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell { echo hello }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs).toHaveLength(1);
+      expect(ast!.jobs[0].steps).toHaveLength(1);
+
+      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(step.kind).toBe("shell");
+      expect(step.content).toBe("echo hello");
+      expect(step.multiline).toBe(false);
+    });
+
+    it("parses multi-line shell step", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell {
+        npm install
+        npm test
+        npm build
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(step.kind).toBe("shell");
+      expect(step.multiline).toBe(true);
+      expect(step.content).toContain("npm install");
+      expect(step.content).toContain("npm test");
+      expect(step.content).toContain("npm build");
+    });
+
+    it("parses shell step with nested braces", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell { if [ -d dist ]; then { rm -rf dist; } fi }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(step.kind).toBe("shell");
+      expect(step.content).toContain("if [ -d dist ]");
+      expect(step.content).toContain("rm -rf dist");
+    });
+
+    it("preserves shell step span", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell { echo test }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(step.span.start).toBeGreaterThan(0);
+      expect(step.span.end).toBeGreaterThan(step.span.start);
+    });
+  });
+
+  describe("uses block step parsing", () => {
+    it("parses uses block step without with property", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/checkout@v4") {
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs[0].steps).toHaveLength(1);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.kind).toBe("uses_block");
+      expect(step.action).toBe("actions/checkout@v4");
+      expect(step.with).toBeUndefined();
+    });
+
+    it("parses uses block step with simple with properties", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/setup-node@v4") {
+        with: {
+          version: "20"
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.kind).toBe("uses_block");
+      expect(step.action).toBe("actions/setup-node@v4");
+      expect(step.with).toBeDefined();
+      expect(step.with!.version).toBe("20");
+    });
+
+    it("parses uses block step with multiple with properties", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/setup-node@v4") {
+        with: {
+          version: "20",
+          cache: "npm",
+          check_latest: true
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.version).toBe("20");
+      expect(step.with!.cache).toBe("npm");
+      expect(step.with!.check_latest).toBe(true);
+    });
+
+    it("parses uses block step with numeric with property", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/cache@v4") {
+        with: {
+          restore_keys: 3
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.restore_keys).toBe(3);
+    });
+
+    it("parses uses block step with nested object in with", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/custom@v1") {
+        with: {
+          config: {
+            name: "test",
+            enabled: true
+          }
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.config).toBeDefined();
+      const config = step.with!.config as Record<string, unknown>;
+      expect(config.name).toBe("test");
+      expect(config.enabled).toBe(true);
+    });
+
+    it("parses uses block step with array in with", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/custom@v1") {
+        with: {
+          paths: ["src", "lib", "dist"]
+        }
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.with).toBeDefined();
+      expect(step.with!.paths).toEqual(["src", "lib", "dist"]);
+    });
+
+    it("preserves uses block step span", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      uses("actions/checkout@v4") {
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      const step = ast!.jobs[0].steps[0] as UsesBlockStepNode;
+      expect(step.span.start).toBeGreaterThan(0);
+      expect(step.span.end).toBeGreaterThan(step.span.start);
+    });
+  });
+
+  describe("steps block parsing", () => {
+    it("parses steps block containing mixed step types", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell { echo "Building..." }
+      uses("actions/checkout@v4") {
+      }
+      agent_task("Analyze build") {
+        model: "claude-3-sonnet"
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs[0].steps).toHaveLength(3);
+
+      const shellStep = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(shellStep.kind).toBe("shell");
+
+      const usesStep = ast!.jobs[0].steps[1] as UsesBlockStepNode;
+      expect(usesStep.kind).toBe("uses_block");
+
+      const agentStep = ast!.jobs[0].steps[2] as AgentTaskNode;
+      expect(agentStep.kind).toBe("agent_task");
+    });
+
+    it("parses steps block with guard_js step", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+      shell { echo hello }
+      step "check" guard_js """
+        return context.success === true;
+      """
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs[0].steps).toHaveLength(2);
+
+      const shellStep = ast!.jobs[0].steps[0] as ShellStepNode;
+      expect(shellStep.kind).toBe("shell");
+
+      const guardStep = ast!.jobs[0].steps[1] as GuardJsStepNode;
+      expect(guardStep.kind).toBe("guard_js_step");
+      expect(guardStep.id).toBe("check");
+    });
+
+    it("parses agent_job with steps block", () => {
+      const source = `workflow test {
+  on: push
+  agent_job analyzer {
+    runs_on: ubuntu-latest
+    steps {
+      shell { npm install }
+      agent_task("Analyze code") {
+        model: "claude-3-opus"
+      }
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs).toHaveLength(1);
+
+      const job = ast!.jobs[0] as AgentJobNode;
+      expect(job.kind).toBe("agent_job");
+      expect(job.steps).toHaveLength(2);
+
+      const shellStep = job.steps[0] as ShellStepNode;
+      expect(shellStep.kind).toBe("shell");
+
+      const agentStep = job.steps[1] as AgentTaskNode;
+      expect(agentStep.kind).toBe("agent_task");
+    });
+
+    it("parses empty steps block", () => {
+      const source = `workflow test {
+  on: push
+  job build {
+    steps {
+    }
+  }
+}`;
+      const tree = parse(source);
+      const ast = buildAST(tree, source);
+
+      expect(ast).not.toBeNull();
+      expect(ast!.jobs[0].steps).toHaveLength(0);
     });
   });
 });

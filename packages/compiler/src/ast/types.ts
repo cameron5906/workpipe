@@ -60,7 +60,13 @@ export interface JobNode {
   readonly span: Span;
 }
 
-export type StepNode = RunStepNode | UsesStepNode | AgentTaskNode | GuardJsStepNode;
+export type StepNode =
+  | RunStepNode
+  | ShellStepNode
+  | UsesStepNode
+  | UsesBlockStepNode
+  | AgentTaskNode
+  | GuardJsStepNode;
 
 export interface RunStepNode {
   readonly kind: "run";
@@ -71,6 +77,20 @@ export interface RunStepNode {
 export interface UsesStepNode {
   readonly kind: "uses";
   readonly action: string;
+  readonly span: Span;
+}
+
+export interface ShellStepNode {
+  readonly kind: "shell";
+  readonly content: string;
+  readonly multiline: boolean;
+  readonly span: Span;
+}
+
+export interface UsesBlockStepNode {
+  readonly kind: "uses_block";
+  readonly action: string;
+  readonly with?: Record<string, unknown>;
   readonly span: Span;
 }
 

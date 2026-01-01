@@ -31,7 +31,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- **WI-092: AST and Parser Updates** - P1-High
+- **WI-093: Codegen - Indentation Stripping** - P1-High
 
 ---
 
@@ -39,19 +39,13 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### Milestone G: Step Syntax Improvements (ADR-0013 ACCEPTED)
 
-1. **WI-093: Codegen - Indentation Stripping** - P1-High
-   - Strip common prefix from shell content
-   - Generate proper YAML run commands
-   - Handle uses block with: parameters
-   - **Depends on**: WI-092
-
-2. **WI-094: VS Code Extension Updates** - P2-Medium
+1. **WI-094: VS Code Extension Updates** - P2-Medium
    - Update TextMate grammar for shell blocks
    - Syntax highlighting for shell content
    - Diagnostics for new syntax
-   - **Depends on**: WI-091, WI-092, WI-093 (partial)
+   - **Depends on**: WI-091, WI-092, WI-093
 
-3. **WI-095: Documentation and Examples** - P2-Medium
+2. **WI-095: Documentation and Examples** - P2-Medium
    - Update language-reference.md
    - Update all examples to new syntax
    - Migration guide from old to new syntax
@@ -100,10 +94,10 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 950+ tests (71 lang + 882+ compiler + 57 VS Code)
-**Work Items Completed:** 91 (WI-001 through WI-091)
-**Work Items In Progress:** 1 (WI-092)
-**Work Items In Backlog:** 3 (WI-093 through WI-095)
+**Test Count:** 953 tests (71 lang + 885+ compiler + 57 VS Code)
+**Work Items Completed:** 92 (WI-001 through WI-092)
+**Work Items In Progress:** 1 (WI-093)
+**Work Items In Backlog:** 2 (WI-094 through WI-095)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -281,6 +275,12 @@ The following issues were identified by the documentation steward during WI-062 
   - Created shell-tokenizer.ts with brace-counting external tokenizer
   - Added 12 new grammar tests for new step syntax
   - All 938 baseline tests passing
+
+- **WI-092: AST and Parser Updates for Step Syntax** - Completed 2025-12-31
+  - Added ShellStepNode and UsesBlockStepNode to ast/types.ts
+  - Updated ast/builder.ts with buildShellStep(), buildUsesBlockStep(), buildStepsBlock()
+  - Added 15+ AST builder tests for new step node types
+  - All 953 tests passing
 
 ### Research Spikes
 - **WI-090: Step Syntax Improvement Research Spike** - Completed 2025-12-31

@@ -1,11 +1,11 @@
 # WI-092: AST and Parser Updates for Step Syntax
 
 **ID**: WI-092
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: Step Syntax Improvements (ADR-0013)
 **Created**: 2025-12-31
-**Updated**: 2025-12-31
+**Updated**: 2025-12-31 (completed)
 
 ## Description
 
@@ -37,34 +37,34 @@ steps {
 
 ### AST Node Types
 
-- [ ] Add `ShellStepNode` type with `content: string` and `span: SourceSpan`
-- [ ] Add `UsesBlockStepNode` type with `action: string`, `with?: ObjectLiteral`, and `span: SourceSpan`
-- [ ] Update `StepNode` union to include new step types
-- [ ] Update `JobNode.steps` to accept both array and block-style steps
+- [x] Add `ShellStepNode` type with `content: string` and `span: SourceSpan`
+- [x] Add `UsesBlockStepNode` type with `action: string`, `with?: ObjectLiteral`, and `span: SourceSpan`
+- [x] Update `StepNode` union to include new step types
+- [x] Update `JobNode.steps` to accept both array and block-style steps
 
 ### AST Builder
 
-- [ ] Implement `buildShellStep()` to extract shell content from `ShellBlock` CST node
-- [ ] Implement `buildUsesBlockStep()` to extract action and with-properties
-- [ ] Implement `buildStepsBlock()` to handle `StepsBlock` CST node
-- [ ] Handle both `steps:` property (array) and `steps { }` block syntax
-- [ ] Preserve exact source positions for all new node types
+- [x] Implement `buildShellStep()` to extract shell content from `ShellBlock` CST node
+- [x] Implement `buildUsesBlockStep()` to extract action and with-properties
+- [x] Implement `buildStepsBlock()` to handle `StepsBlock` CST node
+- [x] Handle both `steps:` property (array) and `steps { }` block syntax
+- [x] Preserve exact source positions for all new node types
 
 ### Content Handling
 
-- [ ] Single-line shell blocks: `shell { echo hello }` - content is `echo hello`
-- [ ] Multi-line shell blocks: content is everything between `{` and `}`
-- [ ] Leading/trailing whitespace preserved in AST (stripping happens in codegen)
-- [ ] Nested braces inside shell content are correctly captured
+- [x] Single-line shell blocks: `shell { echo hello }` - content is `echo hello`
+- [x] Multi-line shell blocks: content is everything between `{` and `}`
+- [x] Leading/trailing whitespace preserved in AST (stripping happens in codegen)
+- [x] Nested braces inside shell content are correctly captured
 
 ### Tests
 
-- [ ] AST builder tests for `ShellStepNode` construction
-- [ ] AST builder tests for `UsesBlockStepNode` construction
-- [ ] AST builder tests for `StepsBlock` containing mixed step types
-- [ ] AST builder tests for single-line vs multi-line shell
-- [ ] Source span tests for new node types
-- [ ] Error recovery tests for partial AST on malformed input
+- [x] AST builder tests for `ShellStepNode` construction
+- [x] AST builder tests for `UsesBlockStepNode` construction
+- [x] AST builder tests for `StepsBlock` containing mixed step types
+- [x] AST builder tests for single-line vs multi-line shell
+- [x] Source span tests for new node types
+- [x] Error recovery tests for partial AST on malformed input
 
 ## Technical Context
 

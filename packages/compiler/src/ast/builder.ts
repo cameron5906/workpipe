@@ -109,6 +109,22 @@ const {
   ImportList,
   ImportItem,
   ImportPath,
+  StepsBlock,
+  BlockStep,
+  ShellStep,
+  ShellBlock,
+  shellContent,
+  UsesBlockStep,
+  UsesConfigBlock,
+  UsesConfigProperty,
+  WithProperty,
+  ObjectLiteral,
+  ObjectPropertyList,
+  ObjectProperty,
+  ObjectPropertyKey,
+  ObjectValue,
+  ArrayLiteral,
+  ArrayItems,
 } = terms;
 
 import type {
@@ -122,7 +138,9 @@ import type {
   MatrixCombination,
   StepNode,
   RunStepNode,
+  ShellStepNode,
   UsesStepNode,
+  UsesBlockStepNode,
   AgentTaskNode,
   GuardJsStepNode,
   ToolsConfig,
@@ -1054,6 +1072,243 @@ function buildGuardJsStep(cursor: TreeCursor, source: string): GuardJsStepNode |
   };
 }
 
+function extractShellContent(raw: string): { content: string; multiline: boolean } {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return { content: raw, multiline: raw.includes("\n") };
+  }
+
+  const inner = trimmed.slice(1, -1);
+  const hasNewlines = inner.includes("\n");
+
+  if (hasNewlines) {
+    return { content: inner, multiline: true };
+  }
+
+  return { content: inner.trim(), multiline: false };
+}
+
+function buildShellStep(cursor: TreeCursor, source: string): ShellStepNode | null {
+  if (cursor.type.id !== ShellStep) return null;
+
+  const stepSpan = span(cursor);
+  let content = "";
+  let multiline = false;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === ShellBlock) {
+      const rawContent = getText(cursor, source);
+      const extracted = extractShellContent(rawContent);
+      content = extracted.content;
+      multiline = extracted.multiline;
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  return {
+    kind: "shell",
+    content,
+    multiline,
+    span: stepSpan,
+  };
+}
+
+function buildObjectValue(cursor: TreeCursor, source: string): unknown {
+  const nodeType = cursor.type.id;
+  const nodeName = cursor.name;
+
+  if (nodeType === StringTerm || nodeName === "String") {
+    return unquoteString(getText(cursor, source));
+  }
+
+  if (nodeType === NumberTerm || nodeName === "Number") {
+    const text = getText(cursor, source);
+    return text.includes(".") ? parseFloat(text) : parseInt(text, 10);
+  }
+
+  if (nodeType === BooleanTerm || nodeName === "Boolean") {
+    return getText(cursor, source) === "true";
+  }
+
+  if (nodeType === ObjectLiteral) {
+    const obj: Record<string, unknown> = {};
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === ObjectPropertyList) {
+          if (cursor.firstChild()) {
+            do {
+              if (cursor.type.id === ObjectProperty) {
+                let key = "";
+                let value: unknown = null;
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === ObjectPropertyKey) {
+                      if (cursor.firstChild()) {
+                        key = getText(cursor, source);
+                        cursor.parent();
+                      }
+                    } else if (cursor.type.id === ObjectValue) {
+                      if (cursor.firstChild()) {
+                        value = buildObjectValue(cursor, source);
+                        cursor.parent();
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+                if (key) {
+                  obj[key] = value;
+                }
+              }
+            } while (cursor.nextSibling());
+            cursor.parent();
+          }
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    return obj;
+  }
+
+  if (nodeType === ArrayLiteral) {
+    const arr: unknown[] = [];
+    if (cursor.firstChild()) {
+      do {
+        if (cursor.type.id === ArrayItems) {
+          if (cursor.firstChild()) {
+            do {
+              if (cursor.type.id === ObjectValue) {
+                if (cursor.firstChild()) {
+                  arr.push(buildObjectValue(cursor, source));
+                  cursor.parent();
+                }
+              }
+            } while (cursor.nextSibling());
+            cursor.parent();
+          }
+        }
+      } while (cursor.nextSibling());
+      cursor.parent();
+    }
+    return arr;
+  }
+
+  if (nodeType === ObjectValue) {
+    if (cursor.firstChild()) {
+      const value = buildObjectValue(cursor, source);
+      cursor.parent();
+      return value;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function buildUsesBlockStep(cursor: TreeCursor, source: string): UsesBlockStepNode | null {
+  if (cursor.type.id !== UsesBlockStep) return null;
+
+  const stepSpan = span(cursor);
+  let action = "";
+  let withConfig: Record<string, unknown> | undefined;
+
+  if (!cursor.firstChild()) return null;
+
+  do {
+    if (cursor.type.id === StringTerm) {
+      action = unquoteString(getText(cursor, source));
+    } else if (cursor.type.id === UsesConfigBlock) {
+      if (cursor.firstChild()) {
+        do {
+          if (cursor.type.id === UsesConfigProperty) {
+            if (cursor.firstChild()) {
+              if (cursor.type.id === WithProperty) {
+                if (cursor.firstChild()) {
+                  do {
+                    if (cursor.type.id === ObjectLiteral) {
+                      const obj = buildObjectValue(cursor, source);
+                      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+                        withConfig = obj as Record<string, unknown>;
+                      }
+                    }
+                  } while (cursor.nextSibling());
+                  cursor.parent();
+                }
+              }
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+        cursor.parent();
+      }
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+
+  const node: UsesBlockStepNode = {
+    kind: "uses_block",
+    action,
+    span: stepSpan,
+  };
+
+  if (withConfig) {
+    return { ...node, with: withConfig };
+  }
+
+  return node;
+}
+
+function buildBlockStep(cursor: TreeCursor, source: string): StepNode | null {
+  const nodeType = cursor.type.id;
+
+  if (nodeType === BlockStep) {
+    if (cursor.firstChild()) {
+      const result = buildBlockStep(cursor, source);
+      cursor.parent();
+      return result;
+    }
+    return null;
+  }
+
+  if (nodeType === ShellStep) {
+    return buildShellStep(cursor, source);
+  }
+
+  if (nodeType === UsesBlockStep) {
+    return buildUsesBlockStep(cursor, source);
+  }
+
+  if (nodeType === AgentTaskStep) {
+    return buildAgentTask(cursor, source);
+  }
+
+  if (nodeType === GuardJsStep) {
+    return buildGuardJsStep(cursor, source);
+  }
+
+  return null;
+}
+
+function buildStepsBlock(cursor: TreeCursor, source: string): StepNode[] {
+  const steps: StepNode[] = [];
+
+  if (!cursor.firstChild()) return steps;
+
+  do {
+    if (cursor.type.id === BlockStep) {
+      const step = buildBlockStep(cursor, source);
+      if (step) steps.push(step);
+    }
+  } while (cursor.nextSibling());
+
+  cursor.parent();
+  return steps;
+}
+
 function buildAxisValues(cursor: TreeCursor, source: string): (string | number)[] {
   const values: (string | number)[] = [];
 
@@ -1297,6 +1552,8 @@ function buildJob(cursor: TreeCursor, source: string): JobNode | MatrixJobNode |
                   } while (cursor.nextSibling());
                   cursor.parent();
                 }
+              } else if (propType === StepsBlock) {
+                steps.push(...buildStepsBlock(cursor, source));
               } else if (propType === AxesProperty) {
                 axes = buildAxes(cursor, source);
               } else if (propType === MaxParallelProperty) {
@@ -1451,6 +1708,8 @@ function buildAgentJob(cursor: TreeCursor, source: string): AgentJobNode | null 
                   } while (cursor.nextSibling());
                   cursor.parent();
                 }
+              } else if (propType === StepsBlock) {
+                steps.push(...buildStepsBlock(cursor, source));
               }
               cursor.parent();
             }
