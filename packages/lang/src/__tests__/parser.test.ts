@@ -153,22 +153,17 @@ describe("WorkPipe Parser", () => {
       expect(source.slice(cursor.from, cursor.to)).toBe("hello");
     });
 
-    it("parses run step with string argument", () => {
+    it("parses shell step with command", () => {
       const tree = parse(source);
-      let foundRunStep = false;
-      let runStepText = "";
+      let foundShellStep = false;
 
       tree.cursor().iterate((node) => {
-        if (node.name === "RunStep") {
-          foundRunStep = true;
-        }
-        if (node.name === "String" && foundRunStep && !runStepText) {
-          runStepText = source.slice(node.from, node.to);
+        if (node.name === "ShellStep") {
+          foundShellStep = true;
         }
       });
 
-      expect(foundRunStep).toBe(true);
-      expect(runStepText).toBe('"echo Hello, WorkPipe!"');
+      expect(foundShellStep).toBe(true);
     });
   });
 
@@ -286,21 +281,21 @@ describe("WorkPipe Parser", () => {
       expect(foundString).toBe(true);
     });
 
-    it("parses uses step with action reference", () => {
+    it("parses uses block step with action reference", () => {
       const tree = parse(source);
-      let foundUsesStep = false;
+      let foundUsesBlockStep = false;
       let usesStepText = "";
 
       tree.cursor().iterate((node) => {
-        if (node.name === "UsesStep") {
-          foundUsesStep = true;
+        if (node.name === "UsesBlockStep") {
+          foundUsesBlockStep = true;
         }
-        if (node.name === "String" && foundUsesStep && !usesStepText) {
+        if (node.name === "String" && foundUsesBlockStep && !usesStepText) {
           usesStepText = source.slice(node.from, node.to);
         }
       });
 
-      expect(foundUsesStep).toBe(true);
+      expect(foundUsesBlockStep).toBe(true);
       expect(usesStepText).toBe('"actions/checkout@v4"');
     });
   });

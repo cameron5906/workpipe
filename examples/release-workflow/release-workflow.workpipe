@@ -3,48 +3,52 @@ workflow release {
 
   job validate {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm ci"),
-      run("npm test"),
-      run("npm run lint")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        npm ci
+        npm test
+        npm run lint
+      }
+    }
   }
 
   job build_artifacts {
     runs_on: ubuntu-latest
     needs: [validate]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm ci"),
-      run("npm run build"),
-      run("npm pack")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        npm ci
+        npm run build
+        npm pack
+      }
+    }
   }
 
   job generate_changelog {
     runs_on: ubuntu-latest
     needs: [validate]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("git log --oneline -10 > CHANGELOG_EXCERPT.md")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { git log --oneline -10 > CHANGELOG_EXCERPT.md }
+    }
   }
 
   job publish {
     runs_on: ubuntu-latest
     needs: [build_artifacts, generate_changelog]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo Publishing release...")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo Publishing release... }
+    }
   }
 
   job notify {
     runs_on: ubuntu-latest
     needs: [publish]
-    steps: [
-      run("echo Release complete! Notifying team...")
-    ]
+    steps {
+      shell { echo Release complete! Notifying team... }
+    }
   }
 }

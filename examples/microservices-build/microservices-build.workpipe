@@ -6,12 +6,12 @@ workflow microservices_build {
     outputs: {
       image_tag: string
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/api:${{ github.sha }} ./services/api"),
-      run("echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/api:${{ github.sha }} ./services/api }
+      shell { echo image_tag=myorg/api:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job build_web {
@@ -19,12 +19,12 @@ workflow microservices_build {
     outputs: {
       image_tag: string
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/web:${{ github.sha }} ./services/web"),
-      run("echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/web:${{ github.sha }} ./services/web }
+      shell { echo image_tag=myorg/web:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job build_worker {
@@ -32,12 +32,12 @@ workflow microservices_build {
     outputs: {
       image_tag: string
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/worker:${{ github.sha }} ./services/worker"),
-      run("echo image_tag=myorg/worker:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/worker:${{ github.sha }} ./services/worker }
+      shell { echo image_tag=myorg/worker:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job build_gateway {
@@ -45,93 +45,93 @@ workflow microservices_build {
     outputs: {
       image_tag: string
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      uses("docker/setup-buildx-action@v3"),
-      run("docker build -t myorg/gateway:${{ github.sha }} ./services/gateway"),
-      run("echo image_tag=myorg/gateway:${{ github.sha }} >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      uses("docker/setup-buildx-action@v3") {}
+      shell { docker build -t myorg/gateway:${{ github.sha }} ./services/gateway }
+      shell { echo image_tag=myorg/gateway:${{ github.sha }} >> $GITHUB_OUTPUT }
+    }
   }
 
   job test_api {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("cd services/api && npm ci && npm run test:unit")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/api && npm ci && npm run test:unit }
+    }
   }
 
   job test_web {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("cd services/web && npm ci && npm run test:unit")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/web && npm ci && npm run test:unit }
+    }
   }
 
   job test_worker {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("cd services/worker && npm ci && npm run test:unit")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/worker && npm ci && npm run test:unit }
+    }
   }
 
   job test_gateway {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("cd services/gateway && npm ci && npm run test:unit")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { cd services/gateway && npm ci && npm run test:unit }
+    }
   }
 
   job integration_tests {
     runs_on: ubuntu-latest
     needs: [build_api, build_web, build_worker, build_gateway, test_api, test_web, test_worker, test_gateway]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("docker-compose -f docker-compose.test.yml up -d"),
-      run("sleep 30"),
-      run("npm run test:integration"),
-      run("docker-compose -f docker-compose.test.yml down")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { docker-compose -f docker-compose.test.yml up -d }
+      shell { sleep 30 }
+      shell { npm run test:integration }
+      shell { docker-compose -f docker-compose.test.yml down }
+    }
   }
 
   job contract_tests {
     runs_on: ubuntu-latest
     needs: [build_api, build_web, build_worker, build_gateway]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm run test:contracts")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { npm run test:contracts }
+    }
   }
 
   job e2e_tests {
     runs_on: ubuntu-latest
     needs: [integration_tests, contract_tests]
-    steps: [
-      uses("actions/checkout@v4"),
-      run("docker-compose -f docker-compose.e2e.yml up -d"),
-      run("npx playwright test"),
-      run("docker-compose -f docker-compose.e2e.yml down")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { docker-compose -f docker-compose.e2e.yml up -d }
+      shell { npx playwright test }
+      shell { docker-compose -f docker-compose.e2e.yml down }
+    }
   }
 
   job publish_images {
     runs_on: ubuntu-latest
     needs: [e2e_tests]
     if: github.ref == "refs/heads/main"
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo Publishing all service images to ghcr.io")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo Publishing all service images to ghcr.io }
+    }
   }
 
   job notify_completion {
     runs_on: ubuntu-latest
     needs: [e2e_tests]
-    steps: [
-      run("echo Build pipeline completed")
-    ]
+    steps {
+      shell { echo Build pipeline completed }
+    }
   }
 }

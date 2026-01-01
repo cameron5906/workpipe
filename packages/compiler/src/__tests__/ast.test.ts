@@ -79,9 +79,9 @@ describe("AST Builder", () => {
       expect(job.condition).toBeNull();
 
       expect(job.steps).toHaveLength(1);
-      const step = job.steps[0] as RunStepNode;
-      expect(step.kind).toBe("run");
-      expect(step.command).toBe("echo Hello, WorkPipe!");
+      const step = job.steps[0] as ShellStepNode;
+      expect(step.kind).toBe("shell");
+      expect(step.content).toBe('echo "Hello, WorkPipe!"');
     });
   });
 
@@ -114,7 +114,7 @@ describe("AST Builder", () => {
       expect(ast!.jobs[1].name).toBe("deploy");
     });
 
-    it("parses build job with uses and run steps", () => {
+    it("parses build job with uses block and shell steps", () => {
       const source = loadExample("simple-job/simple-job.workpipe");
       const tree = parse(source);
       const ast = buildAST(tree, source);
@@ -123,19 +123,16 @@ describe("AST Builder", () => {
       expect(buildJob.runsOn).toBe("ubuntu-latest");
       expect(buildJob.needs).toEqual([]);
       expect(buildJob.condition).toBeNull();
-      expect(buildJob.steps).toHaveLength(3);
+      expect(buildJob.steps).toHaveLength(2);
 
-      const usesStep = buildJob.steps[0] as UsesStepNode;
-      expect(usesStep.kind).toBe("uses");
+      const usesStep = buildJob.steps[0] as UsesBlockStepNode;
+      expect(usesStep.kind).toBe("uses_block");
       expect(usesStep.action).toBe("actions/checkout@v4");
 
-      const runStep1 = buildJob.steps[1] as RunStepNode;
-      expect(runStep1.kind).toBe("run");
-      expect(runStep1.command).toBe("npm install");
-
-      const runStep2 = buildJob.steps[2] as RunStepNode;
-      expect(runStep2.kind).toBe("run");
-      expect(runStep2.command).toBe("npm test");
+      const shellStep = buildJob.steps[1] as ShellStepNode;
+      expect(shellStep.kind).toBe("shell");
+      expect(shellStep.content).toContain("npm install");
+      expect(shellStep.content).toContain("npm test");
     });
 
     it("parses deploy job with needs dependency", () => {

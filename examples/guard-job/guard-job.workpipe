@@ -3,22 +3,22 @@ workflow guard_job_example {
 
   job guard {
     runs_on: ubuntu-latest
-    steps: [
+    steps {
       step "check_labels" guard_js """
         const labels = context.event.issue?.labels || [];
         const hasPriority = labels.some(l => l.name === 'priority');
         const isOpen = context.event.action === 'opened';
         return hasPriority && isOpen;
       """
-    ]
+    }
   }
 
   job process {
     runs_on: ubuntu-latest
     needs: guard
-    steps: [
-      run("echo Processing priority issue..."),
-      run("npm run process-issue")
-    ]
+    steps {
+      shell { echo Processing priority issue... }
+      shell { npm run process-issue }
+    }
   }
 }

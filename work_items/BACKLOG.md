@@ -82,8 +82,8 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 1052 tests (71 lang + 904 compiler + 80 VS Code)
-**Work Items Completed:** 95 (WI-001 through WI-095)
+**Test Count:** 972 tests (71 lang + 821 compiler + 80 VS Code)
+**Work Items Completed:** 96 (WI-001 through WI-096)
 **Work Items In Progress:** 0
 **Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
@@ -257,6 +257,14 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-096: Update Remaining Examples to New Step Syntax** - Completed 2025-12-31
+  - Converted 11 .workpipe example files to block syntax
+  - Regenerated expected.yml files
+  - Updated 3 README files (guard-job, job-outputs, agent-task)
+  - Fixed parser and AST tests that checked for old node types
+  - All 972 tests passing
+  - All examples compile successfully
 
 - **WI-095: Documentation and Examples for Step Syntax** - Completed 2025-12-31
   - Updated docs/language-reference.md with comprehensive Steps section

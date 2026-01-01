@@ -50,8 +50,8 @@ workflow agent_demo {
 
   agent_job review {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       agent_task("Review the codebase and provide feedback") {
         model: "claude-sonnet-4-20250514"
         max_turns: 5
@@ -66,7 +66,7 @@ workflow agent_demo {
         }
         output_artifact: "review_result"
       }
-    ]
+    }
   }
 }
 ```

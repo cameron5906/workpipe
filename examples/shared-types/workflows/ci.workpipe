@@ -9,11 +9,11 @@ workflow ci {
     outputs: {
       info: BuildInfo
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      run("VERSION=$(cat package.json | jq -r .version)"),
-      run("echo \"info={\\\"version\\\":\\\"$VERSION\\\",\\\"commit\\\":\\\"${{ github.sha }}\\\",\\\"timestamp\\\":$(date +%s)}\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { VERSION=$(cat package.json | jq -r .version) }
+      shell { echo "info={\"version\":\"$VERSION\",\"commit\":\"${{ github.sha }}\",\"timestamp\":$(date +%s)}" >> $GITHUB_OUTPUT }
+    }
   }
 
   job test {
@@ -22,20 +22,22 @@ workflow ci {
     outputs: {
       result: TestResult
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      run("npm ci"),
-      run("npm test -- --coverage"),
-      run("echo \"result={\\\"passed\\\":true,\\\"coverage\\\":85.5,\\\"failed_count\\\":0}\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        npm ci
+        npm test -- --coverage
+      }
+      shell { echo "result={\"passed\":true,\"coverage\":85.5,\"failed_count\":0}" >> $GITHUB_OUTPUT }
+    }
   }
 
   job report {
     runs_on: ubuntu-latest
     needs: [build, test]
-    steps: [
-      run("echo Build version: ${{ fromJSON(needs.build.outputs.info).version }}"),
-      run("echo Test coverage: ${{ fromJSON(needs.test.outputs.result).coverage }}%")
-    ]
+    steps {
+      shell { echo Build version: ${{ fromJSON(needs.build.outputs.info).version }} }
+      shell { echo Test coverage: ${{ fromJSON(needs.test.outputs.result).coverage }}% }
+    }
   }
 }

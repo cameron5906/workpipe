@@ -37,21 +37,23 @@ workflow typed_pipeline {
     outputs: {
       info: BuildInfo
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      run("VERSION=$(cat package.json | jq -r .version)"),
-      run("COMMIT=${{ github.sha }}"),
-      run("TIMESTAMP=$(date +%s)"),
-      run("echo \"info={\\\"version\\\":\\\"$VERSION\\\",\\\"commit\\\":\\\"$COMMIT\\\",\\\"timestamp\\\":$TIMESTAMP,\\\"success\\\":true}\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        VERSION=$(cat package.json | jq -r .version)
+        COMMIT=${{ github.sha }}
+        TIMESTAMP=$(date +%s)
+        echo "info={\"version\":\"$VERSION\",\"commit\":\"$COMMIT\",\"timestamp\":$TIMESTAMP,\"success\":true}" >> $GITHUB_OUTPUT
+      }
+    }
   }
 
   // Agent job uses ReviewResult type for structured AI output
   agent_job review {
     runs_on: ubuntu-latest
     needs: [build]
-    steps: [
-      uses("actions/checkout@v4"),
+    steps {
+      uses("actions/checkout@v4") {}
       agent_task("Review the code changes and provide structured feedback") {
         model: "claude-sonnet-4-20250514"
         max_turns: 5
@@ -61,18 +63,18 @@ workflow typed_pipeline {
         output_schema: "ReviewResult"
         output_artifact: "review_result"
       }
-    ]
+    }
   }
 
   // Deploy job consumes typed output from build
   job deploy {
     runs_on: ubuntu-latest
     needs: [build, review]
-    steps: [
+    steps {
       // Access typed properties - compiler validates these exist on BuildInfo
-      run("echo Deploying version: ${{ fromJSON(needs.build.outputs.info).version }}"),
-      run("echo Commit: ${{ fromJSON(needs.build.outputs.info).commit }}"),
-      run("echo Build timestamp: ${{ fromJSON(needs.build.outputs.info).timestamp }}")
-    ]
+      shell { echo Deploying version: ${{ fromJSON(needs.build.outputs.info).version }} }
+      shell { echo Commit: ${{ fromJSON(needs.build.outputs.info).commit }} }
+      shell { echo Build timestamp: ${{ fromJSON(needs.build.outputs.info).timestamp }} }
+    }
   }
 }

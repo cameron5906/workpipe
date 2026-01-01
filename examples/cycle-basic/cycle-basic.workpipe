@@ -3,9 +3,9 @@ workflow cycle_basic {
 
   job setup {
     runs_on: ubuntu-latest
-    steps: [
-      run("echo Setting up environment")
-    ]
+    steps {
+      shell { echo Setting up environment }
+    }
   }
 
   cycle refine_loop {
@@ -18,29 +18,29 @@ workflow cycle_basic {
     body {
       agent_job analyze {
         runs_on: ubuntu-latest
-        steps: [
+        steps {
           agent_task("Analyze and improve code quality") {
             model: "claude-sonnet-4-20250514"
             max_turns: 10
             prompt: "Review the code and suggest improvements"
           }
-        ]
+        }
       }
 
       job apply_fixes {
         runs_on: ubuntu-latest
         needs: analyze
-        steps: [
-          run("echo Applying fixes from analysis")
-        ]
+        steps {
+          shell { echo Applying fixes from analysis }
+        }
       }
     }
   }
 
   job cleanup {
     runs_on: ubuntu-latest
-    steps: [
-      run("echo Cleaning up")
-    ]
+    steps {
+      shell { echo Cleaning up }
+    }
   }
 }

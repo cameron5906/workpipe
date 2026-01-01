@@ -12,21 +12,21 @@ workflow deploy {
       build: BuildInfo
       config: Config
     }
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo \"build={\\\"version\\\":\\\"1.0.0\\\",\\\"commit\\\":\\\"abc123\\\",\\\"timestamp\\\":1234567890}\" >> $GITHUB_OUTPUT"),
-      run("echo \"config={\\\"environment\\\":\\\"production\\\",\\\"region\\\":\\\"us-east-1\\\",\\\"replicas\\\":3}\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo "build={\"version\":\"1.0.0\",\"commit\":\"abc123\",\"timestamp\":1234567890}" >> $GITHUB_OUTPUT }
+      shell { echo "config={\"environment\":\"production\",\"region\":\"us-east-1\",\"replicas\":3}" >> $GITHUB_OUTPUT }
+    }
   }
 
   job deploy_app {
     runs_on: ubuntu-latest
     needs: [prepare]
-    steps: [
-      run("echo Deploying version ${{ fromJSON(needs.prepare.outputs.build).version }}"),
-      run("echo Environment: ${{ fromJSON(needs.prepare.outputs.config).environment }}"),
-      run("echo Region: ${{ fromJSON(needs.prepare.outputs.config).region }}"),
-      run("echo Replicas: ${{ fromJSON(needs.prepare.outputs.config).replicas }}")
-    ]
+    steps {
+      shell { echo Deploying version ${{ fromJSON(needs.prepare.outputs.build).version }} }
+      shell { echo Environment: ${{ fromJSON(needs.prepare.outputs.config).environment }} }
+      shell { echo Region: ${{ fromJSON(needs.prepare.outputs.config).region }} }
+      shell { echo Replicas: ${{ fromJSON(needs.prepare.outputs.config).replicas }} }
+    }
   }
 }

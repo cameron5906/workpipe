@@ -1,0 +1,113 @@
+name: cycle_basic
+on:
+  push: null
+  workflow_dispatch:
+    inputs:
+      iteration:
+        description: Current iteration phase for cycle refine_loop
+        required: false
+        default: "0"
+      run_id:
+        description: Run ID for artifact retrieval
+        required: false
+        default: ""
+concurrency:
+  group: ${{ inputs._cycle_key || 'iteration' }}
+  cancel-in-progress: false
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo Setting up environment
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo Cleaning up
+  refine_loop_hydrate:
+    runs-on: ubuntu-latest
+    outputs:
+      phase: ${{ steps.init_state.outputs.phase }}
+    steps:
+      - name: Download cycle state
+        uses: actions/download-artifact@v4
+        if: github.event.inputs.iteration != '0' && github.event.inputs.iteration != ''
+        with:
+          name: refine_loop-state
+          path: .cycle-state
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Initialize cycle state
+        id: init_state
+        run: |-
+          PHASE=${{ github.event.inputs.iteration || '0' }}
+          if [ -f .cycle-state/state.json ]; then
+            echo "Loaded state from artifact"
+            cat .cycle-state/state.json
+          else
+            echo '{"iteration": '$PHASE'}' > state.json
+            mkdir -p .cycle-state
+            cp state.json .cycle-state/state.json
+          fi
+          echo "phase=$PHASE" >> $GITHUB_OUTPUT
+        shell: bash
+  refine_loop_body_analyze:
+    runs-on: ubuntu-latest
+    needs:
+      - refine_loop_hydrate
+    steps:
+      - name: analyze-task
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: Review the code and suggest improvements
+          max_turns: 10
+          model: claude-sonnet-4-20250514
+  refine_loop_body_apply_fixes:
+    runs-on: ubuntu-latest
+    needs:
+      - refine_loop_hydrate
+      - refine_loop_body_analyze
+    steps:
+      - run: echo Applying fixes from analysis
+  refine_loop_decide:
+    runs-on: ubuntu-latest
+    needs:
+      - refine_loop_body_apply_fixes
+    outputs:
+      continue: ${{ steps.eval_guard.outputs.continue }}
+      termination_reason: ${{ steps.eval_guard.outputs.termination_reason }}
+    steps:
+      - name: Evaluate guard condition
+        id: eval_guard
+        run: |-
+          node -e "const fs = require('fs'); let state = {}; if (fs.existsSync('.cycle-state/state.json')) {   state = JSON.parse(fs.readFileSync('.cycle-state/state.json', 'utf8')); } const phase = parseInt(process.env.PHASE || '0', 10); const maxIters = 5; const context = { ...state, iteration: phase }; const guardResult = (function() {        return context.quality_score > 0.95;      })(); console.log('Guard result:', guardResult); let terminationReason = 'continue'; let shouldContinue = true; if (guardResult) {   terminationReason = 'guard_satisfied';   shouldContinue = false; } else if (maxIters !== null && phase >= maxIters - 1) {   terminationReason = 'max_iterations';   shouldContinue = false; } console.log('Termination reason:', terminationReason); fs.writeFileSync('.cycle-state/continue.txt', shouldContinue ? 'true' : 'false'); fs.writeFileSync('.cycle-state/termination_reason.txt', terminationReason); fs.writeFileSync('.cycle-state/state.json', JSON.stringify({ ...context, quality_score: context.quality_score || 0 }));"
+          CONTINUE=$(cat .cycle-state/continue.txt)
+          TERMINATION_REASON=$(cat .cycle-state/termination_reason.txt)
+          echo "continue=$CONTINUE" >> $GITHUB_OUTPUT
+          echo "termination_reason=$TERMINATION_REASON" >> $GITHUB_OUTPUT
+        shell: bash
+        env:
+          PHASE: ${{ needs.refine_loop_hydrate.outputs.phase }}
+      - name: Upload cycle state
+        uses: actions/upload-artifact@v4
+        with:
+          name: refine_loop-state
+          path: .cycle-state
+  refine_loop_dispatch:
+    runs-on: ubuntu-latest
+    needs:
+      - refine_loop_decide
+      - refine_loop_hydrate
+    if: needs.refine_loop_decide.outputs.continue == 'true' && ${{ needs.refine_loop_hydrate.outputs.phase }} < 5
+    steps:
+      - name: Dispatch next iteration
+        run: |-
+          NEXT_PHASE=$(( ${{ needs.refine_loop_hydrate.outputs.phase }} + 1 ))
+          gh workflow run "${{ github.workflow }}" \
+            --ref "${{ github.ref }}" \
+            -f iteration=$NEXT_PHASE \
+            -f run_id=${{ github.run_id }}
+          echo "Dispatched iteration $NEXT_PHASE"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

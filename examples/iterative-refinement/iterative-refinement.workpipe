@@ -3,10 +3,10 @@ workflow doc_refinement {
 
   job initialize {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo Initializing documentation review process")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo Initializing documentation review process }
+    }
   }
 
   cycle improve_docs {
@@ -19,8 +19,8 @@ workflow doc_refinement {
     body {
       agent_job review_docs {
         runs_on: ubuntu-latest
-        steps: [
-          uses("actions/checkout@v4"),
+        steps {
+          uses("actions/checkout@v4") {}
           agent_task("Review documentation for clarity and completeness") {
             model: "claude-sonnet-4-20250514"
             max_turns: 8
@@ -29,26 +29,26 @@ workflow doc_refinement {
             }
             output_artifact: "doc_review"
           }
-        ]
+        }
       }
 
       job apply_suggestions {
         runs_on: ubuntu-latest
         needs: review_docs
-        steps: [
-          uses("actions/checkout@v4"),
-          run("echo Applying documentation improvements"),
-          run("git diff --stat || true")
-        ]
+        steps {
+          uses("actions/checkout@v4") {}
+          shell { echo Applying documentation improvements }
+          shell { git diff --stat || true }
+        }
       }
     }
   }
 
   job finalize {
     runs_on: ubuntu-latest
-    steps: [
-      uses("actions/checkout@v4"),
-      run("echo Documentation refinement complete")
-    ]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo Documentation refinement complete }
+    }
   }
 }

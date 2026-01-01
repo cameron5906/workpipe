@@ -1,0 +1,18 @@
+name: job_outputs
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_outputs.outputs.version }}
+      build_number: ${{ steps.set_outputs.outputs.build_number }}
+    steps:
+      - run: echo "version=1.2.3" >> $GITHUB_OUTPUT
+      - run: echo "build_number=42" >> $GITHUB_OUTPUT
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - run: echo Deploying v${{ needs.build.outputs.version }} (build ${{ needs.build.outputs.build_number }})
+

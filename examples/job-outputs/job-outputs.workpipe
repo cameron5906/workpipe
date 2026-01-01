@@ -7,17 +7,17 @@ workflow job_outputs {
       version: string
       build_number: int
     }
-    steps: [
-      run("echo \"version=1.2.3\" >> $GITHUB_OUTPUT"),
-      run("echo \"build_number=42\" >> $GITHUB_OUTPUT")
-    ]
+    steps {
+      shell { echo "version=1.2.3" >> $GITHUB_OUTPUT }
+      shell { echo "build_number=42" >> $GITHUB_OUTPUT }
+    }
   }
 
   job deploy {
     runs_on: ubuntu-latest
     needs: [build]
-    steps: [
-      run("echo Deploying v${{ needs.build.outputs.version }} (build ${{ needs.build.outputs.build_number }})")
-    ]
+    steps {
+      shell { echo Deploying v${{ needs.build.outputs.version }} (build ${{ needs.build.outputs.build_number }}) }
+    }
   }
 }
