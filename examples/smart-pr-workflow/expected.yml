@@ -1,0 +1,25 @@
+name: smart_pr
+on: pull_request
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    outputs:
+      evaluate_result: ${{ steps.evaluate.outputs.result }}
+      decision: ${{ steps.step_1.outputs.decision }}
+    steps:
+      - name: Evaluate guard
+        id: evaluate
+        run: "node -e \"const fs = require('fs'); const context = {   event: JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')),   ref: process.env.GITHUB_REF,   inputs: JSON.parse(process.env.INPUTS || '{}') }; const guards = {   get event() { return context.event; },   get ref() { return context.ref; },   get inputs() { return context.inputs; },   get actor() { return context.event?.sender?.login || ''; },   hasLabel(name) {     const labels = context.event?.issue?.labels || context.event?.pull_request?.labels || [];     return labels.some(l => l.name === name);   },   hasAnyLabel(...names) {     return names.some(n => this.hasLabel(n));   },   hasAllLabels(...names) {     return names.every(n => this.hasLabel(n));   },   isBranch(name) {     return context.ref === 'refs/heads/' + name;   },   isDefaultBranch() {     return this.isBranch(context.event?.repository?.default_branch || 'main');   },   isPullRequest() {     return !!context.event?.pull_request;   },   isIssue() {     return !!context.event?.issue && !context.event?.pull_request;   },   isDraft() {     return context.event?.pull_request?.draft === true;   },   isAction(action) {     return context.event?.action === action;   } }; const result = (function() {          const isDraft = guards.isDraft();         const isHotfix = guards.hasLabel('hotfix');         const isWip = guards.hasLabel('wip');         return !isDraft && !isWip;        })(); console.log('Guard result:', result); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + result + '\\n');\""
+        shell: bash
+        env:
+          INPUTS: ${{ toJson(inputs) }}
+      - id: step_1
+        run: echo "decision={\"should_test\":true,\"should_deploy\":false,\"priority\":\"normal\"}" >> $GITHUB_OUTPUT
+  test:
+    runs-on: ubuntu-latest
+    needs:
+      - analyze
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm test
+

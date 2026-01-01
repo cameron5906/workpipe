@@ -1,0 +1,22 @@
+name: release
+on: workflow_dispatch
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.step_1.outputs.version }}
+    steps:
+      - id: step_0
+        uses: actions/checkout@v4
+      - id: step_1
+        run: echo "version={\"major\":1,\"minor\":2,\"patch\":3}" >> $GITHUB_OUTPUT
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+    outputs:
+      manifest: ${{ steps.step_0.outputs.manifest }}
+    steps:
+      - id: step_0
+        run: echo "Publishing version ${{ needs.prepare.outputs.version }}"
+

@@ -1,0 +1,46 @@
+type QualityMetrics {
+  score: int
+  issues_found: int
+}
+
+workflow quality_improvement {
+  on: workflow_dispatch
+
+  cycle improve {
+    max_iters = 5
+    key = "quality"
+
+    until guard_js """
+      return state.iteration >= 3;
+    """
+
+    body {
+      job analyze {
+        runs_on: ubuntu-latest
+        outputs: { metrics: QualityMetrics }
+        steps {
+          uses("actions/checkout@v4") {}
+          shell {
+            echo "Analyzing code quality..."
+            echo "metrics={\"score\":85,\"issues_found\":3}" >> $GITHUB_OUTPUT
+          }
+        }
+      }
+
+      job fix {
+        runs_on: ubuntu-latest
+        needs: [analyze]
+        steps {
+          shell { echo "Fixing identified issues..." }
+        }
+      }
+    }
+  }
+
+  job report {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Quality improvement cycle complete!" }
+    }
+  }
+}

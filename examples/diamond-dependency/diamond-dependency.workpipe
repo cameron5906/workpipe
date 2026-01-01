@@ -1,0 +1,60 @@
+type BuildResult {
+  artifact_path: string
+  checksum: string
+}
+
+workflow release_pipeline {
+  on: push
+
+  job prepare {
+    runs_on: ubuntu-latest
+    outputs: { version: string }
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { echo "version=1.0.0" >> $GITHUB_OUTPUT }
+    }
+  }
+
+  job build_api {
+    runs_on: ubuntu-latest
+    needs: [prepare]
+    outputs: { result: BuildResult }
+    steps {
+      shell { echo "Building API..." }
+    }
+  }
+
+  job build_web {
+    runs_on: ubuntu-latest
+    needs: [prepare]
+    outputs: { result: BuildResult }
+    steps {
+      shell { echo "Building Web..." }
+    }
+  }
+
+  job build_worker {
+    runs_on: ubuntu-latest
+    needs: [prepare]
+    outputs: { result: BuildResult }
+    steps {
+      shell { echo "Building Worker..." }
+    }
+  }
+
+  job test_integration {
+    runs_on: ubuntu-latest
+    needs: [build_api, build_web, build_worker]
+    steps {
+      shell { echo "Running integration tests..." }
+    }
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [test_integration]
+    steps {
+      shell { echo "Deploying all services..." }
+    }
+  }
+}

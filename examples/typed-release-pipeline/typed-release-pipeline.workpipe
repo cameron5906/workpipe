@@ -1,0 +1,27 @@
+import { Version, ReleaseManifest } from "./types/release.workpipe"
+
+workflow release {
+  on: workflow_dispatch
+
+  job prepare {
+    runs_on: ubuntu-latest
+    outputs: { version: Version }
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        echo "version={\"major\":1,\"minor\":2,\"patch\":3}" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job publish {
+    runs_on: ubuntu-latest
+    needs: [prepare]
+    outputs: { manifest: ReleaseManifest }
+    steps {
+      shell {
+        echo "Publishing version ${{ needs.prepare.outputs.version }}"
+      }
+    }
+  }
+}

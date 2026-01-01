@@ -1,0 +1,54 @@
+name: release_pipeline
+on: push
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.step_1.outputs.version }}
+    steps:
+      - id: step_0
+        uses: actions/checkout@v4
+      - id: step_1
+        run: echo "version=1.0.0" >> $GITHUB_OUTPUT
+  build_api:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+    outputs:
+      result: ${{ steps.step_0.outputs.result }}
+    steps:
+      - id: step_0
+        run: echo "Building API..."
+  build_web:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+    outputs:
+      result: ${{ steps.step_0.outputs.result }}
+    steps:
+      - id: step_0
+        run: echo "Building Web..."
+  build_worker:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+    outputs:
+      result: ${{ steps.step_0.outputs.result }}
+    steps:
+      - id: step_0
+        run: echo "Building Worker..."
+  test_integration:
+    runs-on: ubuntu-latest
+    needs:
+      - build_api
+      - build_web
+      - build_worker
+    steps:
+      - run: echo "Running integration tests..."
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - test_integration
+    steps:
+      - run: echo "Deploying all services..."
+

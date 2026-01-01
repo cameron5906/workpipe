@@ -1,0 +1,40 @@
+type DeployResult {
+  environment: string
+  success: bool
+  deployed_version: string
+}
+
+workflow staged_deploy {
+  on: push
+
+  job deploy matrix {
+    axes {
+      env: [staging, production]
+    }
+
+    runs_on: ubuntu-latest
+    outputs: { result: DeployResult }
+
+    steps {
+      step "gate" guard_js """
+        if (matrix.env === 'production') {
+          return guards.isDefaultBranch();
+        }
+        return true;
+      """
+      uses("actions/checkout@v4") {}
+      shell {
+        echo "Deploying to ${{ matrix.env }}"
+        echo "result={\"environment\":\"${{ matrix.env }}\",\"success\":true,\"deployed_version\":\"1.0.0\"}" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job notify {
+    runs_on: ubuntu-latest
+    needs: [deploy]
+    steps {
+      shell { echo "Deployment complete!" }
+    }
+  }
+}

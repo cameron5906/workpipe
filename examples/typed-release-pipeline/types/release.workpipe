@@ -1,0 +1,17 @@
+type Version {
+  major: int
+  minor: int
+  patch: int
+}
+
+type ChangelogEntry {
+  change_type: "feature" | "fix" | "breaking"
+  description: string
+  pr_number: int
+}
+
+type ReleaseManifest {
+  version: Version
+  changelog: [ChangelogEntry]
+  published_at: string
+}

@@ -32,7 +32,12 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No work items currently in progress)
+1. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
+   - **Phase 1 Design: COMPLETE** - 8 examples designed by two architects
+   - **Phase 1 Implementation: Ready to start** - Batched approach recommended (4 batches of 2)
+   - Architect A designed: cross-platform-matrix-test, smart-pr-workflow, typed-release-pipeline, environment-matrix-deploy
+   - Architect B designed: cycle-convergence, diamond-dependency, staged-approval, parallel-iterative-agents
+   - Phase 2 (10-15 AI examples) pending Phase 1 Batch 2 completion
 
 ---
 
@@ -40,14 +45,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### P2-Medium (Marketing/Showcase)
 
-1. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
-   - Wipe and rebuild examples/ directory with impressive showcase examples
-   - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
-   - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
-   - Phase 3: Fragment system showcase examples
-   - Focus on "wow factor" and marketing appeal
-   - **Unblocked**: WI-106 (Fragment System) now complete
-   - Milestone E
+(WI-105 moved to In Progress)
 
 ---
 

@@ -1,0 +1,52 @@
+type SecurityReport {
+  vulnerabilities: int
+  severity_high: int
+}
+
+workflow staged_deployment {
+  on: workflow_dispatch
+
+  job lint {
+    runs_on: ubuntu-latest
+    outputs: { passed: string }
+    steps {
+      uses("actions/checkout@v4") {}
+      shell {
+        npm run lint
+        echo "passed=true" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job test {
+    runs_on: ubuntu-latest
+    needs: [lint]
+    outputs: { coverage: int }
+    steps {
+      shell {
+        npm test
+        echo "coverage=85" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job security_scan {
+    runs_on: ubuntu-latest
+    needs: [test]
+    outputs: { report: SecurityReport }
+    steps {
+      shell {
+        echo "Scanning for vulnerabilities..."
+        echo "report={\"vulnerabilities\":0,\"severity_high\":0}" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job deploy {
+    runs_on: ubuntu-latest
+    needs: [security_scan]
+    steps {
+      shell { echo "Deploying approved release..." }
+    }
+  }
+}

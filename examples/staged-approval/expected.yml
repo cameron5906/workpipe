@@ -1,0 +1,43 @@
+name: staged_deployment
+on: workflow_dispatch
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    outputs:
+      passed: ${{ steps.step_1.outputs.passed }}
+    steps:
+      - id: step_0
+        uses: actions/checkout@v4
+      - id: step_1
+        run: |-
+          npm run lint
+          echo "passed=true" >> $GITHUB_OUTPUT
+  test:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+    outputs:
+      coverage: ${{ steps.step_0.outputs.coverage }}
+    steps:
+      - id: step_0
+        run: |-
+          npm test
+          echo "coverage=85" >> $GITHUB_OUTPUT
+  security_scan:
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    outputs:
+      report: ${{ steps.step_0.outputs.report }}
+    steps:
+      - id: step_0
+        run: |-
+          echo "Scanning for vulnerabilities..."
+          echo "report={\"vulnerabilities\":0,\"severity_high\":0}" >> $GITHUB_OUTPUT
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - security_scan
+    steps:
+      - run: echo "Deploying approved release..."
+

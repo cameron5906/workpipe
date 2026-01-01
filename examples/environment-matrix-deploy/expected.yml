@@ -1,0 +1,33 @@
+name: staged_deploy
+on: push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      gate_result: ${{ steps.gate.outputs.result }}
+      result: ${{ steps.step_2.outputs.result }}
+    strategy:
+      matrix:
+        env:
+          - staging
+          - production
+    steps:
+      - name: Evaluate guard
+        id: gate
+        run: "node -e \"const fs = require('fs'); const context = {   event: JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')),   ref: process.env.GITHUB_REF,   inputs: JSON.parse(process.env.INPUTS || '{}') }; const guards = {   get event() { return context.event; },   get ref() { return context.ref; },   get inputs() { return context.inputs; },   get actor() { return context.event?.sender?.login || ''; },   hasLabel(name) {     const labels = context.event?.issue?.labels || context.event?.pull_request?.labels || [];     return labels.some(l => l.name === name);   },   hasAnyLabel(...names) {     return names.some(n => this.hasLabel(n));   },   hasAllLabels(...names) {     return names.every(n => this.hasLabel(n));   },   isBranch(name) {     return context.ref === 'refs/heads/' + name;   },   isDefaultBranch() {     return this.isBranch(context.event?.repository?.default_branch || 'main');   },   isPullRequest() {     return !!context.event?.pull_request;   },   isIssue() {     return !!context.event?.issue && !context.event?.pull_request;   },   isDraft() {     return context.event?.pull_request?.draft === true;   },   isAction(action) {     return context.event?.action === action;   } }; const result = (function() {          if (matrix.env === 'production') {           return guards.isDefaultBranch();         }         return true;        })(); console.log('Guard result:', result); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + result + '\\n');\""
+        shell: bash
+        env:
+          INPUTS: ${{ toJson(inputs) }}
+      - id: step_1
+        uses: actions/checkout@v4
+      - id: step_2
+        run: |-
+          echo "Deploying to ${{ matrix.env }}"
+          echo "result={\"environment\":\"${{ matrix.env }}\",\"success\":true,\"deployed_version\":\"1.0.0\"}" >> $GITHUB_OUTPUT
+  notify:
+    runs-on: ubuntu-latest
+    needs:
+      - deploy
+    steps:
+      - run: echo "Deployment complete!"
+

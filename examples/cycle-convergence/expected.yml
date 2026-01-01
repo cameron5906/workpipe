@@ -1,0 +1,110 @@
+name: quality_improvement
+on:
+  workflow_dispatch:
+    inputs:
+      quality:
+        description: Current iteration phase for cycle improve
+        required: false
+        default: "0"
+      run_id:
+        description: Run ID for artifact retrieval
+        required: false
+        default: ""
+concurrency:
+  group: ${{ inputs._cycle_key || 'quality' }}
+  cancel-in-progress: false
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Quality improvement cycle complete!"
+  improve_hydrate:
+    runs-on: ubuntu-latest
+    outputs:
+      phase: ${{ steps.init_state.outputs.phase }}
+    steps:
+      - name: Download cycle state
+        uses: actions/download-artifact@v4
+        if: github.event.inputs.quality != '0' && github.event.inputs.quality != ''
+        with:
+          name: improve-state
+          path: .cycle-state
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Initialize cycle state
+        id: init_state
+        run: |-
+          PHASE=${{ github.event.inputs.quality || '0' }}
+          if [ -f .cycle-state/state.json ]; then
+            echo "Loaded state from artifact"
+            cat .cycle-state/state.json
+          else
+            echo '{"quality": '$PHASE'}' > state.json
+            mkdir -p .cycle-state
+            cp state.json .cycle-state/state.json
+          fi
+          echo "phase=$PHASE" >> $GITHUB_OUTPUT
+        shell: bash
+  improve_body_analyze:
+    runs-on: ubuntu-latest
+    needs:
+      - improve_hydrate
+    outputs:
+      metrics: ${{ steps.step_1.outputs.metrics }}
+    steps:
+      - id: step_0
+        uses: actions/checkout@v4
+      - id: step_1
+        run: |-
+          echo "Analyzing code quality..."
+          echo "metrics={\"score\":85,\"issues_found\":3}" >> $GITHUB_OUTPUT
+  improve_body_fix:
+    runs-on: ubuntu-latest
+    needs:
+      - improve_hydrate
+      - improve_body_analyze
+    steps:
+      - run: echo "Fixing identified issues..."
+  improve_decide:
+    runs-on: ubuntu-latest
+    needs:
+      - improve_body_fix
+    outputs:
+      continue: ${{ steps.eval_guard.outputs.continue }}
+      termination_reason: ${{ steps.eval_guard.outputs.termination_reason }}
+    steps:
+      - name: Evaluate guard condition
+        id: eval_guard
+        run: |-
+          node -e "const fs = require('fs'); let state = {}; if (fs.existsSync('.cycle-state/state.json')) {   state = JSON.parse(fs.readFileSync('.cycle-state/state.json', 'utf8')); } const phase = parseInt(process.env.PHASE || '0', 10); const maxIters = 5; const context = { ...state, quality: phase }; const guardResult = (function() {        return state.iteration >= 3;      })(); console.log('Guard result:', guardResult); let terminationReason = 'continue'; let shouldContinue = true; if (guardResult) {   terminationReason = 'guard_satisfied';   shouldContinue = false; } else if (maxIters !== null && phase >= maxIters - 1) {   terminationReason = 'max_iterations';   shouldContinue = false; } console.log('Termination reason:', terminationReason); fs.writeFileSync('.cycle-state/continue.txt', shouldContinue ? 'true' : 'false'); fs.writeFileSync('.cycle-state/termination_reason.txt', terminationReason); fs.writeFileSync('.cycle-state/state.json', JSON.stringify({ ...context, quality_score: context.quality_score || 0 }));"
+          CONTINUE=$(cat .cycle-state/continue.txt)
+          TERMINATION_REASON=$(cat .cycle-state/termination_reason.txt)
+          echo "continue=$CONTINUE" >> $GITHUB_OUTPUT
+          echo "termination_reason=$TERMINATION_REASON" >> $GITHUB_OUTPUT
+        shell: bash
+        env:
+          PHASE: ${{ needs.improve_hydrate.outputs.phase }}
+      - name: Upload cycle state
+        uses: actions/upload-artifact@v4
+        with:
+          name: improve-state
+          path: .cycle-state
+  improve_dispatch:
+    runs-on: ubuntu-latest
+    needs:
+      - improve_decide
+      - improve_hydrate
+    if: needs.improve_decide.outputs.continue == 'true' && ${{ needs.improve_hydrate.outputs.phase }} < 5
+    steps:
+      - name: Dispatch next iteration
+        run: |-
+          NEXT_PHASE=$(( ${{ needs.improve_hydrate.outputs.phase }} + 1 ))
+          gh workflow run "${{ github.workflow }}" \
+            --ref "${{ github.ref }}" \
+            -f quality=$NEXT_PHASE \
+            -f run_id=${{ github.run_id }}
+          echo "Dispatched iteration $NEXT_PHASE"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

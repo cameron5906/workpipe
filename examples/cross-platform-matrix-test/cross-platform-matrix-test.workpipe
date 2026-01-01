@@ -1,0 +1,35 @@
+type TestMatrix {
+  platform: string
+  node_version: int
+  passed: bool
+  duration: float
+}
+
+workflow cross_platform_tests {
+  on: [push, pull_request]
+
+  job test matrix {
+    axes {
+      node: [18, 20, 22]
+      os: [ubuntu-latest, macos-latest, windows-latest]
+    }
+    max_parallel = 6
+    fail_fast = false
+    runs_on: ubuntu-latest
+    outputs: { result: TestMatrix }
+    steps: [
+      uses("actions/checkout@v4"),
+      uses("actions/setup-node@v4"),
+      run("npm ci && npm test"),
+      run("echo \"result={\\\"platform\\\":\\\"${{ matrix.os }}\\\",\\\"node_version\\\":${{ matrix.node }},\\\"passed\\\":true,\\\"duration\\\":12.5}\" >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  job report {
+    runs_on: ubuntu-latest
+    needs: [test]
+    steps {
+      shell { echo "All matrix combinations passed!" }
+    }
+  }
+}

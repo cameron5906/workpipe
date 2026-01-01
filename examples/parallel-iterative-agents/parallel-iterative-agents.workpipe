@@ -1,0 +1,72 @@
+type ReviewFeedback {
+  reviewer: string
+  score: int
+  suggestions: [string]
+}
+
+type AggregatedReview {
+  average_score: int
+  consensus_reached: bool
+}
+
+workflow multi_reviewer {
+  on: workflow_dispatch
+
+  cycle review_cycle {
+    max_iters = 3
+    key = "review"
+
+    until guard_js """
+      return state.iteration >= 2;
+    """
+
+    body {
+      agent_job reviewer_clarity {
+        runs_on: ubuntu-latest
+        steps {
+          uses("actions/checkout@v4") {}
+          agent_task("Review code for clarity and readability") {
+            model: "claude-sonnet-4-20250514"
+            max_turns: 3
+            tools: { allowed: ["Read", "Glob"] }
+            output_schema: ReviewFeedback
+            output_artifact: "review-clarity"
+          }
+        }
+      }
+
+      agent_job reviewer_security {
+        runs_on: ubuntu-latest
+        steps {
+          uses("actions/checkout@v4") {}
+          agent_task("Review code for security issues") {
+            model: "claude-sonnet-4-20250514"
+            max_turns: 3
+            tools: { allowed: ["Read", "Glob", "Grep"] }
+            output_schema: ReviewFeedback
+            output_artifact: "review-security"
+          }
+        }
+      }
+
+      job aggregate {
+        runs_on: ubuntu-latest
+        needs: [reviewer_clarity, reviewer_security]
+        outputs: { result: AggregatedReview }
+        steps {
+          shell {
+            echo "Aggregating reviews..."
+            echo "result={\"average_score\":4,\"consensus_reached\":true}" >> $GITHUB_OUTPUT
+          }
+        }
+      }
+    }
+  }
+
+  job finalize {
+    runs_on: ubuntu-latest
+    steps {
+      shell { echo "Review cycle complete!" }
+    }
+  }
+}

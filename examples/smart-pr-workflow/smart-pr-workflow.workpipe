@@ -1,0 +1,34 @@
+type PRDecision {
+  should_test: bool
+  should_deploy: bool
+  priority: string
+}
+
+workflow smart_pr {
+  on: pull_request
+
+  job analyze {
+    runs_on: ubuntu-latest
+    outputs: { decision: PRDecision }
+    steps {
+      step "evaluate" guard_js """
+        const isDraft = guards.isDraft();
+        const isHotfix = guards.hasLabel('hotfix');
+        const isWip = guards.hasLabel('wip');
+        return !isDraft && !isWip;
+      """
+      shell {
+        echo "decision={\"should_test\":true,\"should_deploy\":false,\"priority\":\"normal\"}" >> $GITHUB_OUTPUT
+      }
+    }
+  }
+
+  job test {
+    runs_on: ubuntu-latest
+    needs: [analyze]
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { npm test }
+    }
+  }
+}
