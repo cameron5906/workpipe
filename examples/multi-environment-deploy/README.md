@@ -1,5 +1,7 @@
 # Multi-Environment Deployment
 
+> **Note**: This is an aspirational example demonstrating planned syntax. The `environment` keyword and some features shown here are not yet implemented in WorkPipe. This example serves as a design reference for future development.
+
 This example demonstrates the build-once, deploy-many pattern with environment promotion.
 
 ## Pattern Overview

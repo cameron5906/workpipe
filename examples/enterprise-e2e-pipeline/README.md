@@ -1,5 +1,7 @@
 # Enterprise E2E Pipeline Example
 
+> **Note**: This is an aspirational example demonstrating planned syntax. Some features shown here (such as `if: always()` conditions and advanced output expressions) are not yet fully implemented in WorkPipe. This example serves as a design reference for future development.
+
 A complex enterprise testing pipeline demonstrating environment provisioning, parallel test execution, guaranteed cleanup, and notifications.
 
 ## What This Demonstrates

@@ -37,13 +37,6 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## Up Next (Priority Order)
 
-### P0-Critical (End-User Review Findings)
-1. **WI-100: Examples Catalog Audit** - P0-Critical
-   - Comprehensive audit of all examples for correctness
-   - Fix any compilation failures, update expected.yml files
-   - Address aspirational examples (multi-environment-deploy, enterprise-e2e-pipeline)
-   - Milestone E
-
 ### P1-High (End-User Review Findings)
 4. **WI-101: Block Syntax Troubleshooting Guide** - P1-High
    - Add dedicated section for block syntax errors to troubleshooting.md
@@ -63,6 +56,14 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 7. **WI-104: Installation Verification Step** - P1-High
    - Add `--version` flag verification to getting-started docs
    - Implement `--version` if not present
+   - Milestone E
+
+### P2-Medium (Marketing/Showcase)
+8. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
+   - Wipe and rebuild examples/ directory with impressive showcase examples
+   - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
+   - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
+   - Focus on "wow factor" and marketing appeal
    - Milestone E
 
 ---
@@ -109,9 +110,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
-**Work Items Completed:** 99 (WI-001 through WI-099)
+**Work Items Completed:** 100 (WI-001 through WI-100)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 5 (WI-100 through WI-104)
+**Work Items In Backlog:** 5 (WI-101 through WI-105)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -284,6 +285,15 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Examples Catalog Audit (Milestone E - Complete)
+
+- **WI-100: Examples Catalog Audit** - Completed 2026-01-01
+  - Audited all 23 examples in examples/ directory
+  - 21/23 examples compile successfully
+  - 2 aspirational examples (multi-environment-deploy, enterprise-e2e-pipeline) marked with README notes
+  - expected.yml files verified current
+  - WI-105 created for future examples overhaul
 
 ### Step Syntax Improvements (Milestone G - Complete)
 
