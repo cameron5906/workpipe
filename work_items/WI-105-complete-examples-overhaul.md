@@ -5,7 +5,7 @@
 **Priority**: P2-Medium
 **Milestone**: E (Tooling)
 **Created**: 2026-01-01
-**Updated**: 2026-01-01
+**Updated**: 2026-01-01 (dependency on WI-106 added)
 
 ## Description
 
@@ -89,6 +89,10 @@ All required features are implemented. This is purely a showcase/documentation e
 
 - WI-100: Examples Catalog Audit (should complete first to understand current state)
 - WI-101 through WI-104: P1 items should complete before this P2 work
+- **WI-106: Fragment System** - P1-High, should complete before this work item
+  - Fragments enable the "composability story" that makes examples truly impressive
+  - Phase 2 AI examples should showcase fragment patterns for agent reuse
+  - Wait for WI-106 completion OR explicitly scope initial examples to non-fragment patterns
 
 ## Implementation Notes
 

@@ -426,3 +426,4 @@ workpipe build workpipe/**/*.workpipe
 - Types-only files produce no YAML output
 - The compiler automatically determines compilation order
 - Use aliased imports to avoid name collisions: `import { Config as DeployConfig } from ...`
+- **Imports are non-transitive**: Each file must explicitly import every type it uses, even if another file already imports it. This keeps dependencies explicit and prevents unexpected breakage. See [Why Non-Transitive?](language-reference.md#why-non-transitive) for the full rationale.

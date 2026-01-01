@@ -109,7 +109,97 @@ import { MiddleType } from "./middle.workpipe"  // OK: MiddleType is defined in 
 import { BaseType } from "./base.workpipe"      // OK: Import directly from source
 ```
 
-This design prevents "import pollution" where changing one file's imports could break unrelated downstream files.
+#### Why Non-Transitive?
+
+WorkPipe's import system is intentionally non-transitive. This is a deliberate design choice with several benefits:
+
+**1. Every file explicitly declares its dependencies**
+
+When you read a WorkPipe file, its imports tell you everything it depends on. You never need to trace through a chain of files to understand what types are available.
+
+```workpipe
+// deploy.workpipe
+import { BuildInfo } from "../types.workpipe"
+import { DeployConfig } from "../config.workpipe"
+
+workflow deploy {
+  // Looking at this file, you immediately know it uses BuildInfo and DeployConfig
+  // No need to check what build.workpipe imports
+}
+```
+
+**2. No hidden dependencies through import chains**
+
+With transitive imports, changing what one file imports could silently break files that depend on it. Consider what happens with transitive behavior:
+
+```
+// With TRANSITIVE imports (not how WorkPipe works):
+// types.workpipe defines BuildInfo
+// build.workpipe imports BuildInfo from types.workpipe
+// deploy.workpipe imports from build.workpipe and gets BuildInfo "for free"
+
+// Later, someone removes the BuildInfo import from build.workpipe...
+// deploy.workpipe breaks! But the person editing build.workpipe had no idea.
+```
+
+Non-transitive imports prevent this "spooky action at a distance."
+
+**3. Easier to understand and refactor**
+
+When refactoring, you can look at a file's import list and know exactly what it needs. Moving or renaming types requires updating only the files that directly use them, not files that happen to be in an import chain.
+
+**4. Changes to one file do not cascade unexpectedly**
+
+If `build.workpipe` adds or removes an import, files that import from `build.workpipe` are unaffected. Each file is responsible for its own dependencies.
+
+#### Pattern Reference
+
+This design follows conventions from modern languages:
+
+| Language | Import Behavior |
+|----------|-----------------|
+| **Go** | Non-transitive. Each file lists its imports. |
+| **Rust** | Non-transitive. `use` statements are per-module. |
+| **Python** | Non-transitive. `import` in one file does not affect another. |
+| **JavaScript/TypeScript** | Non-transitive. Each file has its own imports. |
+
+#### Example: Explicit Dependencies
+
+Here is a complete example showing the correct pattern:
+
+```workpipe
+// types.workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+// workflows/build.workpipe
+import { BuildInfo } from "../types.workpipe"
+
+workflow build_workflow {
+  on: push
+  job build {
+    outputs: { info: BuildInfo }
+    steps: [run("./build.sh")]
+  }
+}
+
+// workflows/deploy.workpipe
+// Does NOT automatically have BuildInfo just because build.workpipe imported it
+// Must explicitly import from the source:
+import { BuildInfo } from "../types.workpipe"
+
+workflow deploy_workflow {
+  on: workflow_dispatch
+  job deploy {
+    outputs: { build: BuildInfo }
+    steps: [run("./deploy.sh")]
+  }
+}
+```
+
+For the complete technical rationale, see [ADR-0012: Import System](../adr/0012-import-system.md).
 
 ### Using Imported Types
 

@@ -13,6 +13,7 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 - **Milestone A++**: User-Defined Type System (NEW - User Directive)
 - **Milestone F**: Import System (Cross-File Type Sharing)
 - **Milestone G**: Step Syntax Improvements (ADR-0013)
+- **Milestone H**: Fragment System - Importable jobs/step sequences (ADR-0014)
 
 **Implementation Phases** (from PROJECT.md):
 - Phase 0: Repo + contracts
@@ -39,27 +40,34 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ### P1-High (End-User Review Findings)
 
-1. **WI-102: Non-Transitive Imports Rationale** - P1-High
-   - Document why imports are non-transitive
-   - Explain design decision benefits
-   - Milestone F
-
-2. **WI-103: Quick Reference Audit** - P1-High
+1. **WI-103: Quick Reference Audit** - P1-High
    - Audit quick-reference.md for outdated syntax
    - Update all examples to current syntax
    - Milestone E
 
-3. **WI-104: Installation Verification Step** - P1-High
+2. **WI-104: Installation Verification Step** - P1-High
    - Add `--version` flag verification to getting-started docs
    - Implement `--version` if not present
    - Milestone E
 
+### P1-High (Major Feature)
+
+3. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
+   - Implement `job_fragment` and `steps_fragment` constructs
+   - Parameterized, composable workflow components
+   - Import integration for cross-file fragments
+   - Requires ADR-0014 before implementation
+   - Milestone H (Fragment System)
+   - **Blocks**: WI-105 (fragments enable impressive examples)
+
 ### P2-Medium (Marketing/Showcase)
+
 4. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
    - Wipe and rebuild examples/ directory with impressive showcase examples
    - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
    - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
    - Focus on "wow factor" and marketing appeal
+   - **Depends on**: WI-106 (Fragment System) for composability showcase
    - Milestone E
 
 ---
@@ -90,6 +98,7 @@ The entire feature is production-ready with:
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
 | **G** | COMPLETE | Step Syntax Improvements (ADR-0013 Accepted) |
+| **H** | NOT STARTED | Fragment System - Importable jobs/step sequences (ADR-0014 Pending) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -106,9 +115,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
-**Work Items Completed:** 101 (WI-001 through WI-101)
+**Work Items Completed:** 102 (WI-001 through WI-102)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 4 (WI-102 through WI-105)
+**Work Items In Backlog:** 4 (WI-103 through WI-106)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -281,6 +290,16 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Non-Transitive Imports Rationale (Milestone F - Complete)
+
+- **WI-102: Non-Transitive Imports Rationale** - Completed 2026-01-01
+  - Added "Why Non-Transitive?" subsection to docs/language-reference.md
+  - Four benefit explanations with code examples
+  - Pattern reference table (Go, Rust, Python, JS/TS)
+  - Complete multi-file example
+  - Link to ADR-0012
+  - Added tip about non-transitive imports in docs/getting-started.md
 
 ### Block Syntax Troubleshooting (Milestone G - Complete)
 

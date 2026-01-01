@@ -1,7 +1,7 @@
 # Non-Transitive Imports Rationale Documentation
 
 **ID**: WI-102
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: F (Import System)
 **Created**: 2026-01-01
@@ -15,15 +15,15 @@ This is a deliberate design decision (documented in ADR-0012) that prevents "spo
 
 ## Acceptance Criteria
 
-- [ ] Add "Why Non-Transitive Imports?" section to `docs/language-reference.md` in the Imports section
-- [ ] Explain the design rationale:
+- [x] Add "Why Non-Transitive Imports?" section to `docs/language-reference.md` in the Imports section
+- [x] Explain the design rationale:
   - Explicit dependencies are easier to understand
   - Prevents cascading import changes
   - Each file is self-documenting about its dependencies
   - Matches patterns from Go, Rust, and other modern languages
-- [ ] Provide example showing transitive vs non-transitive behavior
-- [ ] Add reference to ADR-0012 for deeper technical discussion
-- [ ] Consider adding a note in `docs/getting-started.md` import section
+- [x] Provide example showing transitive vs non-transitive behavior
+- [x] Add reference to ADR-0012 for deeper technical discussion
+- [x] Consider adding a note in `docs/getting-started.md` import section
 
 ## Technical Context
 
