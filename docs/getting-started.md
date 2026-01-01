@@ -184,7 +184,15 @@ workflow build_and_test {
 
 Notice how shell commands inside `shell { }` blocks don't need quotes or commas. Multi-line scripts are natural and readable.
 
-**Note:** In block syntax, `uses()` requires a trailing block. Use `{}` for actions with no configuration, or `{ with: {...} }` to pass inputs.
+> **IMPORTANT**: In block syntax, `uses()` requires a trailing `{}` block, even when no configuration is needed.
+>
+> ```workpipe
+> // WRONG - will cause a parse error
+> uses("actions/checkout@v4")
+>
+> // CORRECT
+> uses("actions/checkout@v4") {}
+> ```
 
 ---
 

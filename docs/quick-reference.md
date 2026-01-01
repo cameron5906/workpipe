@@ -130,7 +130,15 @@ steps {
 }
 ```
 
-Note: In block syntax, `uses()` requires a trailing `{}` block.
+> **IMPORTANT**: In block syntax, `uses()` requires a trailing `{}` block, even when no configuration is needed.
+>
+> ```workpipe
+> // WRONG - will cause a parse error
+> uses("actions/checkout@v4")
+>
+> // CORRECT
+> uses("actions/checkout@v4") {}
+> ```
 
 ### Shell Blocks
 

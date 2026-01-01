@@ -474,7 +474,15 @@ job build {
 }
 ```
 
-Note: In block syntax, `uses()` requires a trailing block. Use `{}` for actions with no configuration.
+> **IMPORTANT**: In block syntax, `uses()` requires a trailing `{}` block, even when no configuration is needed.
+>
+> ```workpipe
+> // WRONG - will cause a parse error
+> uses("actions/checkout@v4")
+>
+> // CORRECT
+> uses("actions/checkout@v4") {}
+> ```
 
 **Benefits of block syntax:**
 - No string quoting needed for shell commands
@@ -609,7 +617,15 @@ steps: [
 
 **In block syntax:**
 
-When using block syntax, `uses()` requires a trailing block (use `{}` for actions with no configuration):
+> **IMPORTANT**: In block syntax, `uses()` requires a trailing `{}` block, even when no configuration is needed.
+>
+> ```workpipe
+> // WRONG - will cause a parse error
+> uses("actions/checkout@v4")
+>
+> // CORRECT
+> uses("actions/checkout@v4") {}
+> ```
 
 ```workpipe
 steps {

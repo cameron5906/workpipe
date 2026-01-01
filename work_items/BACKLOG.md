@@ -31,13 +31,44 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No items in progress)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
-(No items in queue - all backlog complete)
+### P0-Critical (End-User Review Findings)
+1. **WI-099: Step ID Mismatch Investigation** - P0-Critical
+   - Investigate step ID generation in codegen
+   - Ensure step IDs are predictable and documented
+   - Milestone G
+
+3. **WI-100: Examples Catalog Audit** - P0-Critical
+   - Comprehensive audit of all examples for correctness
+   - Fix any compilation failures, update expected.yml files
+   - Address aspirational examples (multi-environment-deploy, enterprise-e2e-pipeline)
+   - Milestone E
+
+### P1-High (End-User Review Findings)
+4. **WI-101: Block Syntax Troubleshooting Guide** - P1-High
+   - Add dedicated section for block syntax errors to troubleshooting.md
+   - Document brace issues, escaping, indentation
+   - Milestone G
+
+5. **WI-102: Non-Transitive Imports Rationale** - P1-High
+   - Document why imports are non-transitive
+   - Explain design decision benefits
+   - Milestone F
+
+6. **WI-103: Quick Reference Audit** - P1-High
+   - Audit quick-reference.md for outdated syntax
+   - Update all examples to current syntax
+   - Milestone E
+
+7. **WI-104: Installation Verification Step** - P1-High
+   - Add `--version` flag verification to getting-started docs
+   - Implement `--version` if not present
+   - Milestone E
 
 ---
 
@@ -83,9 +114,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 972 tests (71 lang + 821 compiler + 80 VS Code)
-**Work Items Completed:** 97 (WI-001 through WI-097)
+**Work Items Completed:** 98 (WI-001 through WI-098)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 0
+**Work Items In Backlog:** 6 (WI-099 through WI-104)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -244,7 +275,10 @@ workflow ci {
 
 ## Known Issues & Follow-Up Work
 
-The following issues were identified by the documentation steward during WI-062 review. These are tracked for future work but are not blocking.
+The following issues were identified during reviews. These are tracked for future work but are not blocking.
+
+### Parser Error Improvements (Low Priority)
+- **uses() missing `{}` error message**: Current Lezer parser produces generic "Syntax error at position X" pointing to wrong location. Would need semantic validation layer to provide better error like "Missing {} after uses() - uses() blocks require trailing braces even without a with block". Identified during WI-098 investigation.
 
 ### Doc Clarification Needed
 - **Triple-quoted strings scope**: Language-reference.md incorrectly suggests triple-quoted strings work in `run()` shell steps. They only work in `guard_js` blocks. Update docs to clarify scope.
@@ -257,6 +291,12 @@ The following issues were identified by the documentation steward during WI-062 
 ## Completed
 
 ### Step Syntax Improvements (Milestone G - Complete)
+
+- **WI-098: uses() Trailing {} Documentation Gap** - Completed 2026-01-01
+  - Added prominent callouts in language-reference.md, quick-reference.md, getting-started.md
+  - Added troubleshooting entry for missing `{}` after uses()
+  - VS Code hover for `uses` keyword updated with `{}` requirement
+  - Parser error investigation: Lezer limitation identified, follow-up work item recommended
 
 - **WI-097: Update README.md Step Syntax** - Completed 2025-12-31
   - Updated all 5 code examples in README.md to new block syntax

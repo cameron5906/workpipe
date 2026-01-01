@@ -6,6 +6,81 @@ For a complete list of all diagnostic codes, see the [Error Reference](errors.md
 
 ---
 
+## Syntax Errors
+
+These errors occur when the WorkPipe parser encounters invalid syntax.
+
+### Missing {} After uses() in Block Syntax
+
+**Problem:** When using block syntax (`steps { }`), the `uses()` step requires a trailing block. Omitting it causes a parse error.
+
+**Code that causes the error:**
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4")
+      shell { npm test }
+    }
+  }
+}
+```
+
+**Error message:**
+
+```
+error: expected '{' after uses() in block syntax
+  --> workflow.workpipe:7:5
+   |
+ 7 |       uses("actions/checkout@v4")
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Add '{}' after uses() when no configuration is needed
+```
+
+**Fix:**
+
+Add an empty block `{}` after `uses()`:
+
+```workpipe
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    steps {
+      uses("actions/checkout@v4") {}
+      shell { npm test }
+    }
+  }
+}
+```
+
+With configuration, provide the block contents:
+
+```workpipe
+uses("actions/setup-node@v4") {
+  with: { node-version: "20" }
+}
+```
+
+**Why is this required?**
+
+In block syntax, the parser needs a consistent way to determine where each step ends. The trailing block serves as the delimiter. In array syntax (`steps: [...]`), commas serve this purpose, so `uses()` does not require a trailing block there.
+
+**Quick reference:**
+
+| Syntax | Correct | Incorrect |
+|--------|---------|-----------|
+| Block syntax | `uses("action@v1") {}` | `uses("action@v1")` |
+| Array syntax | `uses("action@v1"),` | (both work) |
+
+---
+
 ## Common Type Errors
 
 These errors occur when WorkPipe detects issues with typed job outputs or agent task schemas.

@@ -73,6 +73,20 @@ const KEYWORD_DOCS: Record<string, { description: string; example: string }> = {
   artifacts: [string]
 }`,
   },
+  uses: {
+    description:
+      "Invokes a GitHub Action within a steps block. The trailing {} block is required even when no configuration is needed. Use the with property inside to pass inputs to the action.",
+    example: `// No configuration - trailing {} is still required
+uses("actions/checkout@v4") {}
+
+// With configuration
+uses("actions/setup-node@v4") {
+  with: {
+    node-version: "20"
+    cache: "npm"
+  }
+}`,
+  },
 };
 
 const PROPERTY_DOCS: Record<string, { description: string; example: string }> = {

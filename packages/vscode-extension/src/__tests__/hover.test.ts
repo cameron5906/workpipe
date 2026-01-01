@@ -117,6 +117,19 @@ describe("HoverProvider", () => {
       expect(markdown.value).toContain("**shell**");
       expect(markdown.value).toContain("shell commands directly");
     });
+
+    it("should provide hover for 'uses' keyword", () => {
+      const document = createMockDocument('  uses("actions/checkout@v4") {}');
+      const position = new vscode.Position(0, 3);
+      const result = provider.provideHover(document, position, createMockToken());
+
+      expect(result).toBeDefined();
+      const hover = result as vscode.Hover;
+      const markdown = hover.contents as vscode.MarkdownString;
+      expect(markdown.value).toContain("**uses**");
+      expect(markdown.value).toContain("GitHub Action");
+      expect(markdown.value).toContain("trailing {} block is required");
+    });
   });
 
   describe("property hover", () => {
