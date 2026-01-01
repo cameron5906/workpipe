@@ -37,7 +37,7 @@
       "patterns": [
         {
           "name": "keyword.control.workflow.workpipe",
-          "match": "\\b(workflow|job|agent_job|cycle|type)\\b"
+          "match": "\\b(workflow|job|job_fragment|steps_fragment|agent_job|cycle|type)\\b"
         },
         {
           "name": "keyword.control.flow.workpipe",
@@ -49,7 +49,7 @@
         },
         {
           "name": "keyword.other.property.workpipe",
-          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes|outputs|axes|max_parallel|fail_fast|include|exclude|matrix|with)\\b"
+          "match": "\\b(runs_on|steps|model|max_turns|tools|mcp|system_prompt|prompt|output_schema|output_artifact|consumes|outputs|axes|max_parallel|fail_fast|include|exclude|matrix|with|params)\\b"
         },
         {
           "name": "keyword.other.step.workpipe",
@@ -125,6 +125,10 @@
     },
     "operators": {
       "patterns": [
+        {
+          "name": "keyword.operator.spread.workpipe",
+          "match": "\\.\\.\\."
+        },
         {
           "name": "keyword.operator.comparison.workpipe",
           "match": "(==|!=)"
