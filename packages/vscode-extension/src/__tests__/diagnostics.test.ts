@@ -365,4 +365,50 @@ type BuildInfo {
       expect(end.line).toBeGreaterThanOrEqual(start.line);
     });
   });
+
+  describe("multi-name import parsing (WI-089 regression)", () => {
+    it("should parse multi-name imports without syntax errors", () => {
+      const source = `// CI workflow that imports shared types
+import { BuildInfo, TestResult } from "../types/common.workpipe"
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo test")
+    ]
+  }
+}`;
+      const result = compile(source);
+
+      const parseError = result.diagnostics.find(
+        (d) => d.code === "WP0001"
+      );
+      expect(parseError).toBeUndefined();
+    });
+
+    it("should handle import with parent path without parse errors", () => {
+      const source = `import { BuildInfo, TestResult } from "../types/common.workpipe"
+
+workflow ci {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: []
+  }
+}`;
+      const result = compile(source);
+
+      const parseError = result.diagnostics.find(
+        (d) => d.code === "WP0001"
+      );
+      expect(parseError).toBeUndefined();
+    });
+  });
 });

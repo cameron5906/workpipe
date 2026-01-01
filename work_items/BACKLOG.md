@@ -80,8 +80,8 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 995 tests (71 lang + 867 compiler + 57 VS Code)
-**Work Items Completed:** 88 (WI-001 through WI-088)
+**Test Count:** 998 tests (71 lang + 870 compiler + 57 VS Code)
+**Work Items Completed:** 89 (WI-001 through WI-089)
 **Work Items In Progress:** 0
 **Work Items In Backlog:** 0
 **CLI Commands:** 4 (build, check, fmt, init)
@@ -253,6 +253,14 @@ The following issues were identified by the documentation steward during WI-062 
 ---
 
 ## Completed
+
+### Bug Fix & Investigation
+- **WI-089: Import Syntax Error - Parse Regression** - Completed 2025-12-31
+  - Investigated multi-name import parse error (WP0001)
+  - Root cause: stale VS Code extension in user environment
+  - Grammar and parser verified working correctly
+  - Added regression tests (parser test + 2 VS Code diagnostic tests)
+  - All 998 tests passing
 
 ### Tooling Polish (Milestone E - COMPLETE)
 

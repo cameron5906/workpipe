@@ -2538,5 +2538,46 @@ workflow test {
       expect(terms.ImportItem).toBeDefined();
       expect(terms.ImportPath).toBeDefined();
     });
+
+    it("parses multi-name import with parent path (WI-089 regression)", () => {
+      const source = `// CI workflow that imports shared types
+import { BuildInfo, TestResult } from "../types/common.workpipe"
+
+workflow ci {
+  on: push
+
+  job build {
+    runs_on: ubuntu-latest
+    outputs: {
+      info: BuildInfo
+    }
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo test")
+    ]
+  }
+}`;
+      const tree = parse(source);
+      expect(hasErrors(tree)).toBe(false);
+
+      let importItemCount = 0;
+      const importNames: string[] = [];
+      let inImportItem = false;
+
+      tree.cursor().iterate((node) => {
+        if (node.name === "ImportItem") {
+          importItemCount++;
+          inImportItem = true;
+        }
+        if (inImportItem && node.name === "Identifier") {
+          importNames.push(source.slice(node.from, node.to));
+          inImportItem = false;
+        }
+      });
+
+      expect(importItemCount).toBe(2);
+      expect(importNames).toContain("BuildInfo");
+      expect(importNames).toContain("TestResult");
+    });
   });
 });
