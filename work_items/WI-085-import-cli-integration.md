@@ -1,7 +1,7 @@
 # WI-085: Import System - CLI Integration
 
 **ID**: WI-085
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -13,17 +13,17 @@ Update `workpipe build` and `workpipe check` commands for multi-file compilation
 
 ## Acceptance Criteria
 
-- [ ] `workpipe build` resolves imports when compiling
-- [ ] `workpipe check` validates imports
-- [ ] Build compiles files in dependency order
-- [ ] Files with only type declarations (no workflows) produce no YAML output
-- [ ] Import errors surface with proper file context
-- [ ] Build continues with other files if one file has import errors
-- [ ] Verbose mode shows import resolution details
-- [ ] Consider `--ignore-imports` flag for single-file mode (optional)
-- [ ] Integration tests for CLI with imports
-- [ ] Test multi-file project compilation
-- [ ] Test error output for import failures
+- [x] `workpipe build` resolves imports when compiling
+- [x] `workpipe check` validates imports
+- [x] Build compiles files in dependency order
+- [x] Files with only type declarations (no workflows) produce no YAML output
+- [x] Import errors surface with proper file context
+- [x] Build continues with other files if one file has import errors
+- [x] Verbose mode shows import resolution details
+- [x] Consider `--ignore-imports` flag for single-file mode (optional)
+- [x] Integration tests for CLI with imports
+- [x] Test multi-file project compilation
+- [x] Test error output for import failures
 
 ## Technical Context
 

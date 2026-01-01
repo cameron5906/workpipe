@@ -79,6 +79,7 @@ function createFile(
 ): WorkPipeFileNode {
   return {
     kind: "file",
+    imports: [],
     types,
     workflows,
     span: createSpan(0, 200),

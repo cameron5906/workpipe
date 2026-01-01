@@ -33,13 +33,14 @@ function createTypeField(name: string, type: TypeExpressionNode): TypeFieldNode 
 
 function createTypeDeclaration(
   name: string,
-  fields: TypeFieldNode[] = []
+  fields: TypeFieldNode[] = [],
+  span: Span = createSpan()
 ): TypeDeclarationNode {
   return {
     kind: "type_declaration",
     name,
     fields,
-    span: createSpan(),
+    span,
   };
 }
 

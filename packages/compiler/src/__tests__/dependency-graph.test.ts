@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { ImportGraph, ImportEdge } from "../imports/dependency-graph.js";
+import { ImportGraph, type ImportEdge } from "../imports/dependency-graph.js";
 
 describe("ImportGraph", () => {
   let graph: ImportGraph;

@@ -309,4 +309,260 @@ describe("check command", () => {
       expect(EXIT_VALIDATION_FAILURE).toBe(2);
     });
   });
+
+  describe("import system", () => {
+    it("should validate files with imports successfully", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type BuildInfo {
+  version: string
+  commit: string
+}`
+      );
+
+      await writeFile(
+        mainFile,
+        `import { BuildInfo } from "./types.workpipe"
+
+workflow build {
+  on: push
+  job compile {
+    runs_on: ubuntu-latest
+    steps: [run("make build")]
+  }
+}`
+      );
+
+      const exitCode = await checkAction([typesFile, mainFile], defaultOptions);
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+      expect(consoleLogSpy).toHaveBeenCalledWith("All 2 file(s) valid");
+    });
+
+    it("should report import errors with file context", async () => {
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        mainFile,
+        `import { NonExistent } from "./missing.workpipe"
+
+workflow build {
+  on: push
+  job compile {
+    runs_on: ubuntu-latest
+    steps: [run("make")]
+  }
+}`
+      );
+
+      const exitCode = await checkAction([mainFile], defaultOptions);
+
+      expect(exitCode).toBe(EXIT_VALIDATION_FAILURE);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("missing.workpipe")
+      );
+    });
+
+    it("should continue checking after import errors", async () => {
+      const badFile = path.join(tempDir, "bad.workpipe");
+      const goodFile = path.join(tempDir, "good.workpipe");
+
+      await writeFile(
+        badFile,
+        `import { Missing } from "./nonexistent.workpipe"
+
+workflow bad {
+  on: push
+  job test {
+    runs_on: ubuntu-latest
+    steps: [run("echo bad")]
+  }
+}`
+      );
+
+      await writeFile(
+        goodFile,
+        `workflow good {
+  on: push
+  job test {
+    runs_on: ubuntu-latest
+    steps: [run("echo good")]
+  }
+}`
+      );
+
+      const exitCode = await checkAction(
+        [badFile, goodFile],
+        { verbose: true, color: true }
+      );
+
+      expect(exitCode).toBe(EXIT_VALIDATION_FAILURE);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/OK.*good\.workpipe/)
+      );
+    });
+
+    it("should validate type-only files", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type Config {
+  env: string
+  debug: bool
+}`
+      );
+
+      const exitCode = await checkAction([typesFile], defaultOptions);
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+    });
+
+    it("should validate imported type usage in output schema", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type ReviewResult {
+  approved: bool
+  comments: string
+}`
+      );
+
+      await writeFile(
+        mainFile,
+        `import { ReviewResult } from "./types.workpipe"
+
+workflow review {
+  on: push
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    steps: [
+      agent_task("Review code") {
+        output_schema: ReviewResult
+      }
+    ]
+  }
+}`
+      );
+
+      const exitCode = await checkAction([typesFile, mainFile], defaultOptions);
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+    });
+
+    it("should compile workflow with output schema type reference", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type ReviewResult {
+  approved: bool
+}`
+      );
+
+      await writeFile(
+        mainFile,
+        `import { ReviewResult } from "./types.workpipe"
+
+workflow review {
+  on: push
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    steps: [
+      agent_task("Review code") {
+        output_schema: ReviewResult
+      }
+    ]
+  }
+}`
+      );
+
+      const exitCode = await checkAction([typesFile, mainFile], defaultOptions);
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+    });
+
+    it("should handle multi-file import chains", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+      const sharedFile = path.join(tempDir, "shared.workpipe");
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type BaseInfo {
+  id: string
+}`
+      );
+
+      await writeFile(
+        sharedFile,
+        `import { BaseInfo } from "./types.workpipe"
+
+type SharedConfig {
+  name: string
+}`
+      );
+
+      await writeFile(
+        mainFile,
+        `import { SharedConfig } from "./shared.workpipe"
+
+workflow pipeline {
+  on: push
+  job build {
+    runs_on: ubuntu-latest
+    steps: [run("build")]
+  }
+}`
+      );
+
+      const exitCode = await checkAction(
+        [mainFile, sharedFile, typesFile],
+        { verbose: true, color: true }
+      );
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+    });
+
+    it("should log import-aware validation in verbose mode", async () => {
+      const typesFile = path.join(tempDir, "types.workpipe");
+      const mainFile = path.join(tempDir, "main.workpipe");
+
+      await writeFile(
+        typesFile,
+        `type Config {
+  env: string
+}`
+      );
+
+      await writeFile(
+        mainFile,
+        `import { Config } from "./types.workpipe"
+
+workflow deploy {
+  on: push
+  job deploy_job {
+    runs_on: ubuntu-latest
+    steps: [run("deploy")]
+  }
+}`
+      );
+
+      const exitCode = await checkAction(
+        [typesFile, mainFile],
+        { verbose: true, color: true }
+      );
+
+      expect(exitCode).toBe(EXIT_SUCCESS);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("import-aware")
+      );
+    });
+  });
 });
