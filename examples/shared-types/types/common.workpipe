@@ -1,0 +1,23 @@
+// Shared type definitions for cross-file type sharing
+// This file contains common types used across multiple workflows
+
+// Build metadata passed between jobs
+type BuildInfo {
+  version: string
+  commit: string
+  timestamp: int
+}
+
+// Deployment configuration
+type DeployConfig {
+  environment: string
+  region: string
+  replicas: int
+}
+
+// Test results for pipeline gating
+type TestResult {
+  passed: bool
+  coverage: float
+  failed_count: int
+}

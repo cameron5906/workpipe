@@ -1,0 +1,32 @@
+// Deploy workflow that imports shared types
+// Demonstrates aliased imports and type reuse across files
+import { BuildInfo } from "../types/common.workpipe"
+import { DeployConfig as Config } from "../types/common.workpipe"
+
+workflow deploy {
+  on: push
+
+  job prepare {
+    runs_on: ubuntu-latest
+    outputs: {
+      build: BuildInfo
+      config: Config
+    }
+    steps: [
+      uses("actions/checkout@v4"),
+      run("echo \"build={\\\"version\\\":\\\"1.0.0\\\",\\\"commit\\\":\\\"abc123\\\",\\\"timestamp\\\":1234567890}\" >> $GITHUB_OUTPUT"),
+      run("echo \"config={\\\"environment\\\":\\\"production\\\",\\\"region\\\":\\\"us-east-1\\\",\\\"replicas\\\":3}\" >> $GITHUB_OUTPUT")
+    ]
+  }
+
+  job deploy_app {
+    runs_on: ubuntu-latest
+    needs: [prepare]
+    steps: [
+      run("echo Deploying version ${{ fromJSON(needs.prepare.outputs.build).version }}"),
+      run("echo Environment: ${{ fromJSON(needs.prepare.outputs.config).environment }}"),
+      run("echo Region: ${{ fromJSON(needs.prepare.outputs.config).region }}"),
+      run("echo Replicas: ${{ fromJSON(needs.prepare.outputs.config).replicas }}")
+    ]
+  }
+}

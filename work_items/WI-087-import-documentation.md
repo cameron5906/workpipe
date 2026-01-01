@@ -1,7 +1,7 @@
 # WI-087: Import System - Documentation
 
 **ID**: WI-087
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P0-Critical
 **Milestone**: F (Import System)
 **Created**: 2025-12-31
@@ -13,22 +13,22 @@ Create comprehensive documentation for the import system. This is Phase 8 of the
 
 ## Acceptance Criteria
 
-- [ ] Update `docs/language-reference.md` with import syntax
-- [ ] Import statement syntax and semantics
-- [ ] Path resolution rules documented
-- [ ] Aliasing syntax documented
-- [ ] Non-transitive import behavior explained
-- [ ] Create import best practices guide
-- [ ] When to use imports vs. inline types
-- [ ] Project structure recommendations
-- [ ] Create example: `examples/shared-types/`
-- [ ] Multi-file project demonstrating imports
-- [ ] Types file + workflow files that import
-- [ ] Expected YAML output
-- [ ] README explaining the pattern
-- [ ] Update main README with import feature mention
-- [ ] Update `docs/errors.md` with WP7xxx codes (if not done in WI-084)
-- [ ] Migration guide: "Adding imports to existing projects"
+- [x] Update `docs/language-reference.md` with import syntax
+- [x] Import statement syntax and semantics
+- [x] Path resolution rules documented
+- [x] Aliasing syntax documented
+- [x] Non-transitive import behavior explained
+- [x] Create import best practices guide
+- [x] When to use imports vs. inline types
+- [x] Project structure recommendations
+- [x] Create example: `examples/shared-types/`
+- [x] Multi-file project demonstrating imports
+- [x] Types file + workflow files that import
+- [x] Expected YAML output
+- [x] README explaining the pattern
+- [x] Update main README with import feature mention
+- [x] Update `docs/errors.md` with WP7xxx codes (if not done in WI-084)
+- [x] Migration guide: "Adding imports to existing projects"
 
 ## Technical Context
 

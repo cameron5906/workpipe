@@ -39,6 +39,7 @@ Learn how to pass data between jobs.
 | [job-outputs](./job-outputs/) | Intermediate | typed outputs, `$GITHUB_OUTPUT` | Pass typed values (string, int, bool) between jobs |
 | [json-outputs](./json-outputs/) | Intermediate | `json` type, `fromJSON()` | Pass structured data with nested objects and arrays |
 | [user-defined-types](./user-defined-types/) | Intermediate | `type`, type references, property validation | Define reusable types with compile-time property checking |
+| [shared-types](./shared-types/) | Intermediate | `import`, cross-file types, aliased imports | Share type definitions across multiple workflow files |
 
 ### Workflow Patterns
 
@@ -95,14 +96,15 @@ New to WorkPipe? Follow this progression:
 5. **[job-outputs](./job-outputs/)** - Pass typed data between jobs
 6. **[json-outputs](./json-outputs/)** - Work with structured JSON data
 7. **[user-defined-types](./user-defined-types/)** - Create reusable types with compile-time validation
+8. **[shared-types](./shared-types/)** - Share types across multiple workflow files with imports
 
 ### Level 4: Advanced Features
-8. **[guard-job](./guard-job/)** - JavaScript guards for conditional execution
-9. **[agent-task](./agent-task/)** - AI-powered automation with Claude Code
-10. **[cycle-basic](./cycle-basic/)** and **[iterative-refinement](./iterative-refinement/)** - Iterative workflows
+9. **[guard-job](./guard-job/)** - JavaScript guards for conditional execution
+10. **[agent-task](./agent-task/)** - AI-powered automation with Claude Code
+11. **[cycle-basic](./cycle-basic/)** and **[iterative-refinement](./iterative-refinement/)** - Iterative workflows
 
 ### Level 5: Enterprise Patterns
-11. **[microservices-build](./microservices-build/)** - Fan-out/fan-in for parallel service builds
+12. **[microservices-build](./microservices-build/)** - Fan-out/fan-in for parallel service builds
 
 ---
 
@@ -151,7 +153,8 @@ Quick reference for which examples demonstrate each feature.
 | Conditionals (`if`) | [simple-job](./simple-job/), [ci-pipeline](./ci-pipeline/) |
 | Typed outputs | [job-outputs](./job-outputs/), [json-outputs](./json-outputs/) |
 | JSON data passing | [json-outputs](./json-outputs/) |
-| User-defined types | [user-defined-types](./user-defined-types/) |
+| User-defined types | [user-defined-types](./user-defined-types/), [shared-types](./shared-types/) |
+| Cross-file imports | [shared-types](./shared-types/) |
 | Agent tasks | [agent-task](./agent-task/), [iterative-refinement](./iterative-refinement/) |
 | Inline output schemas | [agent-task](./agent-task/) |
 | Cycles | [cycle-basic](./cycle-basic/), [iterative-refinement](./iterative-refinement/) |

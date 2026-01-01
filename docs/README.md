@@ -42,6 +42,17 @@ workflow ci {
 workpipe build workpipe/ci.workpipe
 ```
 
+## Key Features
+
+| Feature | Documentation |
+|---------|--------------|
+| User-Defined Types | [Language Reference: Types](language-reference.md#user-defined-types) |
+| Cross-File Imports | [Language Reference: Imports](language-reference.md#imports) |
+| AI Agent Tasks | [Language Reference: Agent Jobs](language-reference.md#agent-jobs) |
+| Iterative Cycles | [Language Reference: Cycles](language-reference.md#cycles) |
+| Matrix Builds | [Language Reference: Matrices](language-reference.md#matrices) |
+| Guard Expressions | [Language Reference: Guard JS Blocks](language-reference.md#guard-js-blocks) |
+
 ## Project Resources
 
 - [PROJECT.md](../PROJECT.md) - Language and compiler design document

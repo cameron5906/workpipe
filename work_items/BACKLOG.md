@@ -30,24 +30,15 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-- WI-087: Import System - Documentation - P0-Critical
+(No active work items)
 
 ---
 
 ## Up Next (Priority Order)
 
-### Milestone F: Import System (P0-Critical - User Directive)
-
-ADR-0012 has been **Accepted** with the **Named Imports** approach. Implementation phases:
-
-3. **WI-087: Import System - Documentation** - P0-Critical
-   - Import syntax documentation
-   - Best practices guide
-   - Example: `examples/shared-types/`
-
 ### Tooling Enhancements (Lower Priority)
 
-5. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
+1. **WI-088: VS Code Hover Hints Enhancement** - P3-Low
    - Rich hover information for keywords and symbols
    - Context-aware hovers showing job/type details
    - Import provenance in hovers
@@ -78,7 +69,7 @@ The entire feature is production-ready with:
 | **C** | COMPLETE | Guards + advanced triggers |
 | **D** | COMPLETE | Matrices |
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
-| **F** | UP NEXT | Import System - Cross-file type sharing (ADR-0012 Accepted) |
+| **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -95,8 +86,8 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 982 tests (71 lang + 854 compiler + 57 VS Code)
-**Work Items Completed:** 86 (WI-001 through WI-086)
-**Work Items In Progress:** 1 (WI-087)
+**Work Items Completed:** 87 (WI-001 through WI-087)
+**Work Items In Progress:** 0
 **Work Items In Backlog:** 1 (WI-088)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
@@ -268,7 +259,16 @@ The following issues were identified by the documentation steward during WI-062 
 
 ## Completed
 
-### Import System (Milestone F - In Progress)
+### Import System (Milestone F - COMPLETE)
+
+- **WI-087: Import System - Documentation** - Completed 2025-12-31
+  - Updated docs/language-reference.md with comprehensive Imports section (~150 lines)
+  - Updated README.md with Cross-File Imports feature
+  - Updated docs/getting-started.md with migration guide
+  - Created examples/shared-types/ with complete multi-file example
+  - All examples compile and produce valid YAML
+
+### Import System (Milestone F - Prior Phases)
 
 - **WI-086: Import System - VS Code Extension** - Completed 2025-12-31
   - Created import-watcher.ts with ImportAwareCompilation class

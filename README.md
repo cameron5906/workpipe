@@ -163,6 +163,7 @@ Less noise. Same power. Compile-time validation catches errors before you push.
 | Feature | Description |
 |---------|-------------|
 | **User-Defined Types** | Define reusable data structures with compile-time property validation |
+| **Cross-File Imports** | Share type definitions across workflows with `import { Type } from "./path"` |
 | **AI Agent Tasks** | Integrate Claude directly into workflows with structured output schemas |
 | **Smart Cycles** | Iterative workflows that span multiple runs with automatic state management |
 | **Guards** | Conditional job execution with JavaScript expressions |

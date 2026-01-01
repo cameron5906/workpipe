@@ -324,5 +324,91 @@ Now that you have a working workflow, explore these resources:
 ### Advanced Topics
 
 - [User-Defined Types](language-reference.md#user-defined-types) - Reusable type definitions with compile-time validation
+- [Imports](language-reference.md#imports) - Share types across workflow files
 - [Agent Tasks](language-reference.md#agent-jobs) - AI-powered workflows with Claude
 - [Cycles](language-reference.md#cycles) - Iterative workflows that span multiple runs
+
+---
+
+## Adding Imports to Existing Projects
+
+If you have an existing WorkPipe project with inline type definitions scattered across files, you can consolidate them using imports:
+
+### Step 1: Identify Shared Types
+
+Look for types that are duplicated across workflow files or that represent your domain model:
+
+```bash
+# Find all type declarations in your project
+grep -r "^type " workpipe/
+```
+
+### Step 2: Create a Types File
+
+Create a dedicated file for shared type definitions:
+
+```bash
+mkdir -p workpipe/types
+```
+
+Move common types to `workpipe/types/common.workpipe`:
+
+```workpipe
+// workpipe/types/common.workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+type DeployConfig {
+  environment: string
+  region: string
+}
+```
+
+### Step 3: Update Workflow Files
+
+Replace inline type definitions with imports:
+
+**Before:**
+
+```workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+workflow ci {
+  job build {
+    outputs: { info: BuildInfo }
+  }
+}
+```
+
+**After:**
+
+```workpipe
+import { BuildInfo } from "./types/common.workpipe"
+
+workflow ci {
+  job build {
+    outputs: { info: BuildInfo }
+  }
+}
+```
+
+### Step 4: Verify
+
+Run the compiler to ensure everything still works:
+
+```bash
+workpipe check workpipe/**/*.workpipe
+workpipe build workpipe/**/*.workpipe
+```
+
+### Tips
+
+- Start small: Extract one or two types first
+- Types-only files produce no YAML output
+- The compiler automatically determines compilation order
+- Use aliased imports to avoid name collisions: `import { Config as DeployConfig } from ...`

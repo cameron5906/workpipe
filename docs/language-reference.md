@@ -6,13 +6,180 @@ This document provides a complete reference for the WorkPipe language syntax and
 
 - **Extension:** `.workpipe` (primary) or `.wp` (alias)
 - **Encoding:** UTF-8
-- **Top-level:** Each file must contain exactly one `workflow` block
+- **Top-level:** A file may contain imports, type declarations, and exactly one `workflow` block
 
 ```workpipe
+import { SharedType } from "./types.workpipe"
+
+type LocalType {
+  field: string
+}
+
 workflow my_workflow {
   // workflow contents
 }
 ```
+
+**File Order:**
+1. Import declarations (optional)
+2. Type declarations (optional)
+3. Workflow block (required, unless file contains only types for importing)
+
+---
+
+## Imports
+
+WorkPipe supports importing type definitions from other files. This enables type reuse across multiple workflows and promotes a clean separation between type definitions and workflow logic.
+
+### Import Syntax
+
+Import specific types from another file:
+
+```workpipe
+import { TypeName } from "./path/to/file.workpipe"
+```
+
+Import multiple types:
+
+```workpipe
+import { TypeA, TypeB, TypeC } from "./types.workpipe"
+```
+
+### Aliased Imports
+
+Rename imported types to avoid name collisions or improve clarity:
+
+```workpipe
+import { BuildInfo as BI } from "./types.workpipe"
+import { DeployConfig as Config } from "./shared.workpipe"
+```
+
+The alias becomes the local name for the type:
+
+```workpipe
+job build {
+  outputs: { info: BI }  // Uses the alias
+}
+```
+
+### Path Resolution Rules
+
+| Rule | Example | Description |
+|------|---------|-------------|
+| Relative paths | `"./types.workpipe"` | Paths are relative to the importing file |
+| Parent directory | `"../shared/common.workpipe"` | Use `../` to navigate up |
+| Extension required | `"./types.workpipe"` | The `.workpipe` extension must be included |
+| No absolute paths | Not allowed | Paths must start with `./` or `../` |
+| Project-bound | Error if escapes root | Cannot import from outside the project directory |
+
+### What Can Be Imported
+
+Only **type declarations** can be imported. Workflows, jobs, and other constructs cannot be imported.
+
+```workpipe
+// types.workpipe - Types-only file (no workflow block)
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+type TestResult {
+  passed: bool
+  coverage: float
+}
+```
+
+Files containing only type declarations do not produce YAML output when compiled.
+
+### Non-Transitive Imports
+
+Imports are **not transitive**. If file A imports `TypeX` from file B, and file C imports from file A, file C cannot access `TypeX` through file A.
+
+```workpipe
+// base.workpipe
+type BaseType { id: string }
+
+// middle.workpipe
+import { BaseType } from "./base.workpipe"
+type MiddleType { name: string }
+
+// main.workpipe
+import { BaseType } from "./middle.workpipe"  // ERROR: BaseType not exportable
+import { MiddleType } from "./middle.workpipe"  // OK: MiddleType is defined in middle
+import { BaseType } from "./base.workpipe"      // OK: Import directly from source
+```
+
+This design prevents "import pollution" where changing one file's imports could break unrelated downstream files.
+
+### Using Imported Types
+
+Imported types work exactly like locally-defined types:
+
+**In job outputs:**
+
+```workpipe
+import { BuildInfo } from "./types.workpipe"
+
+workflow ci {
+  job build {
+    outputs: { info: BuildInfo }
+    steps: [...]
+  }
+}
+```
+
+**In agent task schemas:**
+
+```workpipe
+import { ReviewResult } from "./types.workpipe"
+
+workflow review {
+  agent_job reviewer {
+    runs_on: ubuntu-latest
+    steps: [
+      agent_task("Review the code") {
+        output_schema: "ReviewResult"
+      }
+    ]
+  }
+}
+```
+
+### Import Errors
+
+| Code | Description |
+|------|-------------|
+| [WP7001](errors.md#wp7001) | Circular import detected |
+| [WP7002](errors.md#wp7002) | Import file not found |
+| [WP7003](errors.md#wp7003) | Type not exported (doesn't exist or is itself imported) |
+| [WP7004](errors.md#wp7004) | Duplicate import of same type |
+| [WP7005](errors.md#wp7005) | Name collision with existing type |
+| [WP7006](errors.md#wp7006) | Invalid import path (not relative) |
+| [WP7007](errors.md#wp7007) | Import path escapes project root |
+
+### Best Practices
+
+**When to use imports:**
+
+| Use imports when... | Use inline types when... |
+|---------------------|-------------------------|
+| Same type used in multiple workflows | Type used in only one file |
+| Types represent a shared domain model | Quick prototyping |
+| Team needs a single source of truth | Simple, one-off data shapes |
+
+**Recommended project structure:**
+
+```
+workpipe/
+  types/
+    common.workpipe       # Shared type definitions
+    domain.workpipe       # Domain-specific types
+  workflows/
+    ci.workpipe           # Imports from types/
+    deploy.workpipe       # Imports from types/
+```
+
+For a complete example, see [examples/shared-types/](../examples/shared-types/).
 
 ---
 
@@ -562,15 +729,15 @@ workflow ci {
 The following keywords are reserved and cannot be used as identifiers:
 
 ```
-after        agent_job    agent_task   axes         body
-consumes     cycle        emit         emits        env
-false        guard_js     if           inputs       job
-key          matrix       max_iters    mcp          model
-needs        on           output_artifact           output_schema
-outputs      prompt       raw_yaml     run          runs_on
-step         steps        system_prompt tools       triggers
-true         type         until        uses         when
-workflow
+after        agent_job    agent_task   as           axes
+body         consumes     cycle        emit         emits
+env          false        from         guard_js     if
+import       inputs       job          key          matrix
+max_iters    mcp          model        needs        on
+output_artifact           output_schema             outputs
+prompt       raw_yaml     run          runs_on      step
+steps        system_prompt tools       triggers     true
+type         until        uses         when         workflow
 ```
 
 ---
@@ -758,11 +925,33 @@ See [WP5003](errors.md#wp5003) for details on property validation errors.
 #### Limitations
 
 - Types are **compile-time only**: No runtime type checking occurs
-- Types are **file-scoped**: No cross-file imports
 - **No generics**: Each type is a concrete definition
 - **Structural typing**: Types with the same shape are compatible
 
-For complete examples, see [examples/user-defined-types/](../examples/user-defined-types/).
+#### Sharing Types Across Files
+
+Types can be shared between files using the import system:
+
+```workpipe
+// types/common.workpipe
+type BuildInfo {
+  version: string
+  commit: string
+}
+
+// workflows/ci.workpipe
+import { BuildInfo } from "../types/common.workpipe"
+
+workflow ci {
+  job build {
+    outputs: { info: BuildInfo }
+  }
+}
+```
+
+See [Imports](#imports) for complete documentation on the import system.
+
+For complete examples, see [examples/user-defined-types/](../examples/user-defined-types/) and [examples/shared-types/](../examples/shared-types/).
 
 ### Primitive Types
 
