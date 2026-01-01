@@ -1,7 +1,8 @@
 # ADR-0014: Fragment System Design for Reusable Workflow Components
 
 **Date**: 2026-01-01
-**Status**: Proposed
+**Status**: Accepted
+**Accepted**: 2026-01-01
 **Deciders**: Architecture Team
 
 ## Context

@@ -32,33 +32,21 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-1. **WI-106: Fragment System - Importable Jobs/Step Sequences** - P1-High
-   - ADR-0014 created (Proposed status, pending tech lead acceptance)
-   - **Phase 1 COMPLETE**: Grammar and AST (2026-01-01)
-     - Grammar: job_fragment, steps_fragment, params productions
-     - Job instantiation: `job x = fragment { params }`
-     - Steps spread: `...fragment { params }`
-     - All AST types and builders implemented
-     - 14 new tests, all 990 tests passing
-   - **Current: Phase 2 - Same-file resolution and codegen**
-   - Milestone H (Fragment System)
+(No work items currently in progress)
 
 ---
 
 ## Up Next (Priority Order)
 
-### P1-High (Major Feature)
-
-(WI-106 moved to In Progress)
-
 ### P2-Medium (Marketing/Showcase)
 
-2. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
+1. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
    - Wipe and rebuild examples/ directory with impressive showcase examples
    - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
    - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
+   - Phase 3: Fragment system showcase examples
    - Focus on "wow factor" and marketing appeal
-   - **Depends on**: WI-106 (Fragment System) for composability showcase
+   - **Unblocked**: WI-106 (Fragment System) now complete
    - Milestone E
 
 ---
@@ -89,7 +77,7 @@ The entire feature is production-ready with:
 | **E** | COMPLETE | Tooling (VS Code extension + bootstrap) |
 | **F** | COMPLETE | Import System - Cross-file type sharing (ADR-0012 Accepted) |
 | **G** | COMPLETE | Step Syntax Improvements (ADR-0013 Accepted) |
-| **H** | IN PROGRESS | Fragment System - Importable jobs/step sequences (ADR-0014 Proposed) |
+| **H** | COMPLETE | Fragment System - Importable jobs/step sequences (ADR-0014 Accepted) |
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
@@ -105,9 +93,9 @@ The entire feature is production-ready with:
 | 8: Cycles (Strategy B) | COMPLETE | Phased execution, concurrency |
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
-**Test Count:** 990 tests (85 lang + 825 compiler + 80 VS Code)
-**Work Items Completed:** 104 (WI-001 through WI-104)
-**Work Items In Progress:** 1 (WI-106)
+**Test Count:** 1034 tests (85 lang + 869 compiler + 80 VS Code)
+**Work Items Completed:** 105 (WI-001 through WI-104, WI-106)
+**Work Items In Progress:** 0
 **Work Items In Backlog:** 1 (WI-105)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
@@ -281,6 +269,20 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Fragment System (Milestone H - Complete)
+
+- **WI-106: Fragment System - Importable Jobs/Step Sequences** - Completed 2026-01-01
+  - ADR-0014 created and Accepted
+  - **Phase 1**: Grammar and AST - job_fragment, steps_fragment, params productions
+  - **Phase 2**: Same-file resolution and codegen - FragmentRegistry, inline expansion
+  - **Phase 3**: Cross-file imports - fragment imports using existing import syntax
+  - Job fragments instantiate with `job x = fragment { params }`
+  - Steps fragments spread with `...fragment { params }`
+  - Parameter substitution in expanded content
+  - Aliases and non-transitive exports supported
+  - 1034 tests passing (58 new fragment tests)
+  - Polish phases (4-8) deferred to future work items
 
 ### Installation Verification (Milestone E - Complete)
 
