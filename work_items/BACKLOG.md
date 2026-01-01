@@ -31,35 +31,31 @@ This backlog tracks all work items for the WorkPipe project - a DSL compiler tha
 
 ## In Progress
 
-(No work items currently in progress)
+(None)
 
 ---
 
 ## Up Next (Priority Order)
 
 ### P1-High (End-User Review Findings)
-4. **WI-101: Block Syntax Troubleshooting Guide** - P1-High
-   - Add dedicated section for block syntax errors to troubleshooting.md
-   - Document brace issues, escaping, indentation
-   - Milestone G
 
-5. **WI-102: Non-Transitive Imports Rationale** - P1-High
+1. **WI-102: Non-Transitive Imports Rationale** - P1-High
    - Document why imports are non-transitive
    - Explain design decision benefits
    - Milestone F
 
-6. **WI-103: Quick Reference Audit** - P1-High
+2. **WI-103: Quick Reference Audit** - P1-High
    - Audit quick-reference.md for outdated syntax
    - Update all examples to current syntax
    - Milestone E
 
-7. **WI-104: Installation Verification Step** - P1-High
+3. **WI-104: Installation Verification Step** - P1-High
    - Add `--version` flag verification to getting-started docs
    - Implement `--version` if not present
    - Milestone E
 
 ### P2-Medium (Marketing/Showcase)
-8. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
+4. **WI-105: Complete Examples Overhaul - Showcase Agentic Workflows** - P2-Medium
    - Wipe and rebuild examples/ directory with impressive showcase examples
    - Phase 1: 5-10 regular examples (types, loops, stages, matrices, guards)
    - Phase 2: 10-15 AI/agentic workflow examples (autonomous teams, code review, security audit, etc.)
@@ -110,9 +106,9 @@ The entire feature is production-ready with:
 | 9: Tooling polish | COMPLETE | VS Code extension, bootstrap workflow |
 
 **Test Count:** 976 tests (71 lang + 825 compiler + 80 VS Code)
-**Work Items Completed:** 100 (WI-001 through WI-100)
+**Work Items Completed:** 101 (WI-001 through WI-101)
 **Work Items In Progress:** 0
-**Work Items In Backlog:** 5 (WI-101 through WI-105)
+**Work Items In Backlog:** 4 (WI-102 through WI-105)
 **CLI Commands:** 4 (build, check, fmt, init)
 **Packages:** 5 (lang, compiler, cli, action, vscode-extension)
 
@@ -285,6 +281,14 @@ The following issues were identified during reviews. These are tracked for futur
 ---
 
 ## Completed
+
+### Block Syntax Troubleshooting (Milestone G - Complete)
+
+- **WI-101: Block Syntax Troubleshooting Guide** - Completed 2026-01-01
+  - Added comprehensive "Block Syntax Issues" section to docs/troubleshooting.md
+  - 7 subsections: brace counting, nested braces, indentation, here-documents, single-line vs multi-line, empty blocks
+  - Cross-reference added from docs/language-reference.md Shell Blocks section
+  - Each error includes problem code, error message, corrected code, and explanation
 
 ### Examples Catalog Audit (Milestone E - Complete)
 

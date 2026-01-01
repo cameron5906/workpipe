@@ -565,6 +565,8 @@ steps:
       npm run build
 ```
 
+**Brace handling:** The shell tokenizer uses brace-counting to determine block boundaries. Shell variable expansion syntax like `${VAR}` works correctly because the braces are balanced. Nested braces in bash functions also work. For details on edge cases and workarounds for unbalanced braces, see [Block Syntax Issues](troubleshooting.md#block-syntax-issues) in the Troubleshooting Guide.
+
 ---
 
 ### Run Step (Array Syntax)

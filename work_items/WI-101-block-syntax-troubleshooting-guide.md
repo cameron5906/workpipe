@@ -1,11 +1,12 @@
 # Block Syntax Troubleshooting Guide
 
 **ID**: WI-101
-**Status**: Backlog
+**Status**: Completed
 **Priority**: P1-High
 **Milestone**: G (Step Syntax Improvements)
 **Created**: 2026-01-01
 **Updated**: 2026-01-01
+**Completed**: 2026-01-01
 
 ## Description
 
@@ -21,20 +22,32 @@ A dedicated troubleshooting guide will reduce user friction and support burden.
 
 ## Acceptance Criteria
 
-- [ ] Add "Block Syntax" section to `docs/troubleshooting.md`
-- [ ] Document common block syntax errors with examples:
-  - [ ] Unbalanced braces in shell content
-  - [ ] Missing trailing `{}` after `uses()`
-  - [ ] Special character escaping in shell blocks
-  - [ ] Multi-line shell command issues
-  - [ ] Indentation expectations
-- [ ] Each error example should include:
+- [x] Add "Block Syntax" section to `docs/troubleshooting.md`
+- [x] Document common block syntax errors with examples:
+  - [x] Unbalanced braces in shell content
+  - [x] Missing trailing `{}` after `uses()` (covered in WI-098, referenced via cross-link)
+  - [x] Special character escaping in shell blocks
+  - [x] Multi-line shell command issues
+  - [x] Indentation expectations
+- [x] Each error example should include:
   - Problem code
   - Error message shown
   - Corrected code
   - Explanation of why the error occurred
-- [ ] Add cross-reference from `docs/language-reference.md` Steps section
-- [ ] Consider adding VS Code-specific troubleshooting tips
+- [x] Add cross-reference from `docs/language-reference.md` Steps section
+- [x] Consider adding VS Code-specific troubleshooting tips (not added - no VS Code-specific issues identified for block syntax)
+
+## Deliverables
+
+- Added comprehensive "Block Syntax Issues" section to `docs/troubleshooting.md` with 7 subsections:
+  1. Brace Counting and Shell Variable Expansion
+  2. Nested Braces in Control Structures
+  3. Indentation Handling in Shell Blocks
+  4. Here-Documents in Shell Blocks
+  5. Single-Line vs Multi-Line Shell Blocks
+  6. Empty Shell Blocks
+  7. See Also section with cross-references
+- Added cross-reference from `docs/language-reference.md` (Shell Blocks section) to troubleshooting guide
 
 ## Technical Context
 

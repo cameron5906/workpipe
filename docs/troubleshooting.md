@@ -81,6 +81,247 @@ In block syntax, the parser needs a consistent way to determine where each step 
 
 ---
 
+## Block Syntax Issues
+
+These errors and unexpected behaviors relate to the block-based step syntax (`steps { }` with `shell { }` blocks).
+
+### Brace Counting and Shell Variable Expansion
+
+**Problem:** Users may wonder whether shell variable syntax like `${VAR}` will confuse the parser, since it contains braces.
+
+**Good news:** This works correctly:
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    shell {
+      echo "Version: ${VERSION}"
+      echo "Path: ${HOME}/.config"
+      NAME="${FIRST}_${LAST}"
+      echo "Name: $NAME"
+    }
+  }
+}
+```
+
+**Why this works:** The shell tokenizer uses brace-counting. Each `{` increments a depth counter, and each `}` decrements it. Since `${VAR}` contains both an opening and closing brace, the count remains balanced, and the block ends correctly at the outer `}`.
+
+**What does NOT work:** Literal unbalanced braces in your shell code:
+
+```workpipe
+// PROBLEMATIC: Unbalanced literal braces
+shell {
+  echo "{"        // This { has no matching }
+}
+```
+
+If you need to output literal braces, balance them or use alternative approaches:
+
+```workpipe
+// WORKAROUND: Use printf with escaped brace
+shell {
+  printf '%s\n' '{'
+  printf '%s\n' '}'
+}
+
+// OR: Balanced braces in output
+shell {
+  echo "{}"
+}
+```
+
+---
+
+### Nested Braces in Control Structures
+
+**Problem:** Complex shell control structures with braces might seem risky.
+
+**This works correctly:**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    shell {
+      if [ -f package.json ]; then
+        npm ci
+      fi
+
+      for file in *.js; do
+        echo "Processing: $file"
+      done
+
+      while read -r line; do
+        echo "$line"
+      done < input.txt
+    }
+  }
+}
+```
+
+**Why it works:** Shell control structures like `if/then/fi`, `for/do/done`, and `while/do/done` do not use braces. The brace-counting only applies to actual `{` and `}` characters.
+
+**Bash function definitions with braces also work:**
+
+```workpipe
+shell {
+  my_function() {
+    echo "Inside function"
+  }
+  my_function
+}
+```
+
+The inner `{ }` around the function body is balanced, so the parser correctly identifies the outer `}` as the end of the shell block.
+
+---
+
+### Indentation Handling in Shell Blocks
+
+**Problem:** Users may be unsure how indentation in shell blocks translates to the generated YAML.
+
+**How it works:** The compiler automatically strips the common leading indentation from all non-empty lines in a shell block.
+
+**WorkPipe source:**
+
+```workpipe
+job build {
+  runs_on: ubuntu-latest
+  steps {
+    shell {
+      npm ci
+      npm run build
+      npm test
+    }
+  }
+}
+```
+
+**Generated YAML:**
+
+```yaml
+steps:
+  - run: |-
+      npm ci
+      npm run build
+      npm test
+```
+
+**The algorithm:**
+1. Split content into lines
+2. Find the minimum indentation across all non-empty lines
+3. Strip that many characters from the start of each line
+4. Trim leading/trailing whitespace from the result
+
+**What this means:**
+- Your WorkPipe indentation does not appear in the output
+- All lines are dedented by the same amount
+- Empty lines are preserved (but not counted for minimum indent calculation)
+
+**Edge case - mixed indentation:**
+
+```workpipe
+shell {
+  echo "start"
+    echo "indented in WorkPipe"
+  echo "end"
+}
+```
+
+Generates:
+
+```yaml
+run: |-
+  echo "start"
+    echo "indented in WorkPipe"
+  echo "end"
+```
+
+The relative indentation between lines is preserved. Only the common leading indent is stripped.
+
+---
+
+### Here-Documents in Shell Blocks
+
+**Problem:** Here-documents (heredocs) have their own delimiter syntax that might interact unexpectedly with block parsing.
+
+**This works correctly:**
+
+```workpipe
+shell {
+  cat <<EOF
+  Line 1
+  Line 2
+  EOF
+}
+```
+
+**Why it works:** The shell tokenizer only counts `{` and `}` characters. Heredoc delimiters like `<<EOF` and `EOF` are not braces and do not affect the block boundary detection.
+
+**Heredocs with braces in content also work:**
+
+```workpipe
+shell {
+  cat <<EOF
+  {
+    "key": "value"
+  }
+  EOF
+}
+```
+
+The braces inside the heredoc are still counted, but since they are balanced (`{` and `}`), the block ends correctly.
+
+---
+
+### Single-Line vs Multi-Line Shell Blocks
+
+**Problem:** Users may be unsure when to use single-line versus multi-line shell blocks.
+
+**Single-line form:**
+
+```workpipe
+shell { echo "Hello, World!" }
+```
+
+**Multi-line form:**
+
+```workpipe
+shell {
+  echo "Line 1"
+  echo "Line 2"
+}
+```
+
+**Recommendation:** Use single-line for simple, single commands. Use multi-line for scripts with multiple commands or complex logic.
+
+**Note:** Both forms produce equivalent YAML. The multi-line form uses YAML block scalar syntax (`|-`), while single-line produces a simple string.
+
+---
+
+### Empty Shell Blocks
+
+**Problem:** An empty shell block may cause unexpected behavior.
+
+**Code that might surprise you:**
+
+```workpipe
+shell { }
+```
+
+**What happens:** This produces an empty `run:` step in YAML, which GitHub Actions will execute as a no-op. While not an error, it is probably not what you intended.
+
+**Fix:** Either remove the empty shell block or add the intended commands:
+
+```workpipe
+shell {
+  echo "Doing something useful"
+}
+```
+
+---
+
 ## Common Type Errors
 
 These errors occur when WorkPipe detects issues with typed job outputs or agent task schemas.
@@ -751,4 +992,5 @@ cycle refine {
 
 - [Error Reference](errors.md) - Complete list of all diagnostic codes
 - [Language Reference](language-reference.md) - Full syntax and semantics guide
+- [Language Reference: Shell Blocks](language-reference.md#shell-blocks) - Shell block syntax details
 - [VS Code Extension](vscode-extension.md) - Editor integration and diagnostics
