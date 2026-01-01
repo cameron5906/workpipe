@@ -23,3 +23,13 @@ export {
   type TypeRegistry,
   type ImportItem,
 } from "./type-registry.js";
+export {
+  createFragmentRegistry,
+  buildFragmentRegistry,
+  createFragmentNotFoundDiagnostic,
+  createMissingParamDiagnostic,
+  createUnknownParamDiagnostic,
+  FRAGMENT_DIAGNOSTICS,
+  type FragmentRegistry,
+  type FragmentRegistryBuildResult,
+} from "./fragment-registry.js";

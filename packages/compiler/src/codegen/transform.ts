@@ -2,6 +2,7 @@ import type {
   WorkflowNode,
   JobNode,
   AnyJobNode,
+  AnyJobDeclNode,
   AgentJobNode,
   MatrixJobNode,
   StepNode,
@@ -17,9 +18,17 @@ import type {
   TypeDeclarationNode,
   TypeExpressionNode,
   TypeFieldNode,
+  JobFragmentInstantiationNode,
+  StepsFragmentSpreadNode,
+  ParamArgumentNode,
+  JobFragmentNode,
+  StepsFragmentNode,
+  RunStepNode,
+  UsesStepNode,
 } from "../ast/types.js";
-import { isConcreteJob } from "../ast/types.js";
+import { isConcreteJob, isFragmentInstantiation } from "../ast/types.js";
 import type { TypeRegistry } from "../semantics/type-registry.js";
+import type { FragmentRegistry } from "../semantics/fragment-registry.js";
 import type {
   WorkflowIR,
   TriggerIR,
@@ -502,12 +511,20 @@ function assignStepIds(steps: StepIR[]): { steps: StepIR[]; lastStepId: string |
   return { steps: stepsWithIds, lastStepId };
 }
 
-function transformRegularJob(job: JobNode, workflowName: string, registry?: TypeRegistry): JobIR {
-  const rawSteps: StepIR[] = [];
-  for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name, undefined, registry);
-    rawSteps.push(...transformed);
-  }
+function transformRegularJob(
+  job: JobNode,
+  workflowName: string,
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
+): JobIR {
+  const rawSteps = transformStepsWithFragments(
+    job.steps,
+    fragmentRegistry,
+    workflowName,
+    job.name,
+    undefined,
+    registry
+  );
 
   const hasUserOutputs = job.outputs.length > 0;
   const { steps, lastStepId } = hasUserOutputs
@@ -542,12 +559,20 @@ function transformRegularJob(job: JobNode, workflowName: string, registry?: Type
   return result;
 }
 
-function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
-  const rawSteps: StepIR[] = [];
-  for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name, undefined, registry);
-    rawSteps.push(...transformed);
-  }
+function transformAgentJob(
+  job: AgentJobNode,
+  workflowName: string,
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
+): JobIR {
+  const rawSteps = transformStepsWithFragments(
+    job.steps,
+    fragmentRegistry,
+    workflowName,
+    job.name,
+    undefined,
+    registry
+  );
 
   const hasUserOutputs = job.outputs.length > 0;
   const { steps, lastStepId } = hasUserOutputs
@@ -578,13 +603,21 @@ function transformAgentJob(job: AgentJobNode, workflowName: string, registry?: T
   return result;
 }
 
-function transformMatrixJob(job: MatrixJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
+function transformMatrixJob(
+  job: MatrixJobNode,
+  workflowName: string,
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
+): JobIR {
   const matrixContext: MatrixContext = { axes: job.axes };
-  const rawSteps: StepIR[] = [];
-  for (const step of job.steps) {
-    const transformed = transformStep(step, workflowName, job.name, matrixContext, registry);
-    rawSteps.push(...transformed);
-  }
+  const rawSteps = transformStepsWithFragments(
+    job.steps,
+    fragmentRegistry,
+    workflowName,
+    job.name,
+    matrixContext,
+    registry
+  );
 
   const hasUserOutputs = job.outputs.length > 0;
   const { steps, lastStepId } = hasUserOutputs
@@ -628,14 +661,19 @@ function transformMatrixJob(job: MatrixJobNode, workflowName: string, registry?:
   return result;
 }
 
-function transformJob(job: AnyJobNode, workflowName: string, registry?: TypeRegistry): JobIR {
+function transformJob(
+  job: AnyJobNode,
+  workflowName: string,
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
+): JobIR {
   if (job.kind === "agent_job") {
-    return transformAgentJob(job, workflowName, registry);
+    return transformAgentJob(job, workflowName, registry, fragmentRegistry);
   }
   if (job.kind === "matrix_job") {
-    return transformMatrixJob(job, workflowName, registry);
+    return transformMatrixJob(job, workflowName, registry, fragmentRegistry);
   }
-  return transformRegularJob(job, workflowName, registry);
+  return transformRegularJob(job, workflowName, registry, fragmentRegistry);
 }
 
 function transformCycleBodyJob(
@@ -643,9 +681,10 @@ function transformCycleBodyJob(
   workflowName: string,
   cycleName: string,
   hydrateJobName: string,
-  registry?: TypeRegistry
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
 ): JobIR {
-  const baseJob = transformJob(job, workflowName, registry);
+  const baseJob = transformJob(job, workflowName, registry, fragmentRegistry);
 
   const cycleJobNeeds = [...(baseJob.needs ?? [])].map((need) => {
     const bodyJobNames = [];
@@ -670,7 +709,8 @@ function transformCycleBodyJob(
 export function transformCycle(
   cycle: CycleNode,
   workflow: WorkflowNode,
-  registry?: TypeRegistry
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
 ): Map<string, JobIR> {
   const jobs = new Map<string, JobIR>();
   const cycleName = cycle.name;
@@ -692,7 +732,8 @@ export function transformCycle(
       workflow.name,
       cycleName,
       hydrateJobName,
-      registry
+      registry,
+      fragmentRegistry
     );
 
     const needsWithCyclePrefix = (bodyJob.needs ?? []).map((need: string) => {
@@ -940,17 +981,285 @@ function generateConcurrency(cycles: readonly CycleNode[]): ConcurrencyIR | unde
   };
 }
 
-export function transform(ast: WorkflowNode, registry?: TypeRegistry): WorkflowIR {
+/**
+ * Substitute parameter references in a string with their argument values.
+ * Parameters are referenced as ${{ params.X }} in fragment bodies.
+ */
+export function substituteParams(
+  content: string,
+  args: Map<string, string>
+): string {
+  return content.replace(/\$\{\{\s*params\.(\w+)\s*\}\}/g, (match, paramName) => {
+    const value = args.get(paramName);
+    return value !== undefined ? value : match;
+  });
+}
+
+/**
+ * Serialize an expression node to a string value for parameter substitution.
+ */
+function expressionToString(expr: ExpressionNode): string {
+  switch (expr.kind) {
+    case "string":
+      return expr.value;
+    case "boolean":
+      return expr.value ? "true" : "false";
+    case "number":
+      return String(expr.value);
+    case "property":
+      return `\${{ ${expr.path.join(".")} }}`;
+    case "binary":
+      return serializeExpression(expr);
+  }
+}
+
+/**
+ * Build a map of parameter name to stringified value from arguments.
+ */
+function buildParamMap(args: readonly ParamArgumentNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const arg of args) {
+    map.set(arg.name, expressionToString(arg.value));
+  }
+  return map;
+}
+
+/**
+ * Clone a step with parameter substitution applied.
+ */
+function cloneStepWithParams(step: StepNode, paramMap: Map<string, string>): StepNode {
+  switch (step.kind) {
+    case "run": {
+      const runStep: RunStepNode = {
+        kind: "run",
+        command: substituteParams(step.command, paramMap),
+        span: step.span,
+      };
+      return runStep;
+    }
+    case "uses": {
+      const usesStep: UsesStepNode = {
+        kind: "uses",
+        action: substituteParams(step.action, paramMap),
+        span: step.span,
+      };
+      return usesStep;
+    }
+    case "shell": {
+      const shellStep: ShellStepNode = {
+        kind: "shell",
+        content: substituteParams(step.content, paramMap),
+        multiline: step.multiline,
+        span: step.span,
+      };
+      return shellStep;
+    }
+    case "uses_block": {
+      const withConfig = step.with
+        ? substituteParamsInObject(step.with, paramMap)
+        : undefined;
+      const usesBlockStep: UsesBlockStepNode = {
+        kind: "uses_block",
+        action: substituteParams(step.action, paramMap),
+        ...(withConfig ? { with: withConfig } : {}),
+        span: step.span,
+      };
+      return usesBlockStep;
+    }
+    case "agent_task": {
+      const clonedTask: AgentTaskNode = {
+        ...step,
+        taskDescription: substituteParams(step.taskDescription, paramMap),
+        prompt: step.prompt ? clonePromptWithParams(step.prompt, paramMap) : undefined,
+        systemPrompt: step.systemPrompt ? clonePromptWithParams(step.systemPrompt, paramMap) : undefined,
+      };
+      return clonedTask;
+    }
+    case "guard_js_step": {
+      const guardStep: GuardJsStepNode = {
+        kind: "guard_js_step",
+        id: substituteParams(step.id, paramMap),
+        code: substituteParams(step.code, paramMap),
+        span: step.span,
+      };
+      return guardStep;
+    }
+    case "steps_fragment_spread":
+      return step;
+  }
+}
+
+/**
+ * Clone a PromptValue with parameter substitution applied.
+ */
+function clonePromptWithParams(prompt: PromptValue, paramMap: Map<string, string>): PromptValue {
+  switch (prompt.kind) {
+    case "literal":
+      return { kind: "literal", value: substituteParams(prompt.value, paramMap) };
+    case "file":
+      return { kind: "file", path: substituteParams(prompt.path, paramMap) };
+    case "template":
+      return { kind: "template", content: substituteParams(prompt.content, paramMap) };
+  }
+}
+
+/**
+ * Substitute parameters in an object recursively.
+ */
+function substituteParamsInObject(
+  obj: Record<string, unknown>,
+  paramMap: Map<string, string>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === "string") {
+      result[key] = substituteParams(value, paramMap);
+    } else if (Array.isArray(value)) {
+      result[key] = value.map((item) =>
+        typeof item === "string"
+          ? substituteParams(item, paramMap)
+          : typeof item === "object" && item !== null
+          ? substituteParamsInObject(item as Record<string, unknown>, paramMap)
+          : item
+      );
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = substituteParamsInObject(value as Record<string, unknown>, paramMap);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Expand a job fragment instantiation into a regular job.
+ */
+function expandJobFragmentInstantiation(
+  node: JobFragmentInstantiationNode,
+  fragmentRegistry: FragmentRegistry,
+  workflowName: string,
+  registry?: TypeRegistry
+): JobIR | null {
+  const fragment = fragmentRegistry.getJobFragment(node.fragmentName);
+  if (!fragment) {
+    return null;
+  }
+
+  const paramMap = buildParamMap(node.arguments);
+
+  for (const param of fragment.params) {
+    if (param.defaultValue && !paramMap.has(param.name)) {
+      paramMap.set(param.name, expressionToString(param.defaultValue));
+    }
+  }
+
+  const clonedSteps = fragment.steps.map((step) => cloneStepWithParams(step, paramMap));
+
+  const expandedJob: JobNode = {
+    kind: "job",
+    name: node.name,
+    runsOn: fragment.runsOn,
+    needs: fragment.needs,
+    condition: fragment.condition,
+    outputs: fragment.outputs,
+    steps: clonedSteps,
+    span: node.span,
+  };
+
+  return transformRegularJob(expandedJob, workflowName, registry);
+}
+
+/**
+ * Expand a steps fragment spread into a list of steps.
+ */
+function expandStepsFragmentSpread(
+  node: StepsFragmentSpreadNode,
+  fragmentRegistry: FragmentRegistry
+): StepNode[] {
+  const fragment = fragmentRegistry.getStepsFragment(node.fragmentName);
+  if (!fragment) {
+    return [];
+  }
+
+  const paramMap = buildParamMap(node.arguments);
+
+  for (const param of fragment.params) {
+    if (param.defaultValue && !paramMap.has(param.name)) {
+      paramMap.set(param.name, expressionToString(param.defaultValue));
+    }
+  }
+
+  return fragment.steps.map((step) => cloneStepWithParams(step, paramMap));
+}
+
+/**
+ * Transform steps, expanding any steps fragment spreads.
+ */
+function transformStepsWithFragments(
+  steps: readonly StepNode[],
+  fragmentRegistry: FragmentRegistry | undefined,
+  workflowName: string,
+  jobName: string,
+  matrixContext?: MatrixContext,
+  registry?: TypeRegistry
+): StepIR[] {
+  const result: StepIR[] = [];
+
+  for (const step of steps) {
+    if (step.kind === "steps_fragment_spread" && fragmentRegistry) {
+      const expandedSteps = expandStepsFragmentSpread(step, fragmentRegistry);
+      for (const expandedStep of expandedSteps) {
+        const transformed = transformStep(expandedStep, workflowName, jobName, matrixContext, registry);
+        result.push(...transformed);
+      }
+    } else {
+      const transformed = transformStep(step, workflowName, jobName, matrixContext, registry);
+      result.push(...transformed);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Transform a job declaration (either concrete or fragment instantiation).
+ */
+function transformJobDecl(
+  job: AnyJobDeclNode,
+  workflowName: string,
+  fragmentRegistry: FragmentRegistry | undefined,
+  registry?: TypeRegistry
+): { name: string; ir: JobIR } | null {
+  if (isFragmentInstantiation(job)) {
+    if (!fragmentRegistry) {
+      return null;
+    }
+    const ir = expandJobFragmentInstantiation(job, fragmentRegistry, workflowName, registry);
+    if (!ir) {
+      return null;
+    }
+    return { name: job.name, ir };
+  }
+
+  return { name: job.name, ir: transformJob(job, workflowName, registry, fragmentRegistry) };
+}
+
+export function transform(
+  ast: WorkflowNode,
+  registry?: TypeRegistry,
+  fragmentRegistry?: FragmentRegistry
+): WorkflowIR {
   const jobs = new Map<string, JobIR>();
 
   for (const job of ast.jobs) {
-    if (isConcreteJob(job)) {
-      jobs.set(job.name, transformJob(job, ast.name, registry));
+    const result = transformJobDecl(job, ast.name, fragmentRegistry, registry);
+    if (result) {
+      jobs.set(result.name, result.ir);
     }
   }
 
   for (const cycle of ast.cycles) {
-    const cycleJobs = transformCycle(cycle, ast, registry);
+    const cycleJobs = transformCycle(cycle, ast, registry, fragmentRegistry);
     for (const [name, jobIR] of cycleJobs) {
       jobs.set(name, jobIR);
     }

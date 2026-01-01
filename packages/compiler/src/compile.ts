@@ -21,7 +21,9 @@ import {
   validateExpressionTypes,
   buildTypeRegistry,
   validateTypeReferences,
+  buildFragmentRegistry,
   type TypeRegistry,
+  type FragmentRegistry,
   type ImportItem,
 } from "./semantics/index.js";
 import type { FileResolver } from "./imports/index.js";
@@ -279,6 +281,9 @@ export function compile(sourceOrOptions: string | CompileOptions): CompileResult
   );
   diagnostics.push(...typeRegistryDiagnostics);
 
+  const { registry: fragmentRegistry, diagnostics: fragmentDiagnostics } = buildFragmentRegistry(fileAST);
+  diagnostics.push(...fragmentDiagnostics);
+
   diagnostics.push(...validateTypeReferences(fileAST, registry));
 
   const tree = parse(source);
@@ -302,7 +307,7 @@ export function compile(sourceOrOptions: string | CompileOptions): CompileResult
     return { success: false, diagnostics };
   }
 
-  const ir = transform(ast, registry);
+  const ir = transform(ast, registry, fragmentRegistry);
   const yaml = emit(ir);
 
   return { success: true, value: yaml, diagnostics };
@@ -333,6 +338,9 @@ export async function compileWithImports(
   );
   diagnostics.push(...typeRegistryDiagnostics);
 
+  const { registry: fragmentRegistry, diagnostics: fragmentDiagnostics } = buildFragmentRegistry(fileAST);
+  diagnostics.push(...fragmentDiagnostics);
+
   if (filePath && importContext && fileAST.imports.length > 0) {
     const importDiags = await processImports(fileAST, registry, filePath, importContext);
     diagnostics.push(...importDiags);
@@ -361,7 +369,7 @@ export async function compileWithImports(
     return { success: false, diagnostics };
   }
 
-  const ir = transform(ast, registry);
+  const ir = transform(ast, registry, fragmentRegistry);
   const yaml = emit(ir);
 
   return { success: true, value: yaml, diagnostics };
